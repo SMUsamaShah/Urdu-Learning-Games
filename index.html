@@ -1,0 +1,91 @@
+<!doctype html>
+<!--
+  dir stays ltr even though this is an Urdu app.
+
+  Phaser centres its canvas by setting margin-left, which assumes left-to-right
+  block flow. Under dir="rtl" the canvas right-aligns instead and every screen
+  sits off-centre. Nothing is lost by keeping the document ltr: no Urdu is laid
+  out by the browser at all, because every glyph is a baked path positioned by
+  the game (see src/lib/glyph.js), and the right-to-left reading order lives in
+  the scenes' own layout maths.
+-->
+<html lang="ur" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>اردو کھیل — Urdu Learning Games</title>
+
+    <!--
+      viewport-fit and user-scalable=no together stop a small child's palm from
+      pinch-zooming the game into an unusable state. This is one of the few
+      places where disabling zoom is the right call rather than an a11y sin:
+      the whole UI is already finger-sized and there is no body text to enlarge.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="theme-color" content="#1b2440" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="description"
+      content="Free, open source, ad-free games for learning the Urdu alphabet, numbers and first words."
+    />
+
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #1b2440;
+        /* Kills pull-to-refresh and rubber-banding, which otherwise fire
+           constantly under a child's dragging. */
+        overscroll-behavior: none;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #game {
+        width: 100%;
+        height: 100%;
+      }
+      #game canvas {
+        display: block;
+        touch-action: none;
+      }
+      /* Shown only if the module fails to load at all. */
+      #boot-error {
+        display: none;
+        position: fixed;
+        inset: 0;
+        place-content: center;
+        text-align: center;
+        padding: 2rem;
+        font: 16px/1.6 system-ui, sans-serif;
+        color: #cfd6e6;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="boot-error">
+      <p>کھیل لوڈ نہیں ہو سکا</p>
+      <p>The game could not load. Try refreshing.</p>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+    <script>
+      window.addEventListener('error', function onBootError(e) {
+        if (e.target && e.target.tagName === 'SCRIPT') {
+          document.getElementById('boot-error').style.display = 'grid';
+        }
+      }, true);
+    </script>
+  </body>
+</html>

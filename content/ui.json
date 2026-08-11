@@ -1,0 +1,28 @@
+{
+  "$comment": [
+    "Urdu shown in menus and headings.",
+    "",
+    "These are baked into outlines exactly like the letters and words are. It",
+    "would be tempting to render menu labels with a webfont and Phaser.Text and",
+    "only bake the gameplay glyphs, but then half the Urdu in the app depends on",
+    "the platform shaper and the other half does not, and the two look subtly",
+    "different side by side. Everything goes through one pipeline.",
+    "",
+    "Add a string here, run `npm run bake`, and reference it by id."
+  ],
+  "strings": [
+    { "id": "app-title",   "text": "اردو کھیل",     "roman": "Urdu Games" },
+    { "id": "letters",     "text": "حروف",          "roman": "Letters" },
+    { "id": "listen-tap",  "text": "سنو اور چنو",   "roman": "Listen and choose" },
+    { "id": "balloons",    "text": "غبارے",         "roman": "Balloons" },
+    { "id": "trace",       "text": "لکھو",          "roman": "Write" },
+    { "id": "numbers",     "text": "گنتی",          "roman": "Numbers" },
+    { "id": "words",       "text": "الفاظ",         "roman": "Words" },
+    { "id": "settings",    "text": "ترتیبات",       "roman": "Settings" },
+    { "id": "isolated",    "text": "الگ",           "roman": "isolated" },
+    { "id": "initial",     "text": "شروع",          "roman": "initial" },
+    { "id": "medial",      "text": "درمیان",        "roman": "medial" },
+    { "id": "final",       "text": "آخر",           "roman": "final" },
+    { "id": "loading",     "text": "انتظار کریں",   "roman": "Please wait" }
+  ]
+}

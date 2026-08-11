@@ -1,0 +1,7 @@
+node_modules/
+dist/
+screenshots/
+preview-glyphs.png
+*.local
+.DS_Store
+.vite/

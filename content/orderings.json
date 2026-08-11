@@ -1,0 +1,53 @@
+{
+  "$comment": [
+    "Two views over the same letter set. Neither duplicates content: both are",
+    "arrays of ids from letters.json, so adding a letter means touching",
+    "letters.json plus one entry in each ordering.",
+    "",
+    "alphabetical: standard qaida order, matching what a child is taught at",
+    "school and what every Urdu primer prints.",
+    "",
+    "shape-families: letters that share a skeleton introduced together, so the",
+    "only thing that changes within a group is the dots. This front-loads the",
+    "distinction Urdu learners actually get wrong, and lets the dots themselves",
+    "become the game mechanic."
+  ],
+  "orderings": {
+    "alphabetical": {
+      "label": "قاعدہ ترتیب",
+      "labelRoman": "Qaida order",
+      "sequence": [
+        "alif", "be", "pe", "te", "Te", "se", "jim", "che", "bari-he", "khe",
+        "dal", "Dal", "zal", "re", "Re", "ze", "zhe", "sin", "shin", "suad",
+        "zuad", "toe", "zoe", "ain", "ghain", "fe", "qaf", "kaf", "gaf", "lam",
+        "mim", "nun", "wao", "choti-he", "do-chashmi-he", "hamza", "choti-ye",
+        "bari-ye"
+      ]
+    },
+    "shape-families": {
+      "label": "شکل کے گروپ",
+      "labelRoman": "Shape groups",
+      "groups": [
+        { "family": "alif",  "letters": ["alif"] },
+        { "family": "be",    "letters": ["be", "pe", "te", "Te", "se"] },
+        { "family": "jim",   "letters": ["jim", "che", "bari-he", "khe"] },
+        { "family": "dal",   "letters": ["dal", "Dal", "zal"] },
+        { "family": "re",    "letters": ["re", "Re", "ze", "zhe"] },
+        { "family": "sin",   "letters": ["sin", "shin"] },
+        { "family": "suad",  "letters": ["suad", "zuad"] },
+        { "family": "toe",   "letters": ["toe", "zoe"] },
+        { "family": "ain",   "letters": ["ain", "ghain"] },
+        { "family": "fe",    "letters": ["fe"] },
+        { "family": "qaf",   "letters": ["qaf"] },
+        { "family": "kaf",   "letters": ["kaf", "gaf"] },
+        { "family": "lam",   "letters": ["lam"] },
+        { "family": "mim",   "letters": ["mim"] },
+        { "family": "nun",   "letters": ["nun"] },
+        { "family": "wao",   "letters": ["wao"] },
+        { "family": "he",    "letters": ["choti-he", "do-chashmi-he"] },
+        { "family": "hamza", "letters": ["hamza"] },
+        { "family": "ye",    "letters": ["choti-ye", "bari-ye"] }
+      ]
+    }
+  }
+}

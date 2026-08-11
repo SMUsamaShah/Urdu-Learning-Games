@@ -1,0 +1,21 @@
+{
+  "$comment": [
+    "Urdu digits use EXTENDED Arabic-Indic (U+06F0-U+06F9), not Arabic-Indic",
+    "(U+0660-U+0669). The blocks look identical for most digits but four, six",
+    "and seven are drawn differently: Urdu uses ۴ ۶ ۷ where Arabic uses",
+    "٤ ٦ ٧. Using the wrong block is a silent, easy mistake that produces",
+    "digits an Urdu reader will not recognise."
+  ],
+  "numbers": [
+    { "id": "n0", "value": 0, "char": "۰", "name": "صفر", "roman": "sifar" },
+    { "id": "n1", "value": 1, "char": "۱", "name": "ایک", "roman": "aik" },
+    { "id": "n2", "value": 2, "char": "۲", "name": "دو", "roman": "do" },
+    { "id": "n3", "value": 3, "char": "۳", "name": "تین", "roman": "teen" },
+    { "id": "n4", "value": 4, "char": "۴", "name": "چار", "roman": "chaar" },
+    { "id": "n5", "value": 5, "char": "۵", "name": "پانچ", "roman": "paanch" },
+    { "id": "n6", "value": 6, "char": "۶", "name": "چھ", "roman": "chhe" },
+    { "id": "n7", "value": 7, "char": "۷", "name": "سات", "roman": "saat" },
+    { "id": "n8", "value": 8, "char": "۸", "name": "آٹھ", "roman": "aath" },
+    { "id": "n9", "value": 9, "char": "۹", "name": "نو", "roman": "nau" }
+  ]
+}
