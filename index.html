@@ -60,7 +60,7 @@
         display: block;
         touch-action: none;
       }
-      /* Shown only if the module fails to load at all. */
+      /* Shown only if the app fails to start. Never seen during normal play. */
       #boot-error {
         display: none;
         position: fixed;
@@ -71,21 +71,72 @@
         font: 16px/1.6 system-ui, sans-serif;
         color: #cfd6e6;
       }
+      #boot-error code {
+        display: block;
+        margin-top: 1.25rem;
+        padding: 0.75rem 1rem;
+        max-width: 46rem;
+        margin-inline: auto;
+        border-radius: 8px;
+        background: #131a2e;
+        color: #8fa0c4;
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        text-align: left;
+        overflow-wrap: anywhere;
+      }
+      #boot-error .hint {
+        margin-top: 1rem;
+        font-size: 13px;
+        color: #6b7899;
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
     <div id="boot-error">
       <p>کھیل لوڈ نہیں ہو سکا</p>
-      <p>The game could not load. Try refreshing.</p>
+      <p>The game could not load.</p>
+      <code id="boot-error-detail"></code>
+      <p class="hint">
+        Serving this repository's source directly will always fail — the app
+        must be built. See the deploy workflow in .github/workflows/.
+      </p>
     </div>
     <script type="module" src="/src/main.js"></script>
     <script>
-      window.addEventListener('error', function onBootError(e) {
-        if (e.target && e.target.tagName === 'SCRIPT') {
+      /*
+       * Reports why startup failed rather than just that it did.
+       *
+       * Three separate things can go wrong and each surfaces differently:
+       * a script that never loads fires a capture-phase error on the element,
+       * a module that loads but throws fires window.onerror, and a rejected
+       * promise inside an async scene fires unhandledrejection.
+       */
+      (function () {
+        var shown = false;
+        function fail(detail) {
+          if (shown) return;
+          shown = true;
           document.getElementById('boot-error').style.display = 'grid';
+          document.getElementById('boot-error-detail').textContent = detail;
         }
-      }, true);
+
+        window.addEventListener(
+          'error',
+          function (e) {
+            if (e.target && e.target.tagName === 'SCRIPT') {
+              fail('Could not load script: ' + (e.target.src || '(inline)'));
+            } else if (e.message) {
+              fail(e.message + (e.filename ? '\n' + e.filename + ':' + e.lineno : ''));
+            }
+          },
+          true
+        );
+
+        window.addEventListener('unhandledrejection', function (e) {
+          fail(String((e.reason && e.reason.message) || e.reason));
+        });
+      })();
     </script>
   </body>
 </html>

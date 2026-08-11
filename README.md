@@ -33,6 +33,27 @@ only needs it if you edit content.
 To try it on a phone, run `npm run dev` and open the network address it prints
 on a device on the same wifi.
 
+## Deploying
+
+`.github/workflows/deploy.yml` builds the app and publishes it to GitHub Pages
+on every push. It requires one repository setting, and will appear to do
+nothing until it is set:
+
+**Settings → Pages → Build and deployment → Source → GitHub Actions**
+
+If Pages is left on "Deploy from a branch" it serves the repository source
+directly, and the app cannot start: `index.html` loads `/src/main.js`, which
+imports `phaser` as a bare module specifier that no browser can resolve without
+a bundler. The site will show "The game could not load" with the failing URL.
+
+To check a production build locally the way Pages will serve it, from a project
+subpath rather than a domain root:
+
+```sh
+npm run build
+npx vite preview --base /Urdu-Learning-Games/
+```
+
 ## What makes Urdu different
 
 Most of this project is generic preschool game code. Three things are not, and
@@ -103,7 +124,7 @@ tests/              content integrity checks
 5. Stroke editor, then tracing
 6. Numbers and words as their own games
 7. PWA install, parental gate, offline
-8. Deploy to GitHub Pages
+8. ~~Deploy to GitHub Pages~~ done
 
 ## Contributing
 

@@ -1,0 +1,74 @@
+# Builds the app and publishes it to GitHub Pages.
+#
+# This is not optional infrastructure: the source tree cannot be served
+# directly. index.html loads /src/main.js, which imports "phaser" as a bare
+# module specifier, and no browser can resolve that without a bundler. Pages set
+# to "Deploy from a branch" serves the raw files, and the app fails to boot.
+#
+# This workflow only takes effect once the repository is switched to
+# Settings -> Pages -> Build and deployment -> Source -> "GitHub Actions".
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, master, claude/urdu-learning-web-app-hq1yxc]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let an in-flight deploy finish rather than cancelling it half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Nothing in this job drives a browser, so skip the browser download that
+      # installing playwright would otherwise trigger.
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Bake glyphs
+        run: npm run bake
+
+      - name: Check committed glyphs are up to date
+        # Catches a content/*.json edit committed without re-baking, which would
+        # otherwise ship an app whose glyphs disagree with its own data.
+        run: git diff --exit-code content/glyphs.json
+
+      - name: Run content integrity tests
+        # Before the build, so a bad letter or word fails the deploy rather than
+        # publishing something that teaches a child the wrong thing.
+        run: npm test
+
+      - run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
