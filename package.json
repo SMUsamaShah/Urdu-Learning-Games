@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "bake": "node tools/bake-glyphs.mjs",
     "icons": "node tools/make-icons.mjs",
+    "images": "node tools/make-word-images.mjs",
     "audio:manifest": "node tools/build-audio-manifest.mjs",
     "record": "node tools/record-studio/server.mjs",
     "verify:studio": "node tools/verify-studio.mjs",

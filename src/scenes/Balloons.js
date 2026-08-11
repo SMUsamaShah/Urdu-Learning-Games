@@ -66,7 +66,11 @@ export default class Balloons extends Phaser.Scene {
         sfx.swoosh();
         this.scene.start('Home');
       },
-    }).add(this.add.text(0, 0, '⌂', { fontSize: '34px' }).setOrigin(0.5));
+    }).add(
+      this.add
+        .text(0, 0, '⌂', { fontSize: '34px', color: COLORS.ink })
+        .setOrigin(0.5)
+    );
 
     this.streakText = label(this, DESIGN.width - 90, 56, '', {
       size: 26,
@@ -78,7 +82,7 @@ export default class Balloons extends Phaser.Scene {
     // must never be hidden by the answers drifting past it.
     this.add
       .graphics()
-      .fillStyle(0x141c33, 1)
+      .fillStyle(COLORS.card, 1)
       .fillRect(0, 0, DESIGN.width, 132)
       .setDepth(10);
     this.promptLayer = this.add.container(DESIGN.width / 2, 66).setDepth(11);
@@ -178,11 +182,13 @@ export default class Balloons extends Phaser.Scene {
         y: 0,
         width: 260,
         height: 86,
-        color: COLORS.panelLight,
+        color: COLORS.accent,
         onTap: () => this.speak(),
       });
       button.add(this.add.text(-70, 0, '🔊', { fontSize: '40px' }).setOrigin(0.5));
-      button.add(label(this, 26, 0, 'pop this one', { size: 20, color: COLORS.ink }));
+      button.add(
+        label(this, 26, 0, 'pop this one', { size: 20, color: COLORS.onColor })
+      );
       this.promptLayer.add(button);
     } else {
       // Without a recording the letter itself is the prompt, so the game is
@@ -193,7 +199,7 @@ export default class Balloons extends Phaser.Scene {
       this.promptLayer.add(label(this, -96, 0, 'pop this', { size: 22 }));
 
       const plate = this.add.graphics();
-      plate.fillStyle(COLORS.panelLight, 1);
+      plate.fillStyle(COLORS.bg, 1);
       plate.fillRoundedRect(-8, -46, 108, 92, 18);
       plate.lineStyle(3, familyColor(letter.shapeFamily), 0.9);
       plate.strokeRoundedRect(-8, -46, 108, 92, 18);
@@ -206,7 +212,7 @@ export default class Balloons extends Phaser.Scene {
           0,
           `balloon:prompt:${this.target}:60`,
           letterGlyph(this.target, 'isolated'),
-          { height: 60, color: COLORS.accentCss }
+          { height: 60, color: COLORS.ink }
         )
       );
     }
@@ -243,7 +249,7 @@ export default class Balloons extends Phaser.Scene {
     body.fillStyle(color, 1);
     body.fillEllipse(0, 0, radius * 2, radius * 2.3);
     // A highlight, so it reads as a balloon rather than a coloured circle.
-    body.fillStyle(0xffffff, 0.22);
+    body.fillStyle(0xffffff, 0.3);
     body.fillEllipse(-radius * 0.32, -radius * 0.46, radius * 0.5, radius * 0.66);
     // Knot and string.
     body.fillStyle(color, 1);
@@ -258,7 +264,7 @@ export default class Balloons extends Phaser.Scene {
     balloon.add(
       addGlyph(this, 0, -4, `balloon:${letterId}:82`, letterGlyph(letterId, 'isolated'), {
         height: 82,
-        color: COLORS.ink,
+        color: COLORS.onColor,
       })
     );
 
@@ -358,7 +364,7 @@ export default class Balloons extends Phaser.Scene {
     const count = right ? 14 : 7;
     for (let i = 0; i < count; i++) {
       const bit = this.add.graphics();
-      bit.fillStyle(right ? COLORS.correct : COLORS.panelLight, 1);
+      bit.fillStyle(right ? COLORS.correct : COLORS.accent, 1);
       bit.fillCircle(0, 0, Phaser.Math.Between(4, 9));
       bit.setPosition(x, y);
 

@@ -18,8 +18,8 @@ import { launchOptions } from './browser.mjs';
 import { CONTENT_DIR, ROOT } from './audio-keys.mjs';
 
 const OUT = path.join(ROOT, 'public', 'icons');
-const BG = '#1b2440';
-const INK = '#ffc857';
+const BG = '#f3a712';
+const INK = '#ffffff';
 
 const glyphs = JSON.parse(fs.readFileSync(path.join(CONTENT_DIR, 'glyphs.json'), 'utf8'));
 const glyph = glyphs.ui['icon-word'];

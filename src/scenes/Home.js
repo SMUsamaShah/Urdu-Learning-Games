@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { letterGlyph, uiGlyph } from '../lib/content.js';
+import { letterGlyph, numberGlyph, uiGlyph } from '../lib/content.js';
 import { addGlyph } from '../lib/glyph.js';
+import { addWordImage, queueWordImages } from '../lib/images.js';
 import { canInstall, onInstallAvailability, promptInstall } from '../lib/install.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
@@ -39,11 +40,66 @@ const GAMES = [
     color: 0xb4576d,
     icon: { letter: 'mim', form: 'isolated' },
   },
+  {
+    scene: 'WordPictures',
+    ui: 'words',
+    roman: 'Words',
+    color: 0x7a5bbd,
+    picture: 'seyb',
+  },
+  {
+    scene: 'Numbers',
+    ui: 'numbers',
+    roman: 'Numbers',
+    color: 0x2f8f8a,
+    number: 'n3',
+  },
 ];
 
 export default class Home extends Phaser.Scene {
   constructor() {
     super('Home');
+  }
+
+  preload() {
+    // Only the handful used as tile icons, not the whole set: the menu should
+    // be on screen immediately, and the games load the rest themselves.
+    queueWordImages(
+      this,
+      GAMES.map((g) => g.picture).filter(Boolean)
+    );
+  }
+
+  /**
+   * A tile's picture: a letter, a word illustration or a numeral.
+   *
+   * Whatever a game is about, drawn the way that game draws it, so the menu
+   * previews the thing rather than decorating it.
+   */
+  tileIcon(game, y, size) {
+    if (game.picture) {
+      return addWordImage(this, 0, y, game.picture, size * 1.5);
+    }
+    if (game.number) {
+      const glyph = numberGlyph(game.number);
+      return glyph
+        ? addGlyph(this, 0, y, `ui:tile:${game.number}:${size}`, glyph, {
+            height: size,
+            color: COLORS.onColor,
+          })
+        : null;
+    }
+    const glyph = letterGlyph(game.icon.letter, game.icon.form);
+    return glyph
+      ? addGlyph(
+          this,
+          0,
+          y,
+          `letter:${game.icon.letter}:${game.icon.form}:${size}`,
+          glyph,
+          { height: size, color: COLORS.onColor }
+        )
+      : null;
   }
 
   create() {
@@ -58,51 +114,53 @@ export default class Home extends Phaser.Scene {
     }
     label(this, DESIGN.width / 2, 190, 'Urdu Learning Games', { size: 20 });
 
-    const tileW = 300;
-    const tileH = 250;
-    const gap = 36;
+    // Tiles shrink to fit rather than being a fixed size: games get added, and
+    // a row that silently ran off the edge of the screen would hide the newest
+    // one — which is the one a child has not played yet.
+    const gap = 26;
+    const margin = 70;
+    const tileW = Math.min(
+      272,
+      (DESIGN.width - margin * 2 - gap * (GAMES.length - 1)) / GAMES.length
+    );
+    const tileH = Math.round(tileW * 0.92);
+    const iconSize = Math.round(tileW * 0.34);
     const totalW = GAMES.length * tileW + (GAMES.length - 1) * gap;
     // Right-to-left, matching the script.
     const startX = DESIGN.width / 2 + totalW / 2 - tileW / 2;
 
     GAMES.forEach((game, index) => {
-      const x = startX - index * (tileW + gap);
-      const y = 430;
-
       const button = makeButton(this, {
-        x,
-        y,
+        x: startX - index * (tileW + gap),
+        y: 430,
         width: tileW,
         height: tileH,
         color: game.color,
         onTap: () => this.scene.start(game.scene),
       });
 
-      const icon = letterGlyph(game.icon.letter, game.icon.form);
-      if (icon) {
+      const icon = this.tileIcon(game, -tileH * 0.24, iconSize);
+      if (icon) button.add(icon);
+
+      // 44 rather than 52: the glyph is scaled by height, so a long name like
+      // حرف ڈھونڈو gets wide fast and crowds both the icon above and the tile's
+      // own edges.
+      const nameGlyph = uiGlyph(game.ui);
+      if (nameGlyph) {
         button.add(
-          addGlyph(
-            this,
-            0,
-            -52,
-            `letter:${game.icon.letter}:${game.icon.form}:84`,
-            icon,
-            { height: 84, color: COLORS.ink }
-          )
+          addGlyph(this, 0, tileH * 0.17, `ui:${game.ui}:44`, nameGlyph, {
+            height: 44,
+            color: COLORS.onColor,
+          })
         );
       }
 
-      const nameGlyph = uiGlyph(game.ui);
-      if (nameGlyph) {
-        const glyph = addGlyph(this, 0, 42, `ui:${game.ui}:60`, nameGlyph, {
-          height: 60,
-          color: COLORS.ink,
-        });
-        button.add(glyph);
-      }
-
-      const roman = label(this, 0, 96, game.roman, { size: 18, color: '#dbe4ff' });
-      button.add(roman);
+      button.add(
+        label(this, 0, tileH * 0.39, game.roman, {
+          size: 16,
+          color: COLORS.onColorDim,
+        })
+      );
     });
 
     label(
@@ -110,7 +168,7 @@ export default class Home extends Phaser.Scene {
       DESIGN.width / 2,
       DESIGN.height - 34,
       'No ads · No tracking · Works offline',
-      { size: 16, color: '#5f6d95' }
+      { size: 16, color: COLORS.inkDim }
     );
 
     this.buildInstallHint();
@@ -135,7 +193,7 @@ export default class Home extends Phaser.Scene {
       onTap: () => {},
     });
 
-    const text = label(this, 0, 0, 'Grown-ups', { size: 15, color: '#9fb0d8' });
+    const text = label(this, 0, 0, 'Grown-ups', { size: 15, color: COLORS.inkDim });
     button.add(text);
     // Held so the verification run can press it without depending on where it
     // happens to sit on screen.

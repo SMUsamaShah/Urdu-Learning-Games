@@ -91,6 +91,25 @@ describe('pwa', { skip: built ? false : 'no dist/ — run `npm run build`' }, ()
     }
   });
 
+  test('every word picture is precached', () => {
+    // Same trap as the recordings: Workbox's default glob has no .webp either,
+    // so the pictures would load fine online and leave empty cards offline.
+    const images = JSON.parse(
+      fs.readFileSync(path.join(ROOT, 'content', 'images.json'), 'utf8')
+    );
+    const files = Object.values(images.words ?? {});
+    if (files.length === 0) return;
+
+    const urls = precachedUrls();
+    for (const file of files) {
+      assert.ok(
+        urls.has(file),
+        `${file} is in the image manifest but not precached — the card would ` +
+          `be empty offline. Check workbox.globPatterns in vite.config.js.`
+      );
+    }
+  });
+
   test('no precache entry is missing from disk', () => {
     for (const url of precachedUrls()) {
       assert.ok(

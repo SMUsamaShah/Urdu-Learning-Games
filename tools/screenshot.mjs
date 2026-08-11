@@ -59,6 +59,14 @@ for (const [name, viewport] of Object.entries(VIEWPORTS)) {
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(OUT, `${name}-find-letter-four.png`) });
 
+  await startScene(page, 'WordPictures');
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: path.join(OUT, `${name}-words.png`) });
+
+  await startScene(page, 'Numbers');
+  await page.waitForTimeout(1400);
+  await page.screenshot({ path: path.join(OUT, `${name}-numbers.png`) });
+
   await startScene(page, 'Balloons');
   await page.waitForTimeout(2200);
   await page.screenshot({ path: path.join(OUT, `${name}-balloons.png`) });

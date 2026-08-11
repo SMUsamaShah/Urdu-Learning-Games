@@ -9,6 +9,7 @@ import {
   wordGlyph,
 } from '../lib/content.js';
 import { addGlyph } from '../lib/glyph.js';
+import { addWordImage, queueWordImages } from '../lib/images.js';
 import { clipKeys, hasClip, play, playSequence, stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
@@ -69,6 +70,12 @@ export default class Flashcards extends Phaser.Scene {
     this.card = null;
   }
 
+  preload() {
+    // Small WebPs, shared with the picture games; Phaser skips any it already
+    // holds, so this is free after the first visit.
+    queueWordImages(this);
+  }
+
   create() {
     this.cameras.main.setBackgroundColor(COLORS.bg);
     this.sequence = sequenceFor('alphabetical');
@@ -87,7 +94,11 @@ export default class Flashcards extends Phaser.Scene {
         sfx.swoosh();
         this.scene.start('Home');
       },
-    }).add(this.add.text(0, 0, '⌂', { fontSize: '34px' }).setOrigin(0.5));
+    }).add(
+      this.add
+        .text(0, 0, '⌂', { fontSize: '34px', color: COLORS.ink })
+        .setOrigin(0.5)
+    );
 
     // Leaving mid-word should not leave a voice talking over the menu.
     this.events.once('shutdown', stopAll);
@@ -106,7 +117,7 @@ export default class Flashcards extends Phaser.Scene {
 
     this.add
       .graphics()
-      .fillStyle(0x000000, 0.22)
+      .fillStyle(COLORS.shadow, 0.12)
       .fillRect(0, stripY - size / 2 - 14, DESIGN.width, size + 28);
 
     const strip = this.add.container(0, stripY);
@@ -197,13 +208,16 @@ export default class Flashcards extends Phaser.Scene {
       const color = familyColor(cell.letter.shapeFamily);
 
       cell.bgGraphic.clear();
-      cell.bgGraphic.fillStyle(color, selected ? 0.9 : 0.16);
+      // A heavier tint rather than a solid fill when selected: the glyph on top
+      // is dark, and a saturated fill under it would leave the selected letter
+      // the only unreadable one in the strip.
+      cell.bgGraphic.fillStyle(color, selected ? 0.42 : 0.16);
       cell.bgGraphic.fillRoundedRect(-half, -half, size, size, 16);
 
       // A ring as well as a fill, so the selection reads even on the lighter
       // family colours where a fill alone is low contrast.
       if (selected) {
-        cell.bgGraphic.lineStyle(4, 0xffffff, 0.9);
+        cell.bgGraphic.lineStyle(4, color, 1);
         cell.bgGraphic.strokeRoundedRect(-half, -half, size, size, 16);
       }
       cell.setScale(selected ? 1.1 : 1);
@@ -239,7 +253,7 @@ export default class Flashcards extends Phaser.Scene {
 
     // --- Hero letter -------------------------------------------------------
     const hero = this.add.graphics();
-    hero.fillStyle(tint, 0.14);
+    hero.fillStyle(tint, 0.16);
     hero.fillRoundedRect(HERO_X - 175, 110, 350, 400, 30);
     card.add(hero);
 
@@ -344,11 +358,20 @@ export default class Flashcards extends Phaser.Scene {
 
     // Picture on the right, word on the left: the same right-to-left reading
     // order the script uses.
-    card.add(
-      this.add
-        .text(MAIN_X + panelW / 2 - 84, 462, word.emoji, { fontSize: '76px' })
-        .setOrigin(0.5)
-    );
+    //
+    // A drawn picture where there is one, the emoji otherwise. Emoji were only
+    // ever a placeholder — several of these words have no emoji that means the
+    // right thing (halwa, roti, wardi), and a child reads a picture of the
+    // actual object far more readily than a tiny pictogram.
+    const pictureX = MAIN_X + panelW / 2 - 84;
+    const picture = addWordImage(this, pictureX, 462, word.id, 124);
+    if (picture) {
+      card.add(picture);
+    } else if (word.emoji) {
+      card.add(
+        this.add.text(pictureX, 462, word.emoji, { fontSize: '76px' }).setOrigin(0.5)
+      );
+    }
 
     const glyph = wordGlyph(word.id);
     if (glyph) {

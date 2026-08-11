@@ -35,7 +35,7 @@ const escapeHtml = (s) =>
   );
 
 /** Draws a baked outline as inline SVG, the same shapes the game renders. */
-function glyphSvg(glyph, color = '#eef2ff') {
+function glyphSvg(glyph, color = '#2b3047') {
   if (!glyph?.d) return '';
   const [x, y, w, h] = glyph.bbox;
   const pad = Math.max(w, h) * 0.06;
@@ -146,7 +146,7 @@ export function openRecorder({ onClose } = {}) {
     const mine = device.get(clip.key);
 
     stageEl.innerHTML = `
-      <div class="rec-stage-glyph">${glyphSvg(glyphForClip(clip.glyph), '#ffc857')}</div>
+      <div class="rec-stage-glyph">${glyphSvg(glyphForClip(clip.glyph), '#e98a1f')}</div>
       <div class="rec-say">${escapeHtml(clip.say)}</div>
       <div class="rec-meter"><div class="rec-meter-fill"></div></div>
       <div class="rec-actions">

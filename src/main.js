@@ -4,6 +4,8 @@ import Home from './scenes/Home.js';
 import Flashcards from './scenes/Flashcards.js';
 import FindLetter from './scenes/FindLetter.js';
 import Balloons from './scenes/Balloons.js';
+import WordPictures from './scenes/WordPictures.js';
+import Numbers from './scenes/Numbers.js';
 import * as audio from './lib/audio.js';
 import { COLORS, DESIGN } from './lib/theme.js';
 
@@ -29,7 +31,7 @@ const game = new Phaser.Game({
     antialias: true,
     roundPixels: false,
   },
-  scene: [Preload, Home, Flashcards, FindLetter, Balloons],
+  scene: [Preload, Home, Flashcards, FindLetter, Balloons, WordPictures, Numbers],
 });
 
 // Exposed so the Playwright checks can drive the app without depending on pixel

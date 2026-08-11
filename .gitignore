@@ -9,3 +9,4 @@ offline-check.png
 recorder-check.png
 *.tmp.zip
 *.tmp.mjs
+.image-cache/

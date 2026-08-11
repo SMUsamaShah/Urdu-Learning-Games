@@ -38,8 +38,8 @@ export default defineConfig({
         scope: '.',
         display: 'standalone',
         orientation: 'landscape',
-        background_color: '#1b2440',
-        theme_color: '#1b2440',
+        background_color: '#fdf3e3',
+        theme_color: '#fdf3e3',
         categories: ['education', 'kids'],
         icons: [
           { src: 'icons/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
@@ -55,11 +55,13 @@ export default defineConfig({
 
       workbox: {
         // Workbox's default pattern is {js,css,html,ico,png,svg}, which would
-        // silently skip every voice recording and both content JSON files —
-        // exactly the assets whose absence only shows up once offline.
+        // silently skip every voice recording, every word picture and both
+        // content JSON files — exactly the assets whose absence only shows up
+        // once offline. Anything added to public/ needs its extension here.
         globPatterns: [
           '**/*.{js,css,html,ico,png,svg,webmanifest}',
           '**/*.{json,woff2}',
+          '**/*.{webp,avif,jpg,jpeg}',
           '**/*.{webm,m4a,mp4,mp3,ogg,opus,wav}',
         ],
 
