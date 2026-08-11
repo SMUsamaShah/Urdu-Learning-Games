@@ -120,6 +120,19 @@ wall-clock speed, and a 760ms `delayedCall` can take 1.6s of real time. A test
 that sleeps a fixed number of milliseconds will pass on your machine and fail in
 CI.
 
+Tracing has its own check, because its whole mechanic is input and cannot be
+verified by poking scene state:
+
+```sh
+npm run dev & npm run verify:trace
+```
+
+Every stroke in it is a real mouse down/move/up against the canvas. It asserts
+that all 38 letters have something to trace, that tracing raises coverage, that
+finishing moves on, that Start again really starts again, and that scribbling
+outside the letter counts for nothing — a child will do exactly that, and must
+not be rewarded for it.
+
 If you touched recording, storage or the export format, run the whole loop:
 
 ```sh
@@ -176,6 +189,19 @@ that follows turns the hard-edged mask into a smooth one for free.
 If you add a word whose English gloss is not a good art brief ("fruit", "halwa"),
 add an entry to `OVERRIDES` in `tools/make-word-images.mjs` rather than accepting
 whatever the gloss produces.
+
+## Two Phaser 4 traps
+
+`glyphTexture` caches on the key alone, and its docstring says the key must be
+unique per glyph **and size and colour**. It is easy to forget the colour part:
+two callers wanting the same letter at the same size in different colours will
+silently share whichever was built first, and one of them gets the wrong colour
+with no error anywhere.
+
+`RenderTexture` and `DynamicTexture` render nothing in this build — not even a
+plain `fill()`. Anything that needs a surface to paint into should use
+`textures.createCanvas` and its 2D context, which is what every glyph already
+goes through. See `src/scenes/Trace.js`.
 
 ## Colour
 

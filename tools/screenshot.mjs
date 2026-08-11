@@ -71,6 +71,10 @@ for (const [name, viewport] of Object.entries(VIEWPORTS)) {
   await page.waitForTimeout(2200);
   await page.screenshot({ path: path.join(OUT, `${name}-balloons.png`) });
 
+  await startScene(page, 'Trace');
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: path.join(OUT, `${name}-trace.png`) });
+
   if (errors.length) {
     console.error(`\n${name} produced ${errors.length} console error(s):`);
     for (const e of errors) console.error('  ' + e);

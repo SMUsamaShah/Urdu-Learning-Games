@@ -14,11 +14,11 @@ comparable for Urdu. This is an attempt at one.
 Early. What works today:
 
 - **Flashcards** — every letter, all of its positional forms, and its word.
-- **Five games** — free exploration of the alphabet, picking a letter out of a
-  line-up, popping the right balloon, matching a word to its picture, and
-  counting. The letter games draw their wrong answers from the same shape
-  family as the right one, so the choice is always between letters that differ
-  only in their dots.
+- **Six games** — free exploration of the alphabet, picking a letter out of a
+  line-up, popping the right balloon, matching a word to its picture, counting,
+  and tracing letters with a finger. The letter games draw their wrong answers
+  from the same shape family as the right one, so the choice is always between
+  letters that differ only in their dots.
 - **A picture for every word**, drawn once and committed, so a child who cannot
   read yet still knows what انگور means.
 - **Audio system** — plays a letter's name, its sound and its word. Ships with
@@ -28,7 +28,8 @@ Early. What works today:
 - **Installable and offline** — add it to a phone's home screen and it runs
   with no network, recordings included.
 
-Planned next: a stroke editor and letter tracing. See [the roadmap](#roadmap).
+Planned next: better words for the eight letters that have none. See
+[the roadmap](#roadmap).
 
 ## Run it
 
@@ -68,6 +69,18 @@ answers come from the same shape family, that means telling ب from ت from ث,
 which is the discrimination Urdu reading actually turns on. Once a child is a
 few in a row, the shown prompt switches to a different positional form, so it
 stops being a silhouette match and starts being recognition.
+
+**Write** shows a letter as an empty outline and fills it in colour wherever a
+finger goes. Ink only lands inside the letter, so a stroke that wanders off does
+nothing at all — nothing is marked wrong, there is simply nothing there. The
+round is won by covering enough of the shape.
+
+There is deliberately **no stroke-order guide**. Doing it properly would mean
+hand-authoring a start point, direction and stroke sequence for all 38 letters
+before a single one became playable, and it would score a three-year-old on
+something they cannot do yet. At three the job is fine-motor control and
+learning what the shape is; stroke order matters when a child starts writing
+properly, and can be layered on later without changing any of this.
 
 No game has a fail state. A wrong answer nudges, keeps the round, and lets the
 child try again.
@@ -257,7 +270,7 @@ tests/              content and audio integrity checks
 2. ~~Audio: recording studio, playback, override chain~~ done
 3. ~~Find the letter, using shape-family siblings as distractors~~ done
 4. ~~Balloon pop~~ done
-5. Stroke editor, then tracing
+5. ~~Letter tracing~~ done (from the baked outlines; no stroke editor needed)
 6. ~~Numbers and words as their own games~~ done
 7. ~~Installable, offline PWA, parental gate~~ done
 8. ~~Deploy to GitHub Pages~~ done

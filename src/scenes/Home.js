@@ -54,6 +54,13 @@ const GAMES = [
     color: 0x2f8f8a,
     number: 'n3',
   },
+  {
+    scene: 'Trace',
+    ui: 'trace',
+    roman: 'Write',
+    color: 0xd4762f,
+    icon: { letter: 'alif', form: 'isolated' },
+  },
 ];
 
 export default class Home extends Phaser.Scene {
@@ -83,7 +90,7 @@ export default class Home extends Phaser.Scene {
     if (game.number) {
       const glyph = numberGlyph(game.number);
       return glyph
-        ? addGlyph(this, 0, y, `ui:tile:${game.number}:${size}`, glyph, {
+        ? addGlyph(this, 0, y, `ui:tile:${game.number}:${size}:on`, glyph, {
             height: size,
             color: COLORS.onColor,
           })
@@ -95,7 +102,7 @@ export default class Home extends Phaser.Scene {
           this,
           0,
           y,
-          `letter:${game.icon.letter}:${game.icon.form}:${size}`,
+          `letter:${game.icon.letter}:${game.icon.form}:${size}:on`,
           glyph,
           { height: size, color: COLORS.onColor }
         )
@@ -114,25 +121,37 @@ export default class Home extends Phaser.Scene {
     }
     label(this, DESIGN.width / 2, 190, 'Urdu Learning Games', { size: 20 });
 
-    // Tiles shrink to fit rather than being a fixed size: games get added, and
-    // a row that silently ran off the edge of the screen would hide the newest
-    // one — which is the one a child has not played yet.
+    // A grid rather than one row. Games keep getting added, and squeezing them
+    // all into a single row shrinks every tile until none of them is a
+    // comfortable target for a small finger — better to wrap and keep them big.
     const gap = 26;
     const margin = 70;
+    const perRow = GAMES.length <= 4 ? GAMES.length : Math.ceil(GAMES.length / 2);
+    const rows = Math.ceil(GAMES.length / perRow);
     const tileW = Math.min(
-      272,
-      (DESIGN.width - margin * 2 - gap * (GAMES.length - 1)) / GAMES.length
+      252,
+      (DESIGN.width - margin * 2 - gap * (perRow - 1)) / perRow
     );
-    const tileH = Math.round(tileW * 0.92);
-    const iconSize = Math.round(tileW * 0.34);
-    const totalW = GAMES.length * tileW + (GAMES.length - 1) * gap;
-    // Right-to-left, matching the script.
-    const startX = DESIGN.width / 2 + totalW / 2 - tileW / 2;
+    const tileH = Math.round(tileW * (rows > 1 ? 0.74 : 0.92));
+    const iconSize = Math.round(tileW * 0.32);
+    const rowGap = 22;
+    // Measured from the top of the grid rather than its centre, so adding a
+    // second row grows downwards into the space above the footer instead of
+    // pushing the last row through it.
+    const gridTop = rows > 1 ? 240 : 300;
+    const firstRowY = gridTop + tileH / 2;
 
     GAMES.forEach((game, index) => {
+      const row = Math.floor(index / perRow);
+      const inRow = Math.min(GAMES.length - row * perRow, perRow);
+      const indexInRow = index % perRow;
+      // Right-to-left within each row, matching the script.
+      const rowW = inRow * tileW + (inRow - 1) * gap;
+      const rowStartX = DESIGN.width / 2 + rowW / 2 - tileW / 2;
+
       const button = makeButton(this, {
-        x: startX - index * (tileW + gap),
-        y: 430,
+        x: rowStartX - indexInRow * (tileW + gap),
+        y: firstRowY + row * (tileH + rowGap),
         width: tileW,
         height: tileH,
         color: game.color,
@@ -148,7 +167,7 @@ export default class Home extends Phaser.Scene {
       const nameGlyph = uiGlyph(game.ui);
       if (nameGlyph) {
         button.add(
-          addGlyph(this, 0, tileH * 0.17, `ui:${game.ui}:44`, nameGlyph, {
+          addGlyph(this, 0, tileH * 0.17, `ui:${game.ui}:44:on`, nameGlyph, {
             height: 44,
             color: COLORS.onColor,
           })
