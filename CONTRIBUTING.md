@@ -210,6 +210,25 @@ choosing between ب and ت is working entirely from edges.
 **Cards are solid, never translucent.** The scenery behind them moves, and a
 cloud drifting through the middle of a letter card reads as a bug.
 
+## Audio hardware
+
+Two rules, both learned from a real bug where playback went stuttery after a
+recording session and stayed that way back in the game:
+
+**The page holds exactly one AudioContext.** It is Phaser's, reachable via
+`getAudioContext()`. A second context is a second claim on the audio device, and
+the recorder used to open one per visit.
+
+**The microphone is never held open while anything is played back.** An open mic
+moves a phone's audio path into its communications profile — different sample
+rate, heavy processing — and everything played through it stutters. The recorder
+opens the mic for a take and hands it back a couple of seconds later.
+
+`npm run verify:recording` asserts both, by patching `AudioContext` and
+`getUserMedia` in the page and checking what is still open at the end. Note that
+a fake capture device will not reproduce the stutter itself — the assertions
+check the conditions that cause it, not the symptom.
+
 ## Two Phaser 4 traps
 
 Glyphs are sized by **height alone**, so a wide letter silently overflows

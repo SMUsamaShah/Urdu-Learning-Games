@@ -77,6 +77,30 @@ export async function loadDeviceClips() {
   return deviceKeys;
 }
 
+/**
+ * The app's one AudioContext, borrowed from Phaser.
+ *
+ * Anything in the app that needs Web Audio must use this rather than opening
+ * its own: a second context is a second claim on the audio hardware, and on a
+ * phone that is enough to make playback stutter.
+ */
+export function getAudioContext() {
+  return ctx;
+}
+
+/**
+ * Drops every decoded buffer and nudges the context back awake.
+ *
+ * Called after the microphone has been released. Opening a mic can move the
+ * output device into its communications mode at a different sample rate, and
+ * buffers decoded while that was true can play back wrong afterwards.
+ */
+export function refreshAudio() {
+  buffers.clear();
+  pending.clear();
+  if (ctx?.state === 'suspended') ctx.resume().catch(() => {});
+}
+
 export function audioStats() {
   const counts = manifest?.counts ?? { expected: 0, recorded: 0, tts: 0, missing: 0 };
   return { ...counts, device: deviceKeys.size };

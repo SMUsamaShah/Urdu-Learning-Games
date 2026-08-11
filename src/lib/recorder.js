@@ -8,6 +8,17 @@
  * Knows nothing about DOM or storage: it hands back a Blob and lets the caller
  * decide whether that becomes a file on disk or a row in IndexedDB.
  *
+ * ## Why the microphone is not held open
+ *
+ * An open microphone is not free. On a phone it moves the whole audio path into
+ * the communications profile — a different sample rate, aggressive processing —
+ * and anything played back while that is true stutters. Keeping the mic open
+ * for the length of a recording session therefore breaks the very playback the
+ * session exists to check.
+ *
+ * So the mic is opened for a take and released shortly after it, with a short
+ * grace period so back-to-back takes do not pay to reopen it each time.
+ *
  * Note for anyone wondering why the in-app recorder cannot work over a LAN
  * address: getUserMedia requires a secure context, which means localhost or
  * HTTPS. http://192.168.x.x will not prompt for the microphone at all.
@@ -49,11 +60,22 @@ export function isRecordingSupported() {
  *   than it sounds: without one, a dead mic or a clipping take is only
  *   discovered after recording a hundred clips.
  */
-export function createRecorder({ onLevel } = {}) {
+/**
+ * How long the mic stays open after a take, so consecutive takes are quick
+ * without leaving the audio path in voice mode while the child listens back.
+ */
+const RELEASE_AFTER_MS = 2500;
+
+export function createRecorder({ onLevel, audioContext = null } = {}) {
   /** @type {MediaStream|null} */
   let stream = null;
   /** @type {AudioContext|null} */
   let meterCtx = null;
+  /** Whether this recorder created meterCtx and so must close it. */
+  let ownsContext = false;
+  /** @type {MediaStreamAudioSourceNode|null} */
+  let meterSource = null;
+  let releaseTimer = 0;
   /** @type {AnalyserNode|null} */
   let analyser = null;
   let meterFrame = 0;
@@ -75,11 +97,16 @@ export function createRecorder({ onLevel } = {}) {
     });
 
     if (onLevel) {
-      meterCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // The app's own context, not a new one. A second AudioContext is a second
+      // claim on the audio hardware; one per recorder session also quietly
+      // accumulates, and browsers cap how many a page may hold.
+      meterCtx = audioContext ?? new (window.AudioContext || window.webkitAudioContext)();
+      ownsContext = !audioContext;
       const source = meterCtx.createMediaStreamSource(stream);
       analyser = meterCtx.createAnalyser();
       analyser.fftSize = 1024;
       source.connect(analyser);
+      meterSource = source;
       runMeter();
     }
     return stream;
@@ -97,13 +124,53 @@ export function createRecorder({ onLevel } = {}) {
     tick();
   }
 
+  /**
+   * Hands the microphone back, leaving everything else intact so the next take
+   * can just reopen it. The meter goes quiet, which is honest: there is nothing
+   * being listened to.
+   */
+  function releaseMic() {
+    clearTimeout(releaseTimer);
+    releaseTimer = 0;
+    cancelAnimationFrame(meterFrame);
+    meterFrame = 0;
+    try {
+      meterSource?.disconnect();
+    } catch {
+      /* already gone */
+    }
+    stream?.getTracks().forEach((t) => t.stop());
+    stream = null;
+    meterSource = null;
+    analyser = null;
+    if (ownsContext) meterCtx?.close().catch(() => {});
+    // A borrowed context belongs to the app and must outlive this recorder.
+    if (ownsContext) meterCtx = null;
+    onLevel?.(0);
+  }
+
   return {
     isRecording: () => recorder?.state === 'recording',
 
-    /** Opens the mic without recording, so the meter is live while you read. */
-    warmUp: ensureStream,
+    /** Whether the microphone is currently open. */
+    isMicOpen: () => Boolean(stream),
+
+    /**
+     * Opens the mic ahead of a take so the meter is live while you read the
+     * prompt. Released again on the same timer as a real take, so leaving the
+     * screen idle does not leave the audio path in voice mode.
+     */
+    async warmUp() {
+      await ensureStream();
+      clearTimeout(releaseTimer);
+      releaseTimer = setTimeout(releaseMic, RELEASE_AFTER_MS);
+    },
+
+    releaseMic,
 
     async start() {
+      clearTimeout(releaseTimer);
+      releaseTimer = 0;
       await ensureStream();
       const { mime } = pickMimeType();
       chunks = [];
@@ -128,19 +195,20 @@ export function createRecorder({ onLevel } = {}) {
             MIME_CANDIDATES.find(([m]) => mime.startsWith(m.split(';')[0]))?.[1] ??
             pickMimeType().ext;
           resolve({ blob, ext, mime });
+          // Hand the mic back shortly after the take. The grace period keeps
+          // back-to-back takes quick; releasing at all is what stops playback
+          // stuttering while the take is being listened to.
+          clearTimeout(releaseTimer);
+          releaseTimer = setTimeout(releaseMic, RELEASE_AFTER_MS);
         };
         recorder.stop();
       });
     },
 
-    /** Releases the microphone, which turns off the browser's recording light. */
+    /** Releases the microphone and everything hanging off it, for good. */
     dispose() {
-      cancelAnimationFrame(meterFrame);
-      stream?.getTracks().forEach((t) => t.stop());
-      meterCtx?.close().catch(() => {});
-      stream = null;
+      releaseMic();
       meterCtx = null;
-      analyser = null;
       recorder = null;
       chunks = [];
     },

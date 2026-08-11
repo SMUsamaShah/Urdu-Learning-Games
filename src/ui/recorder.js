@@ -20,7 +20,14 @@ import { expectedClips } from '../lib/clip-list.js';
 import { createRecorder, isRecordingSupported } from '../lib/recorder.js';
 import { buildArchive, readArchive } from '../lib/clip-archive.js';
 import * as store from '../lib/clip-store.js';
-import { hasClip, noteDeviceClip, play, stopAll } from '../lib/audio.js';
+import {
+  getAudioContext,
+  hasClip,
+  noteDeviceClip,
+  play,
+  refreshAudio,
+  stopAll,
+} from '../lib/audio.js';
 
 const el = (html) => {
   const t = document.createElement('template');
@@ -62,7 +69,11 @@ export function openRecorder({ onClose } = {}) {
   let busy = false;
 
   const recorder = isRecordingSupported()
-    ? createRecorder({ onLevel: (peak) => setMeter(peak) })
+    ? createRecorder({
+        onLevel: (peak) => setMeter(peak),
+        // The app's context, so the page never holds two.
+        audioContext: getAudioContext(),
+      })
     : null;
 
   // ------------------------------------------------------------- structure
@@ -409,6 +420,10 @@ export function openRecorder({ onClose } = {}) {
     document.removeEventListener('keydown', onKey);
     recorder?.dispose();
     stopAll();
+    // The mic has just been handed back. Anything decoded while it was open may
+    // have been decoded against a different device profile, so start the game
+    // again from clean buffers rather than from whatever the recorder left.
+    refreshAudio();
     root.remove();
     onClose?.();
   }
@@ -417,9 +432,10 @@ export function openRecorder({ onClose } = {}) {
   document.body.appendChild(root);
   listEl.focus();
   refresh();
-  // Open the mic up front so the level meter is live while reading the prompt,
-  // rather than discovering a dead microphone after twenty takes.
-  recorder?.warmUp().catch(() => {});
+  // Deliberately no warm-up here. The mic opens when a take starts and is
+  // handed back shortly after, so it is never held open while the parent is
+  // listening back — which is exactly when an open mic makes playback stutter.
+  
 
   return close;
 }

@@ -94,6 +94,41 @@ const context = await browser.newContext({
 await context.grantPermissions(['microphone'], { origin: APP });
 
 const page = await context.newPage();
+
+// Watch what the page does with audio hardware. Two things caused real,
+// user-reported stuttering and must not come back:
+//
+//   1. a second AudioContext — a second claim on the audio device
+//   2. the microphone held open while playback is happening, which moves a
+//      phone's audio path into its communications profile
+await page.addInitScript(() => {
+  window.__audioProbe = { contexts: [], streams: [] };
+  const Ctor = window.AudioContext;
+  window.AudioContext = class extends Ctor {
+    constructor(...args) {
+      super(...args);
+      window.__audioProbe.contexts.push(this);
+    }
+  };
+  const getUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  navigator.mediaDevices.getUserMedia = async (...args) => {
+    const stream = await getUserMedia(...args);
+    window.__audioProbe.streams.push(stream);
+    return stream;
+  };
+});
+
+const audioProbe = () =>
+  page.evaluate(() => {
+    const probe = window.__audioProbe;
+    const tracks = probe.streams.flatMap((s) => s.getTracks());
+    return {
+      contexts: probe.contexts.length,
+      micLive: tracks.filter((t) => t.readyState === 'live').length,
+      micTotal: tracks.length,
+    };
+  });
+
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -168,6 +203,29 @@ else step(`IndexedDB holds ${stored.bytes} bytes (${stored.ext})`);
 const played = await page.evaluate((key) => window.__audio.play(key), CLIP.key);
 if (played !== true) fail(`play("${CLIP.key}") returned ${played} after recording`);
 else step('plays back from the device');
+
+// --------------------------------------------------- the audio hardware
+
+step('checking the microphone is handed back between takes');
+// The release is on a timer, so this waits it out rather than assuming.
+await page.waitForTimeout(4000);
+const idle = await audioProbe();
+if (idle.micLive !== 0) {
+  fail(
+    `${idle.micLive} microphone track(s) still open while idle — an open mic ` +
+      `puts a phone's audio path into voice mode and makes playback stutter`
+  );
+} else {
+  step('microphone released while idle');
+}
+if (idle.contexts !== 1) {
+  fail(
+    `${idle.contexts} AudioContexts exist; the app must hold exactly one. ` +
+      `A second context is a second claim on the audio device.`
+  );
+} else {
+  step('exactly one AudioContext');
+}
 
 const stats = await page.evaluate(() => window.__audio.audioStats());
 if (stats.device !== 1) fail(`audioStats().device is ${stats.device}, expected 1`);
@@ -281,6 +339,19 @@ await page.evaluate(() => {
 await page.waitForTimeout(1400);
 if (await page.$('.gate')) fail('a quick tap opened the gate');
 else step('quick tap refused');
+
+// After everything — including a second visit to the recorder — the page must
+// still hold one context and no open microphone.
+const finalProbe = await audioProbe();
+if (finalProbe.contexts !== 1) {
+  fail(`${finalProbe.contexts} AudioContexts after the whole run; expected 1`);
+}
+if (finalProbe.micLive !== 0) {
+  fail(`${finalProbe.micLive} microphone track(s) still open at the end`);
+}
+if (finalProbe.contexts === 1 && finalProbe.micLive === 0) {
+  step(`ends with 1 AudioContext and no open microphone`);
+}
 
 if (errors.length) {
   for (const e of errors) console.error('  console: ' + e);

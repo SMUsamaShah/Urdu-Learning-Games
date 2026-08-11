@@ -18,7 +18,10 @@ import { chromium } from 'playwright';
 import { launchOptions } from './browser.mjs';
 import { RECORDED_DIR, ROOT, expectedClips, resolveClip } from './audio-keys.mjs';
 
-const PORT = 5199;
+// Distinct from every other verify script's port. They are often run one after
+// another, and a server that outlived its run makes the next script fail with a
+// confusing timeout rather than an obvious "port in use".
+const PORT = 5195;
 const SHOT = process.argv[2];
 const TEST_SLUG = expectedClips()[0].slug;
 
