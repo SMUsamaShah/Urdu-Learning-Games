@@ -6,9 +6,9 @@ import {
   sequenceFor,
   shapeFamilySiblings,
 } from '../lib/content.js';
-import { addGlyph } from '../lib/glyph.js';
+import { addGlyph, fitGlyphHeight, glyphWidth } from '../lib/glyph.js';
 import { clipKeys, hasClip, play } from '../lib/audio.js';
-import { COLORS, familyColor, label } from '../lib/theme.js';
+import { COLORS, chunkyGlyph, familyColor, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
 
 /**
@@ -94,19 +94,25 @@ export default class FindLetter extends QuizScene {
 
     const form = this.promptForm();
     const letter = lettersById.get(target);
+    const glyph = letterGlyph(target, form);
 
-    // A solid plate with the family colour as an outline. A translucent fill
-    // over the background just reads as grey and says nothing.
+    // The plate is sized to the letter rather than fixed. Urdu has letters
+    // several times wider than they are tall, and a fixed card leaves those
+    // hanging out over the edge of it.
+    const height = fitGlyphHeight(glyph, 420, 112);
+    const plateW = Math.max(220, glyphWidth(glyph, height) + 60);
+    const plateH = 168;
+
     const plate = this.add.graphics();
     plate.fillStyle(COLORS.card, 1);
-    plate.fillRoundedRect(-110, -84, 220, 168, 26);
-    plate.lineStyle(4, familyColor(letter.shapeFamily), 0.9);
-    plate.strokeRoundedRect(-110, -84, 220, 168, 26);
+    plate.fillRoundedRect(-plateW / 2, -plateH / 2, plateW, plateH, 26);
+    plate.lineStyle(5, familyColor(letter.shapeFamily), 1);
+    plate.strokeRoundedRect(-plateW / 2, -plateH / 2, plateW, plateH, 26);
     layer.add(plate);
 
     layer.add(
-      addGlyph(this, 0, 0, `find:prompt:${target}:${form}:112`, letterGlyph(target, form), {
-        height: 112,
+      addGlyph(this, 0, 0, `find:prompt:${target}:${form}:${Math.round(height)}`, glyph, {
+        height,
         color: COLORS.ink,
       })
     );
@@ -114,7 +120,7 @@ export default class FindLetter extends QuizScene {
       label(
         this,
         0,
-        112,
+        plateH / 2 + 28,
         form === 'isolated' ? 'find this letter' : 'same letter, which one?',
         { size: 16 }
       )
@@ -125,12 +131,11 @@ export default class FindLetter extends QuizScene {
     return familyColor(lettersById.get(id).shapeFamily);
   }
 
-  decorateTile(tile, id) {
+  decorateTile(tile, id, size) {
+    const glyph = letterGlyph(id, 'isolated');
+    const height = Math.round(fitGlyphHeight(glyph, size - 34, size - 60));
     tile.add(
-      addGlyph(this, 0, 0, `find:choice:${id}:104`, letterGlyph(id, 'isolated'), {
-        height: 104,
-        color: COLORS.onColor,
-      })
+      addGlyph(this, 0, 0, `find:choice:${id}:${height}:chunky`, glyph, chunkyGlyph(height))
     );
   }
 

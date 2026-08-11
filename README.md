@@ -21,6 +21,9 @@ Early. What works today:
   letters that differ only in their dots.
 - **A picture for every word**, drawn once and committed, so a child who cannot
   read yet still knows what انگور means.
+- **Built to look like a toy**, not a tool: the games happen in a park with sky,
+  clouds and hills, answers are sticker cards with heavy outlines, and getting
+  one right throws confetti.
 - **Audio system** — plays a letter's name, its sound and its word. Ships with
   no voice recordings, so the app is silent until somebody records it.
 - **Record in your own voice**, on any device, stored on that device and
@@ -28,7 +31,8 @@ Early. What works today:
 - **Installable and offline** — add it to a phone's home screen and it runs
   with no network, recordings included.
 
-Planned next: better words for the eight letters that have none. See
+Every letter now has a word except `ء` (hamza), which is closer to a diacritic
+than a letter and has no word a three-year-old could picture. See
 [the roadmap](#roadmap).
 
 ## Run it
@@ -122,8 +126,8 @@ server reached over your LAN at `http://192.168.x.x` will never open the mic.
 
 ## Recording a full set on a desktop
 
-The app needs 120 spoken clips: a name and a sound for each of the 38 letters,
-plus every word and number. The in-app recorder above will do all of them, but
+The app needs a spoken clip for each letter's name and sound, plus every word
+and number — 123 of them at the moment, and more whenever a word is added. The in-app recorder above will do all of them, but
 for a full sitting with a decent microphone the desktop studio is faster: it is
 keyboard driven and writes straight into the repo.
 
@@ -142,7 +146,7 @@ npm run record        # http://localhost:5174
 The studio shows each prompt in Nastaliq — rendered from the same baked
 outlines the game uses, so you read exactly what the child will see — and
 writes takes straight into `public/audio/recorded/`. It is keyboard driven,
-because 120 clips with a mouse is not a workflow:
+because that many clips with a mouse is not a workflow:
 
 | key | |
 |---|---|

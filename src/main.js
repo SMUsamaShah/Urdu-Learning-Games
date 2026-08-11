@@ -21,7 +21,7 @@ import { COLORS, DESIGN } from './lib/theme.js';
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
-  backgroundColor: COLORS.bgCss,
+  backgroundColor: '#8fd4f5',
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

@@ -30,7 +30,10 @@
       "sound": "a",
       "joins": "right",
       "shapeFamily": "alif",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "angoor"
     },
     {
@@ -41,7 +44,10 @@
       "sound": "b",
       "joins": "both",
       "shapeFamily": "be",
-      "dots": { "count": 1, "position": "below" },
+      "dots": {
+        "count": 1,
+        "position": "below"
+      },
       "word": "bakri"
     },
     {
@@ -52,7 +58,10 @@
       "sound": "p",
       "joins": "both",
       "shapeFamily": "be",
-      "dots": { "count": 3, "position": "below" },
+      "dots": {
+        "count": 3,
+        "position": "below"
+      },
       "word": "patang"
     },
     {
@@ -63,7 +72,10 @@
       "sound": "t",
       "joins": "both",
       "shapeFamily": "be",
-      "dots": { "count": 2, "position": "above" },
+      "dots": {
+        "count": 2,
+        "position": "above"
+      },
       "word": "titli"
     },
     {
@@ -74,7 +86,10 @@
       "sound": "T",
       "joins": "both",
       "shapeFamily": "be",
-      "dots": { "count": 0, "position": "toe-above" },
+      "dots": {
+        "count": 0,
+        "position": "toe-above"
+      },
       "word": "topi"
     },
     {
@@ -85,7 +100,10 @@
       "sound": "s",
       "joins": "both",
       "shapeFamily": "be",
-      "dots": { "count": 3, "position": "above" },
+      "dots": {
+        "count": 3,
+        "position": "above"
+      },
       "word": "samar"
     },
     {
@@ -96,7 +114,10 @@
       "sound": "j",
       "joins": "both",
       "shapeFamily": "jim",
-      "dots": { "count": 1, "position": "below" },
+      "dots": {
+        "count": 1,
+        "position": "below"
+      },
       "word": "jahaaz"
     },
     {
@@ -107,7 +128,10 @@
       "sound": "ch",
       "joins": "both",
       "shapeFamily": "jim",
-      "dots": { "count": 3, "position": "below" },
+      "dots": {
+        "count": 3,
+        "position": "below"
+      },
       "word": "chaand"
     },
     {
@@ -118,7 +142,10 @@
       "sound": "h",
       "joins": "both",
       "shapeFamily": "jim",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "halwa"
     },
     {
@@ -129,7 +156,10 @@
       "sound": "kh",
       "joins": "both",
       "shapeFamily": "jim",
-      "dots": { "count": 1, "position": "above" },
+      "dots": {
+        "count": 1,
+        "position": "above"
+      },
       "word": "khargosh"
     },
     {
@@ -140,7 +170,10 @@
       "sound": "d",
       "joins": "right",
       "shapeFamily": "dal",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "darakht"
     },
     {
@@ -151,7 +184,10 @@
       "sound": "D",
       "joins": "right",
       "shapeFamily": "dal",
-      "dots": { "count": 0, "position": "toe-above" },
+      "dots": {
+        "count": 0,
+        "position": "toe-above"
+      },
       "word": "dabba"
     },
     {
@@ -162,8 +198,11 @@
       "sound": "z",
       "joins": "right",
       "shapeFamily": "dal",
-      "dots": { "count": 1, "position": "above" },
-      "word": null
+      "dots": {
+        "count": 1,
+        "position": "above"
+      },
+      "word": "kaaghaz"
     },
     {
       "id": "re",
@@ -173,7 +212,10 @@
       "sound": "r",
       "joins": "right",
       "shapeFamily": "re",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "roti"
     },
     {
@@ -184,7 +226,10 @@
       "sound": "R",
       "joins": "right",
       "shapeFamily": "re",
-      "dots": { "count": 0, "position": "toe-above" },
+      "dots": {
+        "count": 0,
+        "position": "toe-above"
+      },
       "word": "gaari"
     },
     {
@@ -195,7 +240,10 @@
       "sound": "z",
       "joins": "right",
       "shapeFamily": "re",
-      "dots": { "count": 1, "position": "above" },
+      "dots": {
+        "count": 1,
+        "position": "above"
+      },
       "word": "zebra"
     },
     {
@@ -206,7 +254,10 @@
       "sound": "zh",
       "joins": "right",
       "shapeFamily": "re",
-      "dots": { "count": 3, "position": "above" },
+      "dots": {
+        "count": 3,
+        "position": "above"
+      },
       "word": "zhaala"
     },
     {
@@ -217,7 +268,10 @@
       "sound": "s",
       "joins": "both",
       "shapeFamily": "sin",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "seyb"
     },
     {
@@ -228,7 +282,10 @@
       "sound": "sh",
       "joins": "both",
       "shapeFamily": "sin",
-      "dots": { "count": 3, "position": "above" },
+      "dots": {
+        "count": 3,
+        "position": "above"
+      },
       "word": "sher"
     },
     {
@@ -239,7 +296,10 @@
       "sound": "s",
       "joins": "both",
       "shapeFamily": "suad",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "saabun"
     },
     {
@@ -250,8 +310,11 @@
       "sound": "z",
       "joins": "both",
       "shapeFamily": "suad",
-      "dots": { "count": 1, "position": "above" },
-      "word": null
+      "dots": {
+        "count": 1,
+        "position": "above"
+      },
+      "word": "hauz"
     },
     {
       "id": "toe",
@@ -261,7 +324,10 @@
       "sound": "t",
       "joins": "both",
       "shapeFamily": "toe",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "tota"
     },
     {
@@ -272,8 +338,11 @@
       "sound": "z",
       "joins": "both",
       "shapeFamily": "toe",
-      "dots": { "count": 1, "position": "above" },
-      "word": null
+      "dots": {
+        "count": 1,
+        "position": "above"
+      },
+      "word": "zaroof"
     },
     {
       "id": "ain",
@@ -283,7 +352,10 @@
       "sound": "a",
       "joins": "both",
       "shapeFamily": "ain",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "ainak"
     },
     {
@@ -294,7 +366,10 @@
       "sound": "gh",
       "joins": "both",
       "shapeFamily": "ain",
-      "dots": { "count": 1, "position": "above" },
+      "dots": {
+        "count": 1,
+        "position": "above"
+      },
       "word": "ghubara"
     },
     {
@@ -305,7 +380,10 @@
       "sound": "f",
       "joins": "both",
       "shapeFamily": "fe",
-      "dots": { "count": 1, "position": "above" },
+      "dots": {
+        "count": 1,
+        "position": "above"
+      },
       "word": "footbal"
     },
     {
@@ -316,7 +394,10 @@
       "sound": "q",
       "joins": "both",
       "shapeFamily": "qaf",
-      "dots": { "count": 2, "position": "above" },
+      "dots": {
+        "count": 2,
+        "position": "above"
+      },
       "word": "qalam"
     },
     {
@@ -327,7 +408,10 @@
       "sound": "k",
       "joins": "both",
       "shapeFamily": "kaf",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "kitaab"
     },
     {
@@ -338,7 +422,10 @@
       "sound": "g",
       "joins": "both",
       "shapeFamily": "kaf",
-      "dots": { "count": 0, "position": "stroke-above" },
+      "dots": {
+        "count": 0,
+        "position": "stroke-above"
+      },
       "word": "gulaab"
     },
     {
@@ -349,7 +436,10 @@
       "sound": "l",
       "joins": "both",
       "shapeFamily": "lam",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "lomri"
     },
     {
@@ -360,7 +450,10 @@
       "sound": "m",
       "joins": "both",
       "shapeFamily": "mim",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "machhli"
     },
     {
@@ -371,7 +464,10 @@
       "sound": "n",
       "joins": "both",
       "shapeFamily": "nun",
-      "dots": { "count": 1, "position": "above" },
+      "dots": {
+        "count": 1,
+        "position": "above"
+      },
       "word": "naak"
     },
     {
@@ -382,7 +478,10 @@
       "sound": "w",
       "joins": "right",
       "shapeFamily": "wao",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "wardi"
     },
     {
@@ -393,7 +492,10 @@
       "sound": "h",
       "joins": "both",
       "shapeFamily": "he",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "haathi"
     },
     {
@@ -404,7 +506,10 @@
       "sound": "h",
       "joins": "both",
       "shapeFamily": "he",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "bhaalu"
     },
     {
@@ -415,7 +520,10 @@
       "sound": "'",
       "joins": "none",
       "shapeFamily": "hamza",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": null
     },
     {
@@ -426,7 +534,10 @@
       "sound": "y",
       "joins": "both",
       "shapeFamily": "ye",
-      "dots": { "count": 2, "position": "below" },
+      "dots": {
+        "count": 2,
+        "position": "below"
+      },
       "word": "chaabi"
     },
     {
@@ -437,7 +548,10 @@
       "sound": "e",
       "joins": "right",
       "shapeFamily": "ye",
-      "dots": { "count": 0, "position": null },
+      "dots": {
+        "count": 0,
+        "position": null
+      },
       "word": "chaaye"
     }
   ]

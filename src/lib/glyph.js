@@ -130,3 +130,25 @@ export function glyphWidth(glyph, height, padding = 0.06) {
   const pad = height * padding;
   return bw * ((height - pad * 2) / bh) + pad * 2;
 }
+
+/**
+ * The height to render at so a glyph fits inside a box.
+ *
+ * Glyphs are sized by height alone, which is fine until the glyph is a wide
+ * one. Urdu has some very wide letters — ے and ک run several times their own
+ * height — so asking for "height 104" inside a 190px tile silently draws a
+ * letter half of which is outside the card. Anything placing a glyph in a
+ * bounded space should go through here.
+ *
+ * @param {Glyph} glyph
+ * @param {number} boxWidth
+ * @param {number} boxHeight
+ * @param {number} [padding=0.06]
+ * @returns {number} height in game pixels, never taller than boxHeight
+ */
+export function fitGlyphHeight(glyph, boxWidth, boxHeight, padding = 0.06) {
+  if (!glyph) return boxHeight;
+  const wide = glyphWidth(glyph, boxHeight, padding);
+  if (wide <= boxWidth || wide <= 0) return boxHeight;
+  return boxHeight * (boxWidth / wide);
+}

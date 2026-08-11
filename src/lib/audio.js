@@ -16,7 +16,7 @@
  *
  * Two rules shape the rest of the design:
  *
- * 1. **A missing clip is silence, never an error.** Recording ~120 clips takes
+ * 1. **A missing clip is silence, never an error.** Recording the whole set takes
  *    a while, and the app has to stay completely playable throughout. Every
  *    call resolves whether or not a recording exists.
  *

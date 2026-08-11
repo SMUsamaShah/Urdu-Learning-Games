@@ -43,7 +43,28 @@ export const COLORS = {
   gentle: 0xef6c4d,
   /** Shadow under a card. Softer than on a dark background, or it looks dirty. */
   shadow: 0x8a7a63,
+  /** The dark line around cards and letters. Not pure black — that reads cheap. */
+  outline: 0x2b3047,
+  outlineCss: '#2b3047',
 };
+
+/**
+ * Glyph options that give a letter the heavy outline preschool apps use.
+ *
+ * The outline is not decoration: a white letter on a mid-tone tile has weak
+ * edges, and a child picking between ب and ت is working entirely from edges.
+ *
+ * @param {number} height
+ * @param {string} [fill]
+ */
+export function chunkyGlyph(height, fill = '#ffffff') {
+  return {
+    height,
+    color: fill,
+    stroke: COLORS.outlineCss,
+    strokeWidth: Math.max(3, Math.round(height * 0.035)),
+  };
+}
 
 /** One hue per shape family, so a family reads as a group at a glance. */
 export const FAMILY_COLORS = {
@@ -71,11 +92,13 @@ export function familyColor(family) {
  * @param {number} config.width
  * @param {number} config.height
  * @param {number} [config.color]
+ * @param {boolean} [config.rim=true] The white-and-dark sticker edge. Off for
+ *   the small chrome buttons, where it is just noise.
  * @param {() => void} config.onTap
  * @returns {Phaser.GameObjects.Container}
  */
 export function makeButton(scene, config) {
-  const { x, y, width, height, color = COLORS.panel, onTap } = config;
+  const { x, y, width, height, color = COLORS.panel, rim = true, onTap } = config;
   const container = scene.add.container(x, y);
 
   const shadow = scene.add.graphics();
@@ -85,6 +108,17 @@ export function makeButton(scene, config) {
   const face = scene.add.graphics();
   face.fillStyle(color, 1);
   face.fillRoundedRect(-width / 2, -height / 2, width, height, 26);
+
+  // A white rim with a dark line outside it. This is what makes a coloured
+  // rectangle read as a sticker sitting on the scene rather than a hole cut
+  // out of it, and it is the single most recognisable thing about the look of
+  // the apps this is aimed at.
+  if (rim) {
+    face.lineStyle(6, 0xffffff, 0.95);
+    face.strokeRoundedRect(-width / 2 + 3, -height / 2 + 3, width - 6, height - 6, 23);
+    face.lineStyle(3, COLORS.outline, 0.85);
+    face.strokeRoundedRect(-width / 2, -height / 2, width, height, 26);
+  }
 
   container.add([shadow, face]);
   container.setSize(width, height);

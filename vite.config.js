@@ -38,8 +38,8 @@ export default defineConfig({
         scope: '.',
         display: 'standalone',
         orientation: 'landscape',
-        background_color: '#fdf3e3',
-        theme_color: '#fdf3e3',
+        background_color: '#8fd4f5',
+        theme_color: '#8fd4f5',
         categories: ['education', 'kids'],
         icons: [
           { src: 'icons/pwa-192x192.png', sizes: '192x192', type: 'image/png' },

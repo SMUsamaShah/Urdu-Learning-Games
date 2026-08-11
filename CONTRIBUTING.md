@@ -8,9 +8,10 @@ Everything the app teaches lives in `content/*.json`. Edit a file, run
 
 ## Add a word
 
-Most letters could use better words than the ones they have, and eight letters
-have none at all (`ث ذ ژ ض ظ و ء ے`) because no age-appropriate picturable word
-was obvious.
+Most letters could use better words than the ones they have. Only `ء` (hamza)
+has none: it is closer to a diacritic than a letter, almost never stands alone,
+and no word a three-year-old can picture puts it on its own. Leaving it empty is
+the right answer rather than forcing one.
 
 Add an entry to `content/words.json`:
 
@@ -38,8 +39,9 @@ worse than no word: leave `"word": null` rather than force one.
 
 ## Record audio
 
-The app needs 120 spoken clips and ships with none, so this is the single most
-useful thing anyone can contribute.
+The app needs a spoken clip per letter name, letter sound, word and number —
+123 at the moment — and ships with none, so this is the single most useful
+thing anyone can contribute.
 
 ```sh
 npm run record        # http://localhost:5174, then follow the prompts
@@ -64,7 +66,7 @@ Recording tips:
 - Watch the level meter. A recording that never leaves the left of the bar is
   too quiet to hear on a phone speaker; one that turns red is clipping.
 - A native or fluent speaker's voice, ideally the child's parent. Accent
-  matters less than being consistent across all 120.
+  matters less than being consistent across the whole set.
 
 You do not have to finish. Missing clips are silent, never broken, so a
 contribution of ten good clips is worth having.
@@ -190,7 +192,30 @@ If you add a word whose English gloss is not a good art brief ("fruit", "halwa")
 add an entry to `OVERRIDES` in `tools/make-word-images.mjs` rather than accepting
 whatever the gloss produces.
 
+## How it looks
+
+`src/lib/scenery.js` paints the sky, sun, clouds, hills and ground that every
+screen sits on, and `src/lib/celebrate.js` has the confetti, the flying star and
+the bounce. Both draw procedurally rather than loading art — the app has to work
+offline on a phone, and a few hundred lines of arcs cost nothing next to a set of
+background images at every screen size.
+
+Two rules that keep the look consistent:
+
+**Anything on a coloured surface gets an outline.** `chunkyGlyph()` in
+`theme.js` gives a letter the heavy dark edge these apps use. It is not
+decoration — a white letter on a mid-tone tile has weak edges, and a child
+choosing between ب and ت is working entirely from edges.
+
+**Cards are solid, never translucent.** The scenery behind them moves, and a
+cloud drifting through the middle of a letter card reads as a bug.
+
 ## Two Phaser 4 traps
+
+Glyphs are sized by **height alone**, so a wide letter silently overflows
+whatever box you put it in — and Urdu has letters several times wider than they
+are tall (ے, ک). Anything placing a glyph in a bounded space should go through
+`fitGlyphHeight()`.
 
 `glyphTexture` caches on the key alone, and its docstring says the key must be
 unique per glyph **and size and colour**. It is easy to forget the colour part:

@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
+import { cheer, confetti, flyStar } from '../lib/celebrate.js';
+import { addScenery } from '../lib/scenery.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -76,6 +78,7 @@ export default class QuizScene extends Phaser.Scene {
 
   create() {
     this.cameras.main.setBackgroundColor(COLORS.bg);
+    addScenery(this, { hills: this.showHills !== false });
     this.streak = 0;
     this.locked = false;
     this.target = null;
@@ -86,6 +89,7 @@ export default class QuizScene extends Phaser.Scene {
       width: 96,
       height: 68,
       color: COLORS.panel,
+      rim: false,
       onTap: () => {
         sfx.swoosh();
         this.scene.start('Home');
@@ -152,6 +156,10 @@ export default class QuizScene extends Phaser.Scene {
         color: this.tileColor(id),
         onTap: () => this.choose(id, tile),
       });
+      // A couple of degrees of tilt, alternating. A row of perfectly square
+      // tiles reads as a form; a row of slightly scattered cards reads as
+      // something somebody laid out by hand.
+      tile.setAngle(index % 2 ? 2.5 : -2.5);
       // Named so a verification run can pick a tile without hunting by pixel.
       tile.choiceId = id;
       this.decorateTile(tile, id, size);
@@ -210,20 +218,22 @@ export default class QuizScene extends Phaser.Scene {
     this.locked = true;
     sfx.correct();
     this.streak++;
-    this.updateStreak();
 
     // Fade the others so the right one is unmistakably the one that stayed.
     for (const other of this.choicesLayer.list) {
       if (other !== tile) this.tweens.add({ targets: other, alpha: 0.2, duration: 220 });
     }
-    this.tweens.add({
-      targets: tile,
-      scale: 1.14,
-      duration: 200,
-      yoyo: true,
-      ease: 'Back.easeOut',
-    });
+    cheer(this, tile);
+    confetti(this, tile.x, tile.y);
+    // The star updates the score when it lands, so the row of stars visibly
+    // grows *because* of the answer rather than alongside it.
+    flyStar(
+      this,
+      { x: tile.x, y: tile.y },
+      { x: this.streakText.x, y: this.streakText.y },
+      () => this.updateStreak()
+    );
 
-    this.time.delayedCall(760, () => this.newRound());
+    this.time.delayedCall(1100, () => this.newRound());
   }
 }

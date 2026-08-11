@@ -12,6 +12,7 @@ import { addGlyph } from '../lib/glyph.js';
 import { addWordImage, queueWordImages } from '../lib/images.js';
 import { clipKeys, hasClip, play, playSequence, stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
+import { addScenery } from '../lib/scenery.js';
 import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -78,6 +79,8 @@ export default class Flashcards extends Phaser.Scene {
 
   create() {
     this.cameras.main.setBackgroundColor(COLORS.bg);
+    // No hills: the letter strip already fills the bottom of this screen.
+    addScenery(this, { hills: false });
     this.sequence = sequenceFor('alphabetical');
     this.selectedIndex = 0;
 
@@ -90,6 +93,7 @@ export default class Flashcards extends Phaser.Scene {
       width: 96,
       height: 68,
       color: COLORS.panel,
+      rim: false,
       onTap: () => {
         sfx.swoosh();
         this.scene.start('Home');
@@ -137,7 +141,7 @@ export default class Flashcards extends Phaser.Scene {
 
       const cell = this.add.container(x, 0);
       const bg = this.add.graphics();
-      bg.fillStyle(familyColor(letter.shapeFamily), 0.16);
+      bg.fillStyle(COLORS.card, 1);
       bg.fillRoundedRect(-size / 2, -size / 2, size, size, 16);
       cell.add(bg);
 
@@ -208,19 +212,15 @@ export default class Flashcards extends Phaser.Scene {
       const color = familyColor(cell.letter.shapeFamily);
 
       cell.bgGraphic.clear();
-      // A heavier tint rather than a solid fill when selected: the glyph on top
-      // is dark, and a saturated fill under it would leave the selected letter
-      // the only unreadable one in the strip.
-      cell.bgGraphic.fillStyle(color, selected ? 0.42 : 0.16);
+      // Every cell stays a white card. Selection is a thick family-coloured
+      // ring and a bump in size, not a coloured fill: the glyph on top is dark,
+      // so filling the selected cell with a saturated colour would make the one
+      // letter the child is looking at the hardest one in the strip to see.
+      cell.bgGraphic.fillStyle(COLORS.card, 1);
       cell.bgGraphic.fillRoundedRect(-half, -half, size, size, 16);
-
-      // A ring as well as a fill, so the selection reads even on the lighter
-      // family colours where a fill alone is low contrast.
-      if (selected) {
-        cell.bgGraphic.lineStyle(4, color, 1);
-        cell.bgGraphic.strokeRoundedRect(-half, -half, size, size, 16);
-      }
-      cell.setScale(selected ? 1.1 : 1);
+      cell.bgGraphic.lineStyle(selected ? 6 : 2, color, selected ? 1 : 0.5);
+      cell.bgGraphic.strokeRoundedRect(-half, -half, size, size, 16);
+      cell.setScale(selected ? 1.12 : 1);
     });
   }
 
@@ -252,9 +252,13 @@ export default class Flashcards extends Phaser.Scene {
     const MAIN_X = 470;
 
     // --- Hero letter -------------------------------------------------------
+    // Solid, not a translucent tint: the scenery behind it moves, and a cloud
+    // drifting through the middle of the letter card looks like a bug.
     const hero = this.add.graphics();
-    hero.fillStyle(tint, 0.16);
+    hero.fillStyle(COLORS.card, 1);
     hero.fillRoundedRect(HERO_X - 175, 110, 350, 400, 30);
+    hero.lineStyle(6, tint, 1);
+    hero.strokeRoundedRect(HERO_X - 175, 110, 350, 400, 30);
     card.add(hero);
 
     const isolated = letterGlyph(letterId, 'isolated');

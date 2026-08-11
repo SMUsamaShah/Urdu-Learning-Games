@@ -3,6 +3,8 @@ import { letterGlyph, lettersById, sequenceFor, uiGlyph } from '../lib/content.j
 import { addGlyph, glyphTexture, glyphWidth } from '../lib/glyph.js';
 import { clipKeys, hasClip, play, playSequence, stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
+import { confetti } from '../lib/celebrate.js';
+import { addScenery } from '../lib/scenery.js';
 import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -64,6 +66,7 @@ export default class Trace extends Phaser.Scene {
 
   create() {
     this.cameras.main.setBackgroundColor(COLORS.bg);
+    addScenery(this, { hills: false });
     this.sequence = sequenceFor('alphabetical').filter((id) => letterGlyph(id));
     this.index = 0;
 
@@ -73,6 +76,7 @@ export default class Trace extends Phaser.Scene {
       width: 96,
       height: 68,
       color: COLORS.panel,
+      rim: false,
       onTap: () => {
         sfx.swoosh();
         this.scene.start('Home');
@@ -380,6 +384,7 @@ export default class Trace extends Phaser.Scene {
     this.drawing = false;
     sfx.correct();
     this.drawProgress(1);
+    confetti(this, DESIGN.width / 2, 300, { count: 30, spread: 320 });
 
     // Clear the rest of the cover, so the reward is seeing the letter complete
     // rather than the patchy version they happened to stop at.

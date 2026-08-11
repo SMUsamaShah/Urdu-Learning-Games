@@ -5,10 +5,12 @@ import {
   sequenceFor,
   shapeFamilySiblings,
 } from '../lib/content.js';
-import { addGlyph } from '../lib/glyph.js';
+import { addGlyph, fitGlyphHeight } from '../lib/glyph.js';
 import { clipKeys, hasClip, play, stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
-import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
+import { confetti } from '../lib/celebrate.js';
+import { addScenery } from '../lib/scenery.js';
+import { COLORS, DESIGN, chunkyGlyph, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
  * The same question as FindLetter, but the answers float past.
@@ -51,6 +53,9 @@ export default class Balloons extends Phaser.Scene {
 
   create() {
     this.cameras.main.setBackgroundColor(COLORS.bg);
+    // Balloons rise the full height, so hills would only be something for them
+    // to disappear behind.
+    addScenery(this, { hills: false });
     this.sequence = sequenceFor('alphabetical').filter((id) => letterGlyph(id));
     this.streak = 0;
     this.balloons = [];
@@ -62,6 +67,7 @@ export default class Balloons extends Phaser.Scene {
       width: 96,
       height: 68,
       color: COLORS.panel,
+      rim: false,
       onTap: () => {
         sfx.swoosh();
         this.scene.start('Home');
@@ -206,14 +212,14 @@ export default class Balloons extends Phaser.Scene {
       this.promptLayer.add(plate);
 
       this.promptLayer.add(
-        addGlyph(
-          this,
-          46,
-          0,
-          `balloon:prompt:${this.target}:60`,
-          letterGlyph(this.target, 'isolated'),
-          { height: 60, color: COLORS.ink }
-        )
+        (() => {
+          const g = letterGlyph(this.target, 'isolated');
+          const h = Math.round(fitGlyphHeight(g, 96, 60));
+          return addGlyph(this, 46, 0, `balloon:prompt:${this.target}:${h}`, g, {
+            height: h,
+            color: COLORS.ink,
+          });
+        })()
       );
     }
   }
@@ -262,10 +268,11 @@ export default class Balloons extends Phaser.Scene {
     balloon.add(body);
 
     balloon.add(
-      addGlyph(this, 0, -4, `balloon:${letterId}:82`, letterGlyph(letterId, 'isolated'), {
-        height: 82,
-        color: COLORS.onColor,
-      })
+      (() => {
+        const g = letterGlyph(letterId, 'isolated');
+        const h = Math.round(fitGlyphHeight(g, radius * 1.7, 82));
+        return addGlyph(this, 0, -4, `balloon:${letterId}:${h}:chunky`, g, chunkyGlyph(h));
+      })()
     );
 
     balloon.setSize(radius * 2, radius * 2.3);

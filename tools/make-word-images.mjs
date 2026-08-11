@@ -75,6 +75,9 @@ const OVERRIDES = {
   jahaaz: 'a passenger aeroplane flying',
   ghubara: 'a single bright party balloon on a string',
   footbal: 'a classic black and white football',
+  zaroof: 'a neat stack of colourful plates with a teacup and a bowl beside it',
+  kaaghaz: 'a single clean sheet of white paper with one folded corner',
+  hauz: 'a small round garden pond of blue water with a stone rim',
 };
 
 const words = readContent('words.json').words.filter(

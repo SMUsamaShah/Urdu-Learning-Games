@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { letterGlyph, numberGlyph, uiGlyph } from '../lib/content.js';
-import { addGlyph } from '../lib/glyph.js';
+import { addGlyph, fitGlyphHeight } from '../lib/glyph.js';
 import { addWordImage, queueWordImages } from '../lib/images.js';
 import { canInstall, onInstallAvailability, promptInstall } from '../lib/install.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
-import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
+import { addScenery } from '../lib/scenery.js';
+import { COLORS, DESIGN, chunkyGlyph, label, makeButton } from '../lib/theme.js';
 
 /**
  * The menu.
@@ -90,27 +91,32 @@ export default class Home extends Phaser.Scene {
     if (game.number) {
       const glyph = numberGlyph(game.number);
       return glyph
-        ? addGlyph(this, 0, y, `ui:tile:${game.number}:${size}:on`, glyph, {
-            height: size,
-            color: COLORS.onColor,
-          })
+        ? addGlyph(
+            this,
+            0,
+            y,
+            `ui:tile:${game.number}:${size}:chunky`,
+            glyph,
+            chunkyGlyph(size)
+          )
         : null;
     }
     const glyph = letterGlyph(game.icon.letter, game.icon.form);
-    return glyph
-      ? addGlyph(
-          this,
-          0,
-          y,
-          `letter:${game.icon.letter}:${game.icon.form}:${size}:on`,
-          glyph,
-          { height: size, color: COLORS.onColor }
-        )
-      : null;
+    if (!glyph) return null;
+    const h = Math.round(fitGlyphHeight(glyph, size * 2.1, size));
+    return addGlyph(
+      this,
+      0,
+      y,
+      `letter:${game.icon.letter}:${game.icon.form}:${h}:chunky`,
+      glyph,
+      chunkyGlyph(h)
+    );
   }
 
   create() {
     this.cameras.main.setBackgroundColor(COLORS.bg);
+    addScenery(this);
 
     const title = uiGlyph('app-title');
     if (title) {
@@ -166,11 +172,9 @@ export default class Home extends Phaser.Scene {
       // own edges.
       const nameGlyph = uiGlyph(game.ui);
       if (nameGlyph) {
+        const h = Math.round(fitGlyphHeight(nameGlyph, tileW - 30, 44));
         button.add(
-          addGlyph(this, 0, tileH * 0.17, `ui:${game.ui}:44:on`, nameGlyph, {
-            height: 44,
-            color: COLORS.onColor,
-          })
+          addGlyph(this, 0, tileH * 0.17, `ui:${game.ui}:${h}:chunky`, nameGlyph, chunkyGlyph(h))
         );
       }
 
@@ -208,6 +212,7 @@ export default class Home extends Phaser.Scene {
       width: 148,
       height: 56,
       color: COLORS.panel,
+      rim: false,
       // Opening is driven by the hold below, not by a tap.
       onTap: () => {},
     });
@@ -275,6 +280,7 @@ export default class Home extends Phaser.Scene {
       width: 200,
       height: 64,
       color: COLORS.panel,
+      rim: false,
       onTap: () => promptInstall().then(() => this.buildInstallHint()),
     });
 
