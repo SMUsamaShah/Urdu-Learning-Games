@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   // Relative base so the built app works from a GitHub Pages project subpath
@@ -13,4 +14,65 @@ export default defineConfig({
     target: 'es2022',
     assetsInlineLimit: 0,
   },
+  plugins: [
+    VitePWA({
+      // A three-year-old is never going to tap "a new version is available".
+      registerType: 'autoUpdate',
+
+      // Not in dev: a service worker caching a build you are actively editing
+      // makes every change look like it did not apply.
+      devOptions: { enabled: false },
+
+      includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
+
+      manifest: {
+        name: 'اردو کھیل — Urdu Learning Games',
+        short_name: 'اردو کھیل',
+        description:
+          'Free, ad-free games for learning the Urdu alphabet, numbers and first words.',
+        lang: 'ur',
+        dir: 'rtl',
+        // Relative, so an install from a project subpath scopes to that
+        // subpath rather than the domain root.
+        start_url: '.',
+        scope: '.',
+        display: 'standalone',
+        orientation: 'landscape',
+        background_color: '#1b2440',
+        theme_color: '#1b2440',
+        categories: ['education', 'kids'],
+        icons: [
+          { src: 'icons/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+          {
+            src: 'icons/maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
+
+      workbox: {
+        // Workbox's default pattern is {js,css,html,ico,png,svg}, which would
+        // silently skip every voice recording and both content JSON files —
+        // exactly the assets whose absence only shows up once offline.
+        globPatterns: [
+          '**/*.{js,css,html,ico,png,svg,webmanifest}',
+          '**/*.{json,woff2}',
+          '**/*.{webm,m4a,mp4,mp3,ogg,opus,wav}',
+        ],
+
+        // The Phaser bundle alone is ~1.4 MB, over Workbox's 2 MiB default once
+        // the glyph payload is counted. Everything here must be precached for
+        // the app to start with no network, so raise the ceiling rather than
+        // let entries be dropped.
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+
+        navigateFallback: 'index.html',
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+      },
+    }),
+  ],
 });

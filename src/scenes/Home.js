@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { letterGlyph, uiGlyph } from '../lib/content.js';
 import { addGlyph } from '../lib/glyph.js';
+import { canInstall, onInstallAvailability, promptInstall } from '../lib/install.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -96,5 +97,46 @@ export default class Home extends Phaser.Scene {
       'No ads · No tracking · Works offline',
       { size: 16, color: '#5f6d95' }
     );
+
+    this.buildInstallHint();
+  }
+
+  /**
+   * Offers "add to home screen" when the browser says it is possible.
+   *
+   * Deliberately small and in a corner. A parent looks at this screen for a few
+   * seconds at a time before handing the phone over, so a banner would mostly
+   * be something a child taps by accident.
+   */
+  buildInstallHint() {
+    this.installHint?.destroy(true);
+    this.installHint = null;
+    if (!canInstall()) return;
+
+    const button = makeButton(this, {
+      x: DESIGN.width - 130,
+      y: DESIGN.height - 74,
+      width: 200,
+      height: 64,
+      color: COLORS.panel,
+      onTap: () => promptInstall().then(() => this.buildInstallHint()),
+    });
+
+    const text = uiGlyph('install');
+    if (text) {
+      button.add(
+        addGlyph(this, 0, -6, 'ui:install:32', text, {
+          height: 32,
+          color: COLORS.ink,
+        })
+      );
+    }
+    button.add(label(this, 0, 20, 'Add to home screen', { size: 13 }));
+    this.installHint = button;
+
+    // The event can arrive after this scene is already up.
+    this.unsubscribeInstall?.();
+    this.unsubscribeInstall = onInstallAvailability(() => this.buildInstallHint());
+    this.events.once('shutdown', () => this.unsubscribeInstall?.());
   }
 }

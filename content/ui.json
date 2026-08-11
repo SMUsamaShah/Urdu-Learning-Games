@@ -23,6 +23,8 @@
     { "id": "initial",     "text": "شروع",          "roman": "initial" },
     { "id": "medial",      "text": "درمیان",        "roman": "medial" },
     { "id": "final",       "text": "آخر",           "roman": "final" },
-    { "id": "loading",     "text": "انتظار کریں",   "roman": "Please wait" }
+    { "id": "loading",     "text": "انتظار کریں",   "roman": "Please wait" },
+    { "id": "icon-word",   "text": "اردو",          "roman": "Urdu (app icon)" },
+    { "id": "install",     "text": "انسٹال کریں",   "roman": "Install" }
   ]
 }
