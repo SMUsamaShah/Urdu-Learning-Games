@@ -1,6 +1,11 @@
 import Phaser from 'phaser';
 import { loadGlyphs } from '../lib/content.js';
-import { audioStats, initAudio, loadAudioManifest } from '../lib/audio.js';
+import {
+  audioStats,
+  initAudio,
+  loadAudioManifest,
+  loadDeviceClips,
+} from '../lib/audio.js';
 import { initSfx } from '../lib/sfx.js';
 import { COLORS, DESIGN, label } from '../lib/theme.js';
 
@@ -39,18 +44,23 @@ export default class Preload extends Phaser.Scene {
     try {
       // Both are small and independent. Audio is only a manifest at this point;
       // the clips themselves load lazily on first use.
-      await Promise.all([loadGlyphs(), loadAudioManifest()]);
+      await Promise.all([loadGlyphs(), loadAudioManifest(), loadDeviceClips()]);
       initAudio(this.game);
       initSfx(this.game);
 
-      const { recorded = 0, expected = 0 } = audioStats();
-      if (recorded === 0) {
+      const { recorded = 0, expected = 0, device = 0 } = audioStats();
+      const have = recorded + device;
+      if (have === 0) {
         console.info(
           'No voice recordings yet — the app runs silent. ' +
-            'Record them with `npm run record`, then `npm run audio:manifest`.'
+            'Record them from Grown-ups on the home screen, or with `npm run record`.'
         );
-      } else if (recorded < expected) {
-        console.info(`Voice recordings: ${recorded}/${expected}.`);
+      } else if (have < expected) {
+        console.info(
+          `Voice recordings: ${have}/${expected}` +
+            (device ? ` (${device} recorded on this device)` : '') +
+            '.'
+        );
       }
 
       this.scene.start('Home');

@@ -5,7 +5,16 @@
  * decoded on first use and cached for the session, so the app starts fast and
  * only pays for the letters actually visited.
  *
- * Two rules shape the design:
+ * ## Where a clip comes from
+ *
+ *   device (IndexedDB) → bundled (content/audio.json) → silence
+ *
+ * A recording made on this device beats the one shipped with the app, which is
+ * the whole point of being able to record in your own voice: a child hears their
+ * parent, not whoever recorded the repo. It extends the same precedence the
+ * build pipeline already uses, where public/audio/recorded/ beats tts/.
+ *
+ * Two rules shape the rest of the design:
  *
  * 1. **A missing clip is silence, never an error.** Recording ~120 clips takes
  *    a while, and the app has to stay completely playable throughout. Every
@@ -16,6 +25,8 @@
  *    installs the handlers that resume its context on first touch. Borrowing
  *    its context inherits that unlock for free.
  */
+
+import { allKeys, getClip } from './clip-store.js';
 
 const BASE = import.meta.env.BASE_URL ?? '/';
 const MANIFEST_URL = new URL('../../content/audio.json', import.meta.url).href;
@@ -31,6 +42,11 @@ const buffers = new Map();
 const pending = new Map();
 /** Sources still playing, so a new selection can cut off the last one. */
 let playing = new Set();
+/**
+ * Which keys have a device recording. Held as a Set so hasClip() can stay
+ * synchronous for the scenes that call it while drawing.
+ */
+let deviceKeys = new Set();
 
 export async function loadAudioManifest() {
   if (manifest) return manifest;
@@ -55,34 +71,86 @@ export function initAudio(game) {
   ctx = game?.sound?.context ?? null;
 }
 
+/** Notes which clips this device has recorded. Called once at startup. */
+export async function loadDeviceClips() {
+  deviceKeys = new Set(await allKeys());
+  return deviceKeys;
+}
+
 export function audioStats() {
-  return manifest?.counts ?? { expected: 0, recorded: 0, tts: 0, missing: 0 };
+  const counts = manifest?.counts ?? { expected: 0, recorded: 0, tts: 0, missing: 0 };
+  return { ...counts, device: deviceKeys.size };
 }
 
 /** Whether a recording exists, for deciding if a speaker icon is worth showing. */
 export function hasClip(key) {
-  return Boolean(manifest?.clips?.[key]);
+  return deviceKeys.has(key) || Boolean(manifest?.clips?.[key]);
+}
+
+/** Whether this device has its own recording for a clip. */
+export function hasDeviceClip(key) {
+  return deviceKeys.has(key);
+}
+
+/**
+ * Drops a cached buffer so the next play picks up a new recording.
+ *
+ * Without this, re-recording a clip keeps playing the previous take until the
+ * page is reloaded, which makes the recorder feel broken.
+ */
+export function invalidate(key) {
+  buffers.delete(key);
+  pending.delete(key);
+  if (key === undefined) {
+    buffers.clear();
+    pending.clear();
+  }
+}
+
+/** Called by the recorder when a device recording is added or removed. */
+export function noteDeviceClip(key, present) {
+  if (present) deviceKeys.add(key);
+  else deviceKeys.delete(key);
+  invalidate(key);
+}
+
+async function decode(arrayBuffer) {
+  return ctx.decodeAudioData(arrayBuffer);
 }
 
 async function bufferFor(key) {
   if (buffers.has(key)) return buffers.get(key);
   if (pending.has(key)) return pending.get(key);
-
-  const path = manifest?.clips?.[key];
-  if (!path || !ctx) {
-    buffers.set(key, null);
-    return null;
-  }
+  if (!ctx) return null;
 
   const task = (async () => {
     try {
+      // A recording made on this device wins over the one shipped in the app.
+      if (deviceKeys.has(key)) {
+        const record = await getClip(key);
+        if (record?.blob) {
+          const buffer = await decode(await record.blob.arrayBuffer());
+          buffers.set(key, buffer);
+          return buffer;
+        }
+        // The key was listed but the row has gone; fall through to the bundled
+        // clip rather than going silent.
+        deviceKeys.delete(key);
+      }
+
+      const path = manifest?.clips?.[key];
+      if (!path) {
+        buffers.set(key, null);
+        return null;
+      }
+
       const response = await fetch(BASE + path);
       if (!response.ok) throw new Error(`${response.status}`);
-      const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
+      const buffer = await decode(await response.arrayBuffer());
       buffers.set(key, buffer);
       return buffer;
     } catch (error) {
-      console.warn(`audio: could not load ${key} (${path})`, error);
+      console.warn(`audio: could not load ${key}`, error);
       buffers.set(key, null);
       return null;
     } finally {

@@ -14,9 +14,10 @@ comparable for Urdu. This is an attempt at one.
 Early. What works today:
 
 - **Flashcards** — every letter, all of its positional forms, and its word.
-- **Audio system** — plays a letter's name, its sound and its word, with a
-  recording studio for capturing them. Ships with no voice recordings yet, so
-  the app is currently silent. See [Recording the voice](#recording-the-voice).
+- **Audio system** — plays a letter's name, its sound and its word. Ships with
+  no voice recordings, so the app is silent until somebody records it.
+- **Record in your own voice**, on any device, stored on that device and
+  exportable. See [Recording in your own voice](#recording-in-your-own-voice).
 - **Installable and offline** — add it to a phone's home screen and it runs
   with no network, recordings included.
 
@@ -46,19 +47,41 @@ Screen). It then launches full screen with no browser chrome, and works with no
 network — the app, the letter outlines and every voice recording are all cached
 on first load.
 
-Recordings reach a phone by being part of the app: record them on a desktop,
-commit, push, and the next load picks them up. They are files on the website,
-not something stored per-device. Two consequences worth knowing:
+## Recording in your own voice
 
-- Recordings committed here are public, like any other file in the repo.
-- You cannot record from a phone today. `getUserMedia` needs a secure context,
-  so the studio only works over `localhost`, not over your LAN. Recording
-  inside the deployed app would work, since that is HTTPS, but is not built.
+Tap **Grown-ups** on the home screen (hold it, then answer the sum — that is
+there to stop a three-year-old finding it) and you can record every clip in the
+app, on whatever device you are holding.
 
-## Recording the voice
+Those recordings stay on that device. They are stored in the browser, never
+uploaded, and they override whatever the app shipped with — so your child hears
+you rather than whoever recorded the repo.
+
+**Export keeps them safe and moves them around.** Export writes a single `.zip`.
+Import it on another phone or a desktop and that device has the same voice.
+Worth doing regularly: browser storage is not permanent, and Safari clears it
+after a week for a site that has not been added to the home screen. The recorder
+tells you when it is holding recordings you have not exported.
+
+**Sharing your voice with everyone** is the same zip. Unzip it and the clips are
+named exactly as the repo expects, so you can refine any of them in an audio
+editor first. Then either open the studio on a desktop (`npm run record`) and use
+*Import a phone export*, or copy the contents of `recorded/` into
+`public/audio/recorded/` by hand. Finish with `npm run audio:manifest` and
+commit. Note that this publishes your voice to anyone who has the repo.
+
+A note on where recording works: microphones need a secure context, meaning
+HTTPS or `localhost`. The deployed site is HTTPS so recording works there. A dev
+server reached over your LAN at `http://192.168.x.x` will never open the mic.
+
+## Recording a full set on a desktop
 
 The app needs 120 spoken clips: a name and a sound for each of the 38 letters,
-plus every word and number. There is deliberately **no text-to-speech step**.
+plus every word and number. The in-app recorder above will do all of them, but
+for a full sitting with a decent microphone the desktop studio is faster: it is
+keyboard driven and writes straight into the repo.
+
+There is deliberately **no text-to-speech step**.
 
 Urdu writing omits short vowels, so a synthesiser has to guess them. Neural
 voices mostly cope; rule-based ones do not. For an app whose whole job is
@@ -98,9 +121,14 @@ Two things worth knowing before you start:
 - **Missing clips are silent, never broken.** The app stays fully playable at
   any point in the backlog, so there is no need to finish in one go.
 
-Dropping a file into `public/audio/recorded/` always beats one in
-`public/audio/tts/`, so if a generator is ever added, hand recordings still win
-with no code change.
+Clips resolve in one order, everywhere:
+
+```
+recorded on this device  →  public/audio/recorded/  →  public/audio/tts/  →  silence
+```
+
+Your own recording always wins, and a hand recording always beats a generated
+one — so if a generator is ever added, nothing already recorded is affected.
 
 ## Deploying
 
@@ -197,9 +225,9 @@ tests/              content and audio integrity checks
 4. Balloon pop
 5. Stroke editor, then tracing
 6. Numbers and words as their own games
-7. ~~Installable, offline PWA~~ done · parental gate still to do
+7. ~~Installable, offline PWA, parental gate~~ done
 8. ~~Deploy to GitHub Pages~~ done
-9. Optional: record inside the app on any device, stored per-device
+9. ~~Record inside the app, stored per-device, with export and import~~ done
 
 ## Contributing
 

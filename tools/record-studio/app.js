@@ -10,19 +10,29 @@
  *   ← →    move between clips
  */
 
+import { createRecorder } from '/lib/recorder.js';
+
 const $ = (id) => document.getElementById(id);
 
 const state = {
   clips: [],
   glyphs: null,
   index: 0,
-  recorder: null,
-  chunks: [],
   take: null, // {blob, url, ext} of an unsaved recording
-  stream: null,
-  analyser: null,
-  meterRaf: 0,
 };
+
+/**
+ * Microphone handling is shared with the in-app recorder (src/lib/recorder.js),
+ * so the choice not to run noise suppression — which can swallow the start of a
+ * short syllable — holds in both places rather than in whichever was edited last.
+ */
+const recorder = createRecorder({
+  onLevel: (peak) => {
+    const fill = $('meter-fill');
+    fill.style.width = `${Math.min(100, peak * 140)}%`;
+    fill.classList.toggle('hot', peak > 0.92);
+  },
+});
 
 // ---------------------------------------------------------------- rendering
 
@@ -95,86 +105,28 @@ function setStatus(text, cls = '') {
 
 // ---------------------------------------------------------------- recording
 
-/** Picks a container the browser can actually produce. */
-function pickMimeType() {
-  const candidates = [
-    ['audio/webm;codecs=opus', 'webm'],
-    ['audio/webm', 'webm'],
-    ['audio/mp4', 'm4a'],
-    ['audio/ogg;codecs=opus', 'ogg'],
-  ];
-  for (const [mime, ext] of candidates) {
-    if (MediaRecorder.isTypeSupported(mime)) return { mime, ext };
-  }
-  return { mime: '', ext: 'webm' };
-}
-
-async function ensureStream() {
-  if (state.stream) return state.stream;
-  state.stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      // Keep the voice as recorded. Aggressive processing on a quiet room can
-      // gate the start of a short syllable, which is exactly what these clips
-      // are made of.
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: true,
-    },
-  });
-
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const source = ctx.createMediaStreamSource(state.stream);
-  state.analyser = ctx.createAnalyser();
-  state.analyser.fftSize = 1024;
-  source.connect(state.analyser);
-  runMeter();
-  return state.stream;
-}
-
-/** Live level, so it is obvious when the mic is dead or the take is clipping. */
-function runMeter() {
-  const data = new Uint8Array(state.analyser.fftSize);
-  const tick = () => {
-    state.analyser.getByteTimeDomainData(data);
-    let peak = 0;
-    for (const v of data) peak = Math.max(peak, Math.abs(v - 128) / 128);
-    const fill = $('meter-fill');
-    fill.style.width = `${Math.min(100, peak * 140)}%`;
-    fill.classList.toggle('hot', peak > 0.92);
-    state.meterRaf = requestAnimationFrame(tick);
-  };
-  tick();
-}
-
 async function startRecording() {
-  await ensureStream();
-  const { mime, ext } = pickMimeType();
-  state.chunks = [];
-  state.recorder = new MediaRecorder(state.stream, mime ? { mimeType: mime } : undefined);
-  state.recorder.ext = ext;
-  state.recorder.ondataavailable = (e) => e.data.size && state.chunks.push(e.data);
-  state.recorder.onstop = () => {
-    const blob = new Blob(state.chunks, { type: state.recorder.mimeType });
-    if (state.take?.url) URL.revokeObjectURL(state.take.url);
-    state.take = { blob, url: URL.createObjectURL(blob), ext: state.recorder.ext };
-    setStatus(`${(blob.size / 1024).toFixed(1)} KB — P to check, Enter to save`);
-    renderStage();
-    playTake();
-  };
-  state.recorder.start();
+  await recorder.start();
   setStatus('Recording… Space to stop', 'recording');
   $('btn-record').classList.add('recording');
   $('btn-record').firstChild.textContent = 'Stop ';
 }
 
-function stopRecording() {
-  state.recorder?.state === 'recording' && state.recorder.stop();
+async function stopRecording() {
+  const take = await recorder.stop();
   $('btn-record').classList.remove('recording');
   $('btn-record').firstChild.textContent = 'Record ';
+  if (!take) return;
+
+  if (state.take?.url) URL.revokeObjectURL(state.take.url);
+  state.take = { ...take, url: URL.createObjectURL(take.blob) };
+  setStatus(`${(take.blob.size / 1024).toFixed(1)} KB — P to check, Enter to save`);
+  renderStage();
+  playTake();
 }
 
 function toggleRecording() {
-  if (state.recorder?.state === 'recording') stopRecording();
+  if (recorder.isRecording()) stopRecording();
   else startRecording().catch((e) => setStatus('Microphone error: ' + e.message));
 }
 
@@ -228,7 +180,13 @@ async function redo() {
 
 function go(index) {
   if (index < 0 || index >= state.clips.length) return;
-  stopRecording();
+  if (recorder.isRecording()) {
+    // Abandon the take rather than saving it: moving on mid-record means the
+    // recording was a mistake. The promise is deliberately dropped.
+    recorder.stop();
+    $('btn-record').classList.remove('recording');
+    $('btn-record').firstChild.textContent = 'Record ';
+  }
   discardTake();
   state.index = index;
   setStatus('Press Space to record');
@@ -262,9 +220,46 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+/**
+ * Pulls a zip exported from the app on a phone into the repo.
+ *
+ * This is the promote step: recordings made on a device are device-local, and
+ * this is how a good set becomes the voice everyone gets.
+ */
+async function importArchive(file) {
+  if (!file) return;
+  const status = $('import-status');
+  status.textContent = 'Importing…';
+  const res = await fetch('/api/import', {
+    method: 'POST',
+    headers: { 'content-type': 'application/zip' },
+    body: file,
+  });
+  if (!res.ok) {
+    status.textContent = 'Import failed: ' + (await res.text());
+    return;
+  }
+  const { written, unknown } = await res.json();
+  status.textContent =
+    `Imported ${written.length}` +
+    (unknown.length ? `, skipped ${unknown.length} unrecognised` : '') +
+    '. Run `npm run audio:manifest`.';
+
+  // Reflect the new files in the list without a reload.
+  state.clips = (await (await fetch('/api/clips')).json()).clips;
+  renderList();
+  renderStage();
+}
+
+$('btn-import').onclick = () => $('import-file').click();
+$('import-file').onchange = (e) => {
+  importArchive(e.target.files?.[0]);
+  e.target.value = '';
+};
+
 // Exposed so the Playwright check can drive a full record -> save cycle
 // without depending on button positions.
-window.__studio = { state, toggleRecording, saveTake, go };
+window.__studio = { state, toggleRecording, saveTake, go, importArchive };
 
 (async function init() {
   const [clipsRes, glyphsRes] = await Promise.all([

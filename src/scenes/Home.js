@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { letterGlyph, uiGlyph } from '../lib/content.js';
 import { addGlyph } from '../lib/glyph.js';
 import { canInstall, onInstallAvailability, promptInstall } from '../lib/install.js';
+import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -99,6 +100,70 @@ export default class Home extends Phaser.Scene {
     );
 
     this.buildInstallHint();
+    this.buildGrownUpsButton();
+  }
+
+  /**
+   * Entry to the recording screen, behind a hold and a sum.
+   *
+   * That screen can delete recordings, so it must not be reachable by a child
+   * exploring the menu. Holding rules out a stray tap; the arithmetic rules out
+   * a child who worked out that holding does something.
+   */
+  buildGrownUpsButton() {
+    const button = makeButton(this, {
+      x: 96,
+      y: DESIGN.height - 74,
+      width: 148,
+      height: 56,
+      color: COLORS.panel,
+      // Opening is driven by the hold below, not by a tap.
+      onTap: () => {},
+    });
+
+    const text = label(this, 0, 0, 'Grown-ups', { size: 15, color: '#9fb0d8' });
+    button.add(text);
+    // Held so the verification run can press it without depending on where it
+    // happens to sit on screen.
+    this.grownUpsButton = button;
+
+    // A ring that fills while held, so it is obvious that holding is the point
+    // and the button is not simply broken.
+    const ring = this.add.graphics();
+    button.add(ring);
+    const drawRing = (t) => {
+      ring.clear();
+      if (t <= 0) return;
+      ring.lineStyle(3, COLORS.accent, 0.9);
+      ring.beginPath();
+      ring.arc(0, 0, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * t);
+      ring.strokePath();
+    };
+
+    attachHoldToOpen(this, button, {
+      onProgress: drawRing,
+      onOpen: async () => {
+        drawRing(0);
+        if (await askParentalQuestion()) this.openRecorder();
+      },
+    });
+  }
+
+  /**
+   * Loaded on demand: the recorder pulls in its own CSS and archive code, none
+   * of which a child playing the games ever needs.
+   */
+  async openRecorder() {
+    const { openRecorder } = await import('../ui/recorder.js');
+    // Phaser keeps handling keys underneath a DOM overlay, so a space bar meant
+    // for the record button would also poke the game.
+    this.input.keyboard.enabled = false;
+    openRecorder({
+      onClose: () => {
+        this.input.keyboard.enabled = true;
+        this.scene.restart();
+      },
+    });
   }
 
   /**

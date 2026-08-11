@@ -102,6 +102,23 @@ npm run dev & npm run verify:audio   # that file -> manifest -> played in-game
 
 Both delete the clip they recorded when they finish.
 
+If you touched recording, storage or the export format, run the whole loop:
+
+```sh
+npm run verify:recording
+```
+
+It drives the real parental gate, records against a synthetic microphone, checks
+the clip reached IndexedDB and plays, exports a zip, wipes the device, imports it
+back, hands the same zip to the studio and checks the file lands in
+`public/audio/recorded/`. It also asserts a wrong gate answer and a quick tap
+both fail to open the recorder. Everything it writes is cleaned up.
+
+`tests/clip-archive.test.mjs` checks the export against the system `unzip`,
+including CRCs, and reads back an archive compressed by the system `zip`. The
+export format is only useful if ordinary tools can open it, so it is tested
+against ordinary tools rather than only against its own reader.
+
 If you changed anything about the build, the service worker or the manifest,
 check the app still runs with the network off:
 

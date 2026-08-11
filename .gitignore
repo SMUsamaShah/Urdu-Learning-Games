@@ -5,3 +5,7 @@ preview-glyphs.png
 *.local
 .DS_Store
 .vite/
+offline-check.png
+recorder-check.png
+*.tmp.zip
+*.tmp.mjs

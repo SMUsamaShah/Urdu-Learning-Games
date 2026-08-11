@@ -20,11 +20,14 @@ import {
   AUDIO_EXTENSIONS,
   CONTENT_DIR,
   RECORDED_DIR,
+  ROOT,
   expectedClips,
   resolveClip,
 } from '../audio-keys.mjs';
+import { readArchive } from '../../src/lib/clip-archive.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const LIB_DIR = path.join(ROOT, 'src', 'lib');
 const PORT = Number(process.env.PORT) || 5174;
 
 const STATIC = {
@@ -32,6 +35,14 @@ const STATIC = {
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
 };
+
+/**
+ * Modules shared with the app, served so the studio and the in-app recorder run
+ * the same microphone code rather than two copies that drift apart.
+ * Allow-listed by name: this serves files from src/, so a path from the URL must
+ * never reach the filesystem.
+ */
+const SHARED_LIB = new Set(['recorder.js', 'clip-list.js', 'clip-archive.js']);
 
 const AUDIO_MIME = {
   webm: 'audio/webm',
@@ -105,6 +116,17 @@ const server = http.createServer(async (req, res) => {
     // console that would otherwise fail the verification run.
     if (route === '/favicon.ico') return send(res, 204, '');
 
+    if (req.method === 'GET' && route.startsWith('/lib/')) {
+      const name = route.slice('/lib/'.length);
+      if (!SHARED_LIB.has(name)) return send(res, 404, 'not found');
+      return send(
+        res,
+        200,
+        fs.readFileSync(path.join(LIB_DIR, name)),
+        'text/javascript; charset=utf-8'
+      );
+    }
+
     // The studio renders its prompts from the same baked outlines the game
     // uses, so what you read is exactly what the child will see.
     if (req.method === 'GET' && route === '/glyphs.json') {
@@ -135,6 +157,48 @@ const server = http.createServer(async (req, res) => {
       }
       const ext = path.extname(file).slice(1).toLowerCase();
       return send(res, 200, fs.readFileSync(file), AUDIO_MIME[ext] || 'application/octet-stream');
+    }
+
+    /**
+     * Promotes an export from a phone into the repo.
+     *
+     * Recordings made in the app live on that device. This is the bridge: hand
+     * the exported zip to the studio and the clips land in
+     * public/audio/recorded/, ready to refine and commit as the voice everyone
+     * gets. Doing it here rather than by hand means no unzipping, no renaming
+     * and no chance of a file ending up in the wrong place.
+     */
+    if (req.method === 'POST' && route === '/api/import') {
+      const body = await readBody(req);
+      if (body.length === 0) return send(res, 400, 'empty body');
+
+      const known = new Map(expectedClips().map((c) => [c.slug, c]));
+      const { clips, unknown } = await readArchive(
+        new Blob([body]),
+        (slug) => known.get(slug)?.key ?? null
+      );
+
+      const written = [];
+      for (const clip of clips) {
+        const ext = clip.ext.toLowerCase();
+        if (!AUDIO_EXTENSIONS.includes(ext)) {
+          unknown.push(`${clip.slug}.${clip.ext}`);
+          continue;
+        }
+        // Drop any previous take so a re-record in a different container does
+        // not leave two files that both resolve for the same clip.
+        removeRecording(clip.slug);
+        const name = `${clip.slug}.${ext}`;
+        fs.writeFileSync(
+          path.join(RECORDED_DIR, name),
+          Buffer.from(await clip.blob.arrayBuffer())
+        );
+        written.push(name);
+      }
+
+      console.log(`imported ${written.length} clip(s) into public/audio/recorded/`);
+      if (written.length) console.log('Run `npm run audio:manifest` to pick them up.');
+      return sendJson(res, 200, { written, unknown });
     }
 
     if (route.startsWith('/api/clip/')) {

@@ -60,6 +60,24 @@ export function numberGlyph(numberId) {
   return glyphs?.numbers[numberId] ?? null;
 }
 
+/** A letter's name written out ("بے"), as opposed to the letter itself ("ب"). */
+export function nameGlyph(letterId) {
+  return glyphs?.names[letterId] ?? null;
+}
+
+/**
+ * Resolves the `glyph` descriptor on a clip from src/lib/clip-list.js.
+ * Kept here so the recorder draws prompts from the same outlines the game uses,
+ * and what you read while recording is exactly what the child will see.
+ */
+export function glyphForClip({ kind, id, form }) {
+  if (kind === 'letter') return glyphs?.letters[id]?.[form] ?? null;
+  if (kind === 'name') return nameGlyph(id);
+  if (kind === 'word') return wordGlyph(id);
+  if (kind === 'number') return numberGlyph(id);
+  return null;
+}
+
 export function wordGlyph(wordId) {
   return glyphs?.words[wordId] ?? null;
 }
