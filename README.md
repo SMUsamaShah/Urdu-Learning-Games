@@ -14,6 +14,10 @@ comparable for Urdu. This is an attempt at one.
 Early. What works today:
 
 - **Flashcards** — every letter, all of its positional forms, and its word.
+- **Three games** — free exploration of the alphabet, picking a letter out of a
+  line-up, and popping the right balloon. The two guessing games draw their
+  wrong answers from the same shape family as the right one, so the choice is
+  always between letters that differ only in their dots.
 - **Audio system** — plays a letter's name, its sound and its word. Ships with
   no voice recordings, so the app is silent until somebody records it.
 - **Record in your own voice**, on any device, stored on that device and
@@ -38,6 +42,24 @@ only needs it if you edit content.
 
 To try it on a phone, run `npm run dev` and open the network address it prints
 on a device on the same wifi.
+
+## The games
+
+**Letters** is free exploration: pick any letter, see it large with every
+positional form it actually has, and the word that teaches it. Nothing is
+locked and there is no wrong move.
+
+**Find the letter** and **Balloons** ask the same question in two ways: which of
+these is the letter? Both work whether or not anything has been recorded. With a
+recording, the letter is spoken and the child maps a sound to a shape. Without
+one, the letter is shown and the child matches shapes — and since the wrong
+answers come from the same shape family, that means telling ب from ت from ث,
+which is the discrimination Urdu reading actually turns on. Once a child is a
+few in a row, the shown prompt switches to a different positional form, so it
+stops being a silhouette match and starts being recognition.
+
+Neither game has a fail state. A wrong answer nudges, keeps the round, and lets
+the child try again.
 
 ## Installing it on a phone
 
@@ -221,8 +243,8 @@ tests/              content and audio integrity checks
 
 1. ~~Glyph pipeline and Flashcards~~ done
 2. ~~Audio: recording studio, playback, override chain~~ done
-3. Listen-and-tap, using shape-family siblings as distractors
-4. Balloon pop
+3. ~~Find the letter, using shape-family siblings as distractors~~ done
+4. ~~Balloon pop~~ done
 5. Stroke editor, then tracing
 6. Numbers and words as their own games
 7. ~~Installable, offline PWA, parental gate~~ done

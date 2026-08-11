@@ -17,6 +17,7 @@
     "verify:audio": "node tools/verify-audio.mjs",
     "verify:offline": "node tools/verify-offline.mjs",
     "verify:recording": "node tools/verify-recording.mjs",
+    "verify:games": "node tools/verify-games.mjs",
     "test": "node --test \"tests/**/*.test.mjs\"",
     "strokes": "vite --config tools/stroke-editor/vite.config.js"
   },

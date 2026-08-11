@@ -47,6 +47,22 @@ for (const [name, viewport] of Object.entries(VIEWPORTS)) {
   await selectLetter(page, 34);
   await page.screenshot({ path: path.join(OUT, `${name}-flashcards-midword.png`) });
 
+  await startScene(page, 'FindLetter');
+  await page.screenshot({ path: path.join(OUT, `${name}-find-letter.png`) });
+
+  // Later rounds put four letters up instead of two, so capture that too.
+  await page.evaluate(() => {
+    const scene = window.__game.scene.getScene('FindLetter');
+    scene.streak = 6;
+    scene.newRound();
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(OUT, `${name}-find-letter-four.png`) });
+
+  await startScene(page, 'Balloons');
+  await page.waitForTimeout(2200);
+  await page.screenshot({ path: path.join(OUT, `${name}-balloons.png`) });
+
   if (errors.length) {
     console.error(`\n${name} produced ${errors.length} console error(s):`);
     for (const e of errors) console.error('  ' + e);

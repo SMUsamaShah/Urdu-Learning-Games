@@ -13,7 +13,8 @@
   "strings": [
     { "id": "app-title",   "text": "اردو کھیل",     "roman": "Urdu Games" },
     { "id": "letters",     "text": "حروف",          "roman": "Letters" },
-    { "id": "listen-tap",  "text": "سنو اور چنو",   "roman": "Listen and choose" },
+    { "id": "find-letter", "text": "حرف ڈھونڈو",    "roman": "Find the letter" },
+    { "id": "again",       "text": "پھر سے",        "roman": "Again" },
     { "id": "balloons",    "text": "غبارے",         "roman": "Balloons" },
     { "id": "trace",       "text": "لکھو",          "roman": "Write" },
     { "id": "numbers",     "text": "گنتی",          "roman": "Numbers" },

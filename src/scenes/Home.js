@@ -25,6 +25,20 @@ const GAMES = [
     // obvious pick, 🔤, is a picture of the Latin alphabet.
     icon: { letter: 'be', form: 'isolated' },
   },
+  {
+    scene: 'FindLetter',
+    ui: 'find-letter',
+    roman: 'Find the letter',
+    color: 0x5f9e5a,
+    icon: { letter: 'sin', form: 'isolated' },
+  },
+  {
+    scene: 'Balloons',
+    ui: 'balloons',
+    roman: 'Balloons',
+    color: 0xb4576d,
+    icon: { letter: 'mim', form: 'isolated' },
+  },
 ];
 
 export default class Home extends Phaser.Scene {

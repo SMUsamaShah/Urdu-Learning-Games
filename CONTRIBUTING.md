@@ -102,6 +102,24 @@ npm run dev & npm run verify:audio   # that file -> manifest -> played in-game
 
 Both delete the clip they recorded when they finish.
 
+If you touched either guessing game:
+
+```sh
+npm run dev & npm run verify:games
+```
+
+It plays a dozen rounds of each, and checks the things that would make a round
+unplayable rather than merely ugly: that the answer is always among the choices,
+that a right answer advances and a wrong one keeps the round, and that balloons
+do not multiply between rounds.
+
+Note that everything in there waits on a condition, never on a duration. Phaser
+advances its clock by a fixed per-frame delta, so under headless WebGL — which
+renders at roughly half the usual frame rate — game time passes at about half
+wall-clock speed, and a 760ms `delayedCall` can take 1.6s of real time. A test
+that sleeps a fixed number of milliseconds will pass on your machine and fail in
+CI.
+
 If you touched recording, storage or the export format, run the whole loop:
 
 ```sh
