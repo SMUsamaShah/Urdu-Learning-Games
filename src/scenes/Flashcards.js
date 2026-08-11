@@ -9,6 +9,8 @@ import {
   wordGlyph,
 } from '../lib/content.js';
 import { addGlyph } from '../lib/glyph.js';
+import { clipKeys, hasClip, play, playSequence, stopAll } from '../lib/audio.js';
+import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -34,6 +36,29 @@ const FORM_LABELS = {
   final: 'final',
 };
 
+/**
+ * Marks something as tappable-to-hear.
+ *
+ * Only drawn when a recording actually exists: promising sound and delivering
+ * silence is worse than a plain card, and the recordings arrive gradually.
+ */
+function speakerIcon(scene, x, y, size = 26) {
+  return scene.add
+    .text(x, y, '🔊', { fontSize: `${size}px` })
+    .setOrigin(0.5)
+    .setAlpha(0.75);
+}
+
+/** Gives a container a tap handler with a press animation and a blip. */
+function makeTappable(scene, target, onTap) {
+  target.setInteractive({ useHandCursor: true });
+  target.on('pointerup', () => {
+    sfx.tap();
+    onTap();
+  });
+  return target;
+}
+
 export default class Flashcards extends Phaser.Scene {
   constructor() {
     super('Flashcards');
@@ -58,8 +83,18 @@ export default class Flashcards extends Phaser.Scene {
       width: 96,
       height: 68,
       color: COLORS.panel,
-      onTap: () => this.scene.start('Home'),
+      onTap: () => {
+        sfx.swoosh();
+        this.scene.start('Home');
+      },
     }).add(this.add.text(0, 0, '⌂', { fontSize: '34px' }).setOrigin(0.5));
+
+    // Leaving mid-word should not leave a voice talking over the menu.
+    this.events.once('shutdown', stopAll);
+
+    // Say the first letter once the scene is up. Reaching here always took a
+    // tap on Home, so the audio context is already unlocked.
+    play(clipKeys.letterName(this.sequence[this.selectedIndex]));
   }
 
   /** The scrollable letter picker across the bottom, laid out right to left. */
@@ -181,6 +216,10 @@ export default class Flashcards extends Phaser.Scene {
     this.highlightStrip();
     this.layoutStrip();
     this.buildCard();
+
+    // Say the letter's name on arrival. For a child who cannot read, this is
+    // the whole point of picking a letter.
+    play(clipKeys.letterName(this.sequence[index]));
   }
 
   /** The large letter, its positional forms, and its word. */
@@ -219,6 +258,21 @@ export default class Flashcards extends Phaser.Scene {
     card.add(label(this, HERO_X, 415, letter.roman, { size: 30, color: COLORS.ink }));
     card.add(label(this, HERO_X, 458, `says "${letter.sound}"`, { size: 19 }));
 
+    // Tapping the big letter says its name and then the sound it makes, with a
+    // beat between them. Hearing the two next to each other is what separates
+    // them: "bay ... b".
+    const nameKey = clipKeys.letterName(letterId);
+    const soundKey = clipKeys.letterSound(letterId);
+    const heroZone = this.add
+      .zone(HERO_X, 310, 350, 400)
+      .setOrigin(0.5, 0.5);
+    card.add(
+      makeTappable(this, heroZone, () => playSequence([nameKey, soundKey]))
+    );
+    if (hasClip(nameKey) || hasClip(soundKey)) {
+      card.add(speakerIcon(this, HERO_X + 140, 140));
+    }
+
     // --- Positional forms --------------------------------------------------
     const forms = letterForms(letterId);
     card.add(
@@ -248,6 +302,14 @@ export default class Flashcards extends Phaser.Scene {
           height: 76,
           color: COLORS.ink,
         })
+      );
+
+      // Every form makes the same sound — that is the lesson. Tapping any of
+      // them plays it.
+      card.add(
+        makeTappable(this, this.add.zone(x, 216, boxW, 128).setOrigin(0.5), () =>
+          play(soundKey)
+        )
       );
 
       const formName = uiGlyph(form);
@@ -296,6 +358,16 @@ export default class Flashcards extends Phaser.Scene {
           color: COLORS.ink,
         })
       );
+    }
+
+    const wordKey = clipKeys.word(word.id);
+    card.add(
+      makeTappable(this, this.add.zone(MAIN_X, 472, panelW, 172).setOrigin(0.5), () =>
+        play(wordKey)
+      )
+    );
+    if (hasClip(wordKey)) {
+      card.add(speakerIcon(this, MAIN_X - panelW / 2 + 34, 410, 22));
     }
 
     // letterIndex is not always 0. R, do-chashmi-he and choti-ye never begin a

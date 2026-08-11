@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { loadGlyphs } from '../lib/content.js';
+import { audioStats, initAudio, loadAudioManifest } from '../lib/audio.js';
+import { initSfx } from '../lib/sfx.js';
 import { COLORS, DESIGN, label } from '../lib/theme.js';
 
 /**
@@ -35,7 +37,22 @@ export default class Preload extends Phaser.Scene {
     });
 
     try {
-      await loadGlyphs();
+      // Both are small and independent. Audio is only a manifest at this point;
+      // the clips themselves load lazily on first use.
+      await Promise.all([loadGlyphs(), loadAudioManifest()]);
+      initAudio(this.game);
+      initSfx(this.game);
+
+      const { recorded = 0, expected = 0 } = audioStats();
+      if (recorded === 0) {
+        console.info(
+          'No voice recordings yet — the app runs silent. ' +
+            'Record them with `npm run record`, then `npm run audio:manifest`.'
+        );
+      } else if (recorded < expected) {
+        console.info(`Voice recordings: ${recorded}/${expected}.`);
+      }
+
       this.scene.start('Home');
     } catch (error) {
       bar.destroy();

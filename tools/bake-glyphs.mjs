@@ -183,7 +183,7 @@ async function main() {
   const { words } = readJson('words.json');
   const { strings } = readJson('ui.json');
 
-  const out = { upem: 0, letters: {}, numbers: {}, words: {}, ui: {} };
+  const out = { upem: 0, letters: {}, names: {}, numbers: {}, words: {}, ui: {} };
   let written = 0;
   const empties = [];
 
@@ -209,6 +209,11 @@ async function main() {
       const baked = bakeRun(font, FORMS[form](letter.char));
       out.letters[letter.id][form] = record(baked, `${letter.id}.${form}`);
     }
+
+    // The letter's spoken name (بے) as its own glyph. Distinct from the letter
+    // itself (ب), and needed wherever the name is shown rather than the shape —
+    // the recording studio prompts with it.
+    out.names[letter.id] = record(bakeRun(font, letter.name), `name:${letter.id}`);
   }
 
   for (const number of numbers) {

@@ -40,6 +40,11 @@
     { "id": "naak",     "word": "ناک",    "roman": "naak",     "gloss": "nose",      "emoji": "👃", "image": null, "letter": "nun",           "letterIndex": 0 },
     { "id": "haathi",   "word": "ہاتھی",  "roman": "haathi",   "gloss": "elephant",  "emoji": "🐘", "image": null, "letter": "choti-he",      "letterIndex": 0 },
     { "id": "bhaalu",   "word": "بھالو",  "roman": "bhaalu",   "gloss": "bear",      "emoji": "🐻", "image": null, "letter": "do-chashmi-he", "letterIndex": 1 },
-    { "id": "chaabi",   "word": "چابی",   "roman": "chaabi",   "gloss": "key",       "emoji": "🔑", "image": null, "letter": "choti-ye",      "letterIndex": 3 }
+    { "id": "chaabi",   "word": "چابی",   "roman": "chaabi",   "gloss": "key",       "emoji": "🔑", "image": null, "letter": "choti-ye",      "letterIndex": 3 },
+    { "id": "samar",    "word": "ثمر",    "roman": "samar",    "gloss": "fruit",     "emoji": "🍐", "image": null, "letter": "se",            "letterIndex": 0 },
+    { "id": "halwa",    "word": "حلوہ",   "roman": "halwa",    "gloss": "halwa",     "emoji": "🍮", "image": null, "letter": "bari-he",       "letterIndex": 0 },
+    { "id": "zhaala",   "word": "ژالہ",   "roman": "zhaala",   "gloss": "hail",      "emoji": "🧊", "image": null, "letter": "zhe",           "letterIndex": 0 },
+    { "id": "wardi",    "word": "وردی",   "roman": "wardi",    "gloss": "uniform",   "emoji": "👮", "image": null, "letter": "wao",           "letterIndex": 0 },
+    { "id": "chaaye",   "word": "چائے",   "roman": "chaaye",   "gloss": "tea",       "emoji": "☕", "image": null, "letter": "bari-ye",       "letterIndex": 3 }
   ]
 }

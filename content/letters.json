@@ -86,7 +86,7 @@
       "joins": "both",
       "shapeFamily": "be",
       "dots": { "count": 3, "position": "above" },
-      "word": null
+      "word": "samar"
     },
     {
       "id": "jim",
@@ -119,7 +119,7 @@
       "joins": "both",
       "shapeFamily": "jim",
       "dots": { "count": 0, "position": null },
-      "word": null
+      "word": "halwa"
     },
     {
       "id": "khe",
@@ -207,7 +207,7 @@
       "joins": "right",
       "shapeFamily": "re",
       "dots": { "count": 3, "position": "above" },
-      "word": null
+      "word": "zhaala"
     },
     {
       "id": "sin",
@@ -383,7 +383,7 @@
       "joins": "right",
       "shapeFamily": "wao",
       "dots": { "count": 0, "position": null },
-      "word": null
+      "word": "wardi"
     },
     {
       "id": "choti-he",
@@ -438,7 +438,7 @@
       "joins": "right",
       "shapeFamily": "ye",
       "dots": { "count": 0, "position": null },
-      "word": null
+      "word": "chaaye"
     }
   ]
 }

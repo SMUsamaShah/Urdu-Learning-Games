@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "bake": "node tools/bake-glyphs.mjs",
     "audio:manifest": "node tools/build-audio-manifest.mjs",
-    "audio:tts": "node tools/gen-tts.mjs",
+    "record": "node tools/record-studio/server.mjs",
+    "verify:studio": "node tools/verify-studio.mjs",
+    "verify:audio": "node tools/verify-audio.mjs",
     "test": "node --test \"tests/**/*.test.mjs\"",
     "strokes": "vite --config tools/stroke-editor/vite.config.js"
   },

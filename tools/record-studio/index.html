@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Recording studio — Urdu Learning Games</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <aside id="sidebar">
+      <header>
+        <h1>Recording studio</h1>
+        <div id="progress-text">loading…</div>
+        <div id="progress-track"><div id="progress-bar"></div></div>
+      </header>
+      <nav id="clip-list"></nav>
+    </aside>
+
+    <main>
+      <div id="stage">
+        <div id="group-label"></div>
+        <div id="glyph"></div>
+        <div id="urdu-note"></div>
+        <div id="say"></div>
+        <div id="roman"></div>
+      </div>
+
+      <div id="controls">
+        <div id="meter"><div id="meter-fill"></div></div>
+        <div id="status">Press <kbd>Space</kbd> to start recording</div>
+        <div id="buttons">
+          <button id="btn-prev" title="Previous (←)">←</button>
+          <button id="btn-record" class="primary">Record <kbd>Space</kbd></button>
+          <button id="btn-play">Play <kbd>P</kbd></button>
+          <button id="btn-save" class="save">Save &amp; next <kbd>Enter</kbd></button>
+          <button id="btn-redo">Redo <kbd>R</kbd></button>
+          <button id="btn-next" title="Next (→)">→</button>
+        </div>
+        <div id="hint">
+          Recordings are written straight into
+          <code>public/audio/recorded/</code>. Run
+          <code>npm run audio:manifest</code> when you are done.
+        </div>
+      </div>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

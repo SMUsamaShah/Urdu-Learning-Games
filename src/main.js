@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import Preload from './scenes/Preload.js';
 import Home from './scenes/Home.js';
 import Flashcards from './scenes/Flashcards.js';
+import * as audio from './lib/audio.js';
 import { COLORS, DESIGN } from './lib/theme.js';
 
 /**
@@ -29,6 +30,9 @@ const game = new Phaser.Game({
   scene: [Preload, Home, Flashcards],
 });
 
-// Exposed so the Playwright tests can drive scene changes without depending on
-// pixel coordinates, which would break on every layout tweak.
+// Exposed so the Playwright checks can drive the app without depending on pixel
+// coordinates, which would break on every layout tweak. `__audio` lets a test
+// assert that a clip really decoded and played, which is otherwise invisible
+// from outside the page.
 window.__game = game;
+window.__audio = audio;

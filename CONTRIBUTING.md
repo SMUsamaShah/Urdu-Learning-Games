@@ -38,14 +38,36 @@ worse than no word: leave `"word": null` rather than force one.
 
 ## Record audio
 
-Not wired up yet. When it is, recordings will drop into
-`assets/audio/recorded/` and override the generated ones file by file, with no
-code change. Each letter needs three separate clips, and they are genuinely
-different things:
+The app needs 120 spoken clips and ships with none, so this is the single most
+useful thing anyone can contribute.
+
+```sh
+npm run record        # http://localhost:5174, then follow the prompts
+npm run audio:manifest
+```
+
+Files land in `public/audio/recorded/`. See
+[the README](README.md#recording-the-voice) for the keyboard shortcuts.
+
+Three clip types exist per letter and they are genuinely different things:
 
 - **name** — what the letter is called (`بے`)
 - **sound** — the phoneme it makes (`b`)
 - **word** — the example word
+
+Recording tips:
+
+- Speak the sound clips as bare phonemes. The instinct is to say the letter's
+  name instead, which is the one thing that clip must not contain.
+- Leave a beat of silence at the start and end. The app plays a name and a
+  sound back to back, and clipped edges run them together.
+- Watch the level meter. A recording that never leaves the left of the bar is
+  too quiet to hear on a phone speaker; one that turns red is clipping.
+- A native or fluent speaker's voice, ideally the child's parent. Accent
+  matters less than being consistent across all 120.
+
+You do not have to finish. Missing clips are silent, never broken, so a
+contribution of ten good clips is worth having.
 
 ## Add a game
 
@@ -65,9 +87,20 @@ anything useful, do not show it rather than disabling it.
 ## Before opening a pull request
 
 ```sh
-npm run bake     # if you touched anything in content/
+npm run bake            # if you touched anything in content/
+npm run audio:manifest  # if you added or removed a recording
 npm test
 ```
+
+If you changed the audio or recording code, the two verification scripts drive
+the real thing using a synthetic microphone, so they need no hardware:
+
+```sh
+npm run verify:studio   # record -> save -> a file on disk
+npm run dev & npm run verify:audio   # that file -> manifest -> played in-game
+```
+
+Both delete the clip they recorded when they finish.
 
 If you changed the glyph baker, also run `node tools/preview-glyphs.mjs` and
 actually look at the output. The tests verify that glyphs exist and differ from
