@@ -50,12 +50,19 @@ jobs:
         # otherwise ship an app whose glyphs disagree with its own data.
         run: git diff --exit-code content/glyphs.json
 
-      - name: Run content integrity tests
-        # Before the build, so a bad letter or word fails the deploy rather than
-        # publishing something that teaches a child the wrong thing.
-        run: npm test
+      - name: Check audio manifest is up to date
+        run: |
+          npm run audio:manifest
+          git diff --exit-code content/audio.json
 
       - run: npm run build
+
+      - name: Run integrity tests
+        # After the build, not before: the service-worker tests read dist/ and
+        # skip without it, and the precache assertions are the ones that catch
+        # an asset that works online and is silent offline. A failure here still
+        # blocks the deploy, since the upload step runs after it.
+        run: npm test
 
       - uses: actions/configure-pages@v5
 
