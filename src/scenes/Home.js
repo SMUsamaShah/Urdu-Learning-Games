@@ -3,6 +3,7 @@ import { letterGlyph, numberGlyph, uiGlyph } from '../lib/content.js';
 import { addGlyph, fitGlyphHeight } from '../lib/glyph.js';
 import { addWordImage, queueWordImages } from '../lib/images.js';
 import { canInstall, onInstallAvailability, promptInstall } from '../lib/install.js';
+import { addMascot } from '../lib/mascot.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { addScenery } from '../lib/scenery.js';
 import { COLORS, DESIGN, chunkyGlyph, label, makeButton } from '../lib/theme.js';
@@ -193,6 +194,13 @@ export default class Home extends Phaser.Scene {
       'No ads · No tracking · Works offline',
       { size: 16, color: COLORS.inkDim }
     );
+
+    // The cub, standing to the left of the grid and pointing at it. Same
+    // character, same corner, on the menu as in every game — that consistency
+    // is most of what makes it read as somebody rather than as a drawing.
+    // Higher up than on the game screens so it stands clear of the Grown-ups
+    // button in the corner beneath it.
+    addMascot(this, 112, 610, { scale: 0.78 }).point();
 
     this.buildInstallHint();
     this.buildGrownUpsButton();

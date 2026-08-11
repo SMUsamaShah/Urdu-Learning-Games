@@ -6,9 +6,12 @@ import {
   shapeFamilySiblings,
 } from '../lib/content.js';
 import { addGlyph, fitGlyphHeight } from '../lib/glyph.js';
-import { clipKeys, hasClip, play, stopAll } from '../lib/audio.js';
+import { clipKeys, hasClip, stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
-import { confetti } from '../lib/celebrate.js';
+import { addBanner } from '../lib/banner.js';
+import { paperFall } from '../lib/celebrate.js';
+import { addStageMascot } from '../lib/mascot.js';
+import { sayLetter } from '../lib/say.js';
 import { addScenery } from '../lib/scenery.js';
 import { COLORS, DESIGN, chunkyGlyph, familyColor, label, makeButton } from '../lib/theme.js';
 
@@ -37,6 +40,12 @@ import { COLORS, DESIGN, chunkyGlyph, familyColor, label, makeButton } from '../
 const CROSS_MS = [11000, 10000, 9000, 8000];
 const MAX_BALLOONS = 6;
 const RADIUS = 74;
+/**
+ * Where balloons are allowed to be. The left margin is wide because the cub
+ * stands there: a balloon rising through its face is not charming, it just
+ * looks like two things drawn on top of each other.
+ */
+const LANE = { left: 268, right: DESIGN.width - 150 };
 
 export default class Balloons extends Phaser.Scene {
   constructor() {
@@ -83,15 +92,18 @@ export default class Balloons extends Phaser.Scene {
       color: COLORS.accentCss,
     });
 
-    // The prompt sits in a band across the top. Balloons are created later and
-    // would otherwise draw over it, so both are lifted above them: the question
-    // must never be hidden by the answers drifting past it.
-    this.add
-      .graphics()
-      .fillStyle(COLORS.card, 1)
-      .fillRect(0, 0, DESIGN.width, 132)
-      .setDepth(10);
-    this.promptLayer = this.add.container(DESIGN.width / 2, 66).setDepth(11);
+    this.banner = addBanner(this, { ui: 'pop-balloon', roman: 'Pop the balloon' });
+
+    // A badge holding the letter to look for, in the corner, tappable to hear
+    // it again. Taken straight from the reference apps, which all put the
+    // target and its replay button in the same corner on every screen — a child
+    // who has lost track of the question needs one place to look, and it must
+    // not be somewhere the answers drift over.
+    this.promptLayer = this.add.container(212, 66).setDepth(21);
+
+    // The cub watches the balloons go by, above them so one drifting past does
+    // not cross its face.
+    this.mascot = addStageMascot(this, { depth: 12 });
 
     this.events.once('shutdown', stopAll);
     this.newRound();
@@ -110,6 +122,8 @@ export default class Balloons extends Phaser.Scene {
     const pool = this.sequence.filter((id) => id !== this.target);
     this.target = Phaser.Utils.Array.GetRandom(pool);
 
+    // Back to the question, in case the last round ended on "well done".
+    this.banner?.setInstruction('pop-balloon', 'Pop the balloon');
     this.buildPrompt();
     this.updateStreak();
     this.speak();
@@ -127,8 +141,8 @@ export default class Balloons extends Phaser.Scene {
     // genuinely hard for a small finger to choose between.
     const columns = Phaser.Utils.Array.Shuffle(
       order.map((_, i) => {
-        const span = (DESIGN.width - 320) / (order.length - 1);
-        return 160 + i * span;
+        const span = (LANE.right - LANE.left) / (order.length - 1);
+        return LANE.left + i * span;
       })
     );
 
@@ -136,6 +150,8 @@ export default class Balloons extends Phaser.Scene {
       const t = i / (order.length - 1);
       this.launch(id, bottom - t * (bottom - top), columns[i]);
     });
+
+    this.mascot?.point();
   }
 
   /**
@@ -147,10 +163,10 @@ export default class Balloons extends Phaser.Scene {
    */
   pickX() {
     const low = this.balloons.filter((b) => b.y > DESIGN.height - 220);
-    let best = Phaser.Math.Between(160, DESIGN.width - 160);
+    let best = Phaser.Math.Between(LANE.left, LANE.right);
     let bestGap = -1;
     for (let i = 0; i < 8; i++) {
-      const candidate = Phaser.Math.Between(160, DESIGN.width - 160);
+      const candidate = Phaser.Math.Between(LANE.left, LANE.right);
       const gap = low.length
         ? Math.min(...low.map((b) => Math.abs(b.x - candidate)))
         : Infinity;
@@ -178,56 +194,45 @@ export default class Balloons extends Phaser.Scene {
     return chosen;
   }
 
+  /**
+   * The target badge: the letter to find, always shown, always tappable.
+   *
+   * The letter is shown whether or not there is a recording. In the tile games
+   * showing it would give the answer away by making the prompt a copy of the
+   * right answer; here the answers are already all on screen, and the question
+   * is which one — so hiding the letter would only make it a memory test.
+   */
   buildPrompt() {
     this.promptLayer.removeAll(true);
+    const letter = lettersById.get(this.target);
     const spoken = hasClip(clipKeys.letterName(this.target));
 
-    if (spoken) {
-      const button = makeButton(this, {
-        x: 0,
-        y: 0,
-        width: 260,
-        height: 86,
-        color: COLORS.accent,
-        onTap: () => this.speak(),
-      });
-      button.add(this.add.text(-70, 0, '🔊', { fontSize: '40px' }).setOrigin(0.5));
-      button.add(
-        label(this, 26, 0, 'pop this one', { size: 20, color: COLORS.onColor })
-      );
-      this.promptLayer.add(button);
-    } else {
-      // Without a recording the letter itself is the prompt, so the game is
-      // playable before anybody has recorded anything. It gets a plate: some
-      // letters are a single thin stroke and would otherwise be lost against
-      // the band.
-      const letter = lettersById.get(this.target);
-      this.promptLayer.add(label(this, -96, 0, 'pop this', { size: 22 }));
+    const badge = makeButton(this, {
+      x: 0,
+      y: 0,
+      width: 132,
+      height: 108,
+      color: familyColor(letter.shapeFamily),
+      onTap: () => this.speak(),
+    });
 
-      const plate = this.add.graphics();
-      plate.fillStyle(COLORS.bg, 1);
-      plate.fillRoundedRect(-8, -46, 108, 92, 18);
-      plate.lineStyle(3, familyColor(letter.shapeFamily), 0.9);
-      plate.strokeRoundedRect(-8, -46, 108, 92, 18);
-      this.promptLayer.add(plate);
+    const glyph = letterGlyph(this.target, 'isolated');
+    const height = Math.round(fitGlyphHeight(glyph, 96, 58));
+    badge.add(
+      addGlyph(this, 0, -6, `balloon:prompt:${this.target}:${height}:chunky`, glyph,
+        chunkyGlyph(height))
+    );
+    badge.add(
+      spoken
+        ? this.add.text(0, 36, '🔊', { fontSize: '24px' }).setOrigin(0.5)
+        : label(this, 0, 36, 'pop this', { size: 13, color: COLORS.onColorDim })
+    );
 
-      this.promptLayer.add(
-        (() => {
-          const g = letterGlyph(this.target, 'isolated');
-          const h = Math.round(fitGlyphHeight(g, 96, 60));
-          return addGlyph(this, 46, 0, `balloon:prompt:${this.target}:${h}`, g, {
-            height: h,
-            color: COLORS.ink,
-          });
-        })()
-      );
-    }
+    this.promptLayer.add(badge);
   }
 
   speak() {
-    if (hasClip(clipKeys.letterName(this.target))) {
-      play(clipKeys.letterName(this.target));
-    }
+    sayLetter(this.target);
   }
 
   updateStreak() {
@@ -343,6 +348,7 @@ export default class Balloons extends Phaser.Scene {
       sfx.pop();
       this.streak = 0;
       this.updateStreak();
+      this.mascot?.wonder();
       this.remove(balloon);
       this.time.delayedCall(120, () => {
         if (this.scene.isActive() && !this.locked) {
@@ -357,7 +363,16 @@ export default class Balloons extends Phaser.Scene {
     sfx.correct();
     this.streak++;
     this.updateStreak();
+    this.mascot?.cheer();
     this.remove(balloon);
+
+    // Every fifth in a row, the whole screen celebrates rather than just the
+    // balloon. See QuizScene for why this is rationed.
+    if (this.streak % 5 === 0) {
+      paperFall(this);
+      sfx.fanfare();
+      this.banner.setInstruction('well-done', 'Well done!');
+    }
 
     // Let the remaining balloons drift off rather than vanishing, then reset.
     for (const other of this.balloons) {

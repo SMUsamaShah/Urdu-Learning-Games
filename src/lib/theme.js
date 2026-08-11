@@ -80,10 +80,68 @@ export function familyColor(family) {
 }
 
 /**
- * A large, rounded, tappable button with a press animation.
+ * The outline of a star, as points on an ellipse rather than a circle.
+ *
+ * Elliptical because the things that go inside these are Urdu letters, and Urdu
+ * has letters several times wider than they are tall. A round star sized to fit
+ * ے across its middle would be enormous; a wide one is the same star, stretched
+ * to the shape of its contents.
+ *
+ * @param {number} width
+ * @param {number} height
+ * @param {number} [inset] how deep the notches cut, as a fraction of the radius
+ */
+export function starPoints(width, height, inset = 0.54) {
+  const points = [];
+  for (let i = 0; i < 10; i++) {
+    const radius = i % 2 ? inset : 1;
+    const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+    points.push({
+      x: (Math.cos(angle) * radius * width) / 2,
+      y: (Math.sin(angle) * radius * height) / 2,
+    });
+  }
+  return points;
+}
+
+/**
+ * A scalloped sticker outline: a rounded shape with a bumpy edge.
+ *
+ * The alternative playful shape to a star, and the one the letter games use.
+ * A five-pointed star is thin across its middle, so an Urdu letter placed in
+ * one has to shrink a long way to fit between the notches — and letter
+ * legibility is the entire point of those games. A scallop keeps nearly all of
+ * the area while still being obviously not a rectangle.
+ */
+export function blobPoints(width, height, lobes = 9, depth = 0.075) {
+  const points = [];
+  const steps = lobes * 10;
+  for (let i = 0; i < steps; i++) {
+    const angle = (i / steps) * Math.PI * 2 - Math.PI / 2;
+    const radius = 1 + depth * Math.cos(angle * lobes);
+    points.push({
+      x: (Math.cos(angle) * radius * width) / 2,
+      y: (Math.sin(angle) * radius * height) / 2,
+    });
+  }
+  return points;
+}
+
+/** Points scaled towards the centre, for drawing the inner rim. */
+function shrink(points, factor) {
+  return points.map((p) => ({ x: p.x * factor, y: p.y * factor }));
+}
+
+/**
+ * A large, tappable button with a press animation.
  *
  * Deliberately has no fail or disabled state: in a preschool app every tap
  * should do something, so buttons that are not ready simply are not shown.
+ *
+ * The hit area is the bounding box whatever the shape. That is deliberate for a
+ * star: the notches between its arms are exactly where a three-year-old's
+ * finger lands, and a tap that does nothing because it missed by 8px reads as a
+ * broken game rather than a near miss.
  *
  * @param {Phaser.Scene} scene
  * @param {object} config
@@ -92,28 +150,52 @@ export function familyColor(family) {
  * @param {number} config.width
  * @param {number} config.height
  * @param {number} [config.color]
+ * @param {'card'|'star'|'blob'} [config.shape='card']
  * @param {boolean} [config.rim=true] The white-and-dark sticker edge. Off for
  *   the small chrome buttons, where it is just noise.
  * @param {() => void} config.onTap
  * @returns {Phaser.GameObjects.Container}
  */
 export function makeButton(scene, config) {
-  const { x, y, width, height, color = COLORS.panel, rim = true, onTap } = config;
+  const {
+    x,
+    y,
+    width,
+    height,
+    color = COLORS.panel,
+    shape = 'card',
+    rim = true,
+    onTap,
+  } = config;
   const container = scene.add.container(x, y);
+
+  let outline = null;
+  if (shape === 'star') outline = starPoints(width, height);
+  else if (shape === 'blob') outline = blobPoints(width, height);
 
   const shadow = scene.add.graphics();
   shadow.fillStyle(COLORS.shadow, 0.22);
-  shadow.fillRoundedRect(-width / 2, -height / 2 + 8, width, height, 26);
+  if (outline) {
+    shadow.fillPoints(outline.map((p) => ({ x: p.x, y: p.y + 8 })), true);
+  } else {
+    shadow.fillRoundedRect(-width / 2, -height / 2 + 8, width, height, 26);
+  }
 
   const face = scene.add.graphics();
   face.fillStyle(color, 1);
-  face.fillRoundedRect(-width / 2, -height / 2, width, height, 26);
+  if (outline) face.fillPoints(outline, true);
+  else face.fillRoundedRect(-width / 2, -height / 2, width, height, 26);
 
   // A white rim with a dark line outside it. This is what makes a coloured
-  // rectangle read as a sticker sitting on the scene rather than a hole cut
-  // out of it, and it is the single most recognisable thing about the look of
-  // the apps this is aimed at.
-  if (rim) {
+  // shape read as a sticker sitting on the scene rather than a hole cut out of
+  // it, and it is the single most recognisable thing about the look of the apps
+  // this is aimed at.
+  if (rim && outline) {
+    face.lineStyle(6, 0xffffff, 0.95);
+    face.strokePoints(shrink(outline, shape === 'star' ? 0.9 : 0.93), true);
+    face.lineStyle(3, COLORS.outline, 0.85);
+    face.strokePoints(outline, true);
+  } else if (rim) {
     face.lineStyle(6, 0xffffff, 0.95);
     face.strokeRoundedRect(-width / 2 + 3, -height / 2 + 3, width - 6, height - 6, 23);
     face.lineStyle(3, COLORS.outline, 0.85);

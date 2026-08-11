@@ -6,6 +6,15 @@
  * moment something bursts — so getting an answer right throws confetti and
  * bounces a star up the screen, and that is the actual reason to play again.
  *
+ * Two sizes, and keeping them apart is the point:
+ *
+ *   - `confetti`, `dance` and `flyStar` belong to one right answer. They happen
+ *     at the thing that was tapped.
+ *   - `paperFall` belongs to finishing something — a run of five, a completed
+ *     letter — and happens to the whole screen. Firing it on every answer would
+ *     turn it into wallpaper inside a minute, and there would then be nothing
+ *     left to mark actually finishing.
+ *
  * Procedural, like everything else here: no sprite sheets to download and
  * nothing to cache.
  */
@@ -88,13 +97,82 @@ export function flyStar(scene, from, to, onArrive) {
   });
 }
 
-/** A quick springy bounce, for the thing that was just tapped correctly. */
-export function cheer(scene, target) {
+/**
+ * Paper falling across the whole screen, for finishing something.
+ *
+ * Distinct from `confetti`, which bursts out of the thing that was tapped. This
+ * one is not attached to anything: it happens to the screen, and that is what
+ * makes completing a round feel bigger than getting one answer right. It is the
+ * single most copied moment in these apps and a three-year-old will finish a
+ * whole activity to see it again.
+ */
+export function paperFall(scene, options = {}) {
+  const { count = 44, duration = 2600, depth = 70 } = options;
+  const { width, height } = scene.scale.gameSize;
+
+  for (let i = 0; i < count; i++) {
+    const piece = scene.add.graphics().setDepth(depth);
+    piece.fillStyle(CONFETTI[i % CONFETTI.length], 1);
+    const w = Phaser.Math.Between(10, 18);
+    if (i % 4 === 0) piece.fillCircle(0, 0, w / 2);
+    else piece.fillRect(-w / 2, -w / 3, w, w / 1.5);
+
+    const x = Phaser.Math.Between(0, width);
+    piece.setPosition(x, Phaser.Math.Between(-260, -20));
+
+    // Drift sideways on its own timing, so pieces separate on the way down
+    // instead of falling as a sheet. Repeats forever, so it has to be stopped
+    // by hand: destroying a game object does not stop tweens pointed at it, and
+    // a celebration every five answers would leave a growing pile of them
+    // running against objects that no longer exist.
+    const drift = scene.tweens.add({
+      targets: piece,
+      x: x + Phaser.Math.Between(-90, 90),
+      duration: Phaser.Math.Between(900, 1500),
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    scene.tweens.add({
+      targets: piece,
+      y: height + 40,
+      rotation: Phaser.Math.FloatBetween(-9, 9),
+      duration: Phaser.Math.Between(duration * 0.6, duration),
+      ease: 'Sine.easeIn',
+      onComplete: () => {
+        drift.stop();
+        piece.destroy();
+      },
+    });
+  }
+}
+
+/**
+ * The wiggle a letter does when it has been got right.
+ *
+ * The reference apps make the letter itself perform, and that matters: it puts
+ * the reward on the thing being taught rather than beside it, so the shape the
+ * child just recognised is the shape that dances.
+ */
+export function dance(scene, target, options = {}) {
+  const { scale = target.scale ?? 1 } = options;
   scene.tweens.add({
     targets: target,
-    scale: { from: target.scale, to: target.scale * 1.16 },
-    duration: 180,
+    angle: { from: -8, to: 8 },
+    duration: 150,
     yoyo: true,
-    ease: 'Back.easeOut',
+    repeat: 3,
+    ease: 'Sine.easeInOut',
+    onComplete: () => target.setAngle?.(0),
+  });
+  scene.tweens.add({
+    targets: target,
+    scale: scale * 1.14,
+    duration: 300,
+    yoyo: true,
+    repeat: 1,
+    ease: 'Sine.easeInOut',
   });
 }
+

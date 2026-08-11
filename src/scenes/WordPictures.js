@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { wordGlyph, wordsById } from '../lib/content.js';
 import { addGlyph } from '../lib/glyph.js';
-import { clipKeys, hasClip, play } from '../lib/audio.js';
+import { clipKeys, hasClip } from '../lib/audio.js';
 import { addWordImage, illustratedWords, queueWordImages } from '../lib/images.js';
+import { sayWord } from '../lib/say.js';
 import { COLORS, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
 
@@ -21,6 +22,11 @@ import QuizScene from './QuizScene.js';
 export default class WordPictures extends QuizScene {
   constructor() {
     super('WordPictures');
+    this.instruction = 'find-picture';
+    this.instructionRoman = 'Find the picture';
+    // Cards here rather than a shape: the answers are pictures with their
+    // backgrounds cut away, and a picture needs a plain plate behind it to read
+    // against. This is the reference apps' memory game, which uses cards too.
     this.tileSize = 200;
     this.tileGap = 30;
     this.choicesY = 505;
@@ -112,6 +118,6 @@ export default class WordPictures extends QuizScene {
   }
 
   speak() {
-    if (hasClip(clipKeys.word(this.target))) play(clipKeys.word(this.target));
+    sayWord(this.target);
   }
 }

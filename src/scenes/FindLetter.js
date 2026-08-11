@@ -7,7 +7,8 @@ import {
   shapeFamilySiblings,
 } from '../lib/content.js';
 import { addGlyph, fitGlyphHeight, glyphWidth } from '../lib/glyph.js';
-import { clipKeys, hasClip, play } from '../lib/audio.js';
+import { clipKeys, hasClip } from '../lib/audio.js';
+import { sayLetter } from '../lib/say.js';
 import { COLORS, chunkyGlyph, familyColor, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
 
@@ -31,6 +32,14 @@ import QuizScene from './QuizScene.js';
 export default class FindLetter extends QuizScene {
   constructor() {
     super('FindLetter');
+    this.instruction = 'find-letter';
+    this.instructionRoman = 'Find this letter';
+    // Scalloped stickers rather than squares. Not stars: see blobPoints() in
+    // theme.js for why a star is the wrong shape to put an Urdu letter in.
+    this.tileShape = 'blob';
+    this.tileSize = 200;
+    this.tileGap = 26;
+    this.choicesY = 508;
     /** @type {string[]} */
     this.sequence = [];
   }
@@ -133,15 +142,20 @@ export default class FindLetter extends QuizScene {
 
   decorateTile(tile, id, size) {
     const glyph = letterGlyph(id, 'isolated');
-    const height = Math.round(fitGlyphHeight(glyph, size - 34, size - 60));
+    const height = Math.round(fitGlyphHeight(glyph, size - 44, size - 66));
     tile.add(
       addGlyph(this, 0, 0, `find:choice:${id}:${height}:chunky`, glyph, chunkyGlyph(height))
     );
   }
 
+  /**
+   * The letter's name, then the word it teaches: "bay ... bakri".
+   *
+   * Naming the word does not give the answer away — the answer is a shape, and
+   * the word is not written anywhere on screen — and it is most of what makes
+   * the letter mean something rather than being a noise attached to a squiggle.
+   */
   speak() {
-    if (hasClip(clipKeys.letterName(this.target))) {
-      play(clipKeys.letterName(this.target));
-    }
+    sayLetter(this.target);
   }
 }

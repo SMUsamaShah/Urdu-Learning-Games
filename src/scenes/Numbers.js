@@ -1,10 +1,14 @@
 import Phaser from 'phaser';
 import { numberGlyph, numbers, numbersById } from '../lib/content.js';
 import { addGlyph } from '../lib/glyph.js';
-import { clipKeys, hasClip, play } from '../lib/audio.js';
+import { clipKeys, hasClip } from '../lib/audio.js';
 import { addWordImage, illustratedWords, queueWordImages } from '../lib/images.js';
-import { COLORS, label } from '../lib/theme.js';
+import { sayNumber } from '../lib/say.js';
+import { COLORS, chunkyGlyph, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
+
+/** Star colours, cycled by value so the same digit is always the same colour. */
+const STAR_COLORS = [0xe4633c, 0x3f74d6, 0x2fa05f, 0xd44f8c, 0x9b5fc9, 0xe09a1c, 0x1a9c96];
 
 /**
  * Count the things, then pick the number.
@@ -25,10 +29,16 @@ import QuizScene from './QuizScene.js';
 export default class Numbers extends QuizScene {
   constructor() {
     super('Numbers');
-    this.tileSize = 170;
-    this.tileGap = 30;
-    this.choicesY = 530;
-    this.promptY = 250;
+    this.instruction = 'how-many';
+    this.instructionRoman = 'How many?';
+    // Stars here and nowhere else: an Urdu numeral is compact enough to sit
+    // comfortably in the thin middle of one, which is exactly what a letter is
+    // not.
+    this.tileShape = 'star';
+    this.tileSize = 200;
+    this.tileGap = 8;
+    this.choicesY = 540;
+    this.promptY = 258;
     /** @type {string[]} */
     this.countable = [];
     /** @type {string[]} */
@@ -113,15 +123,9 @@ export default class Numbers extends QuizScene {
       }
     }
 
-    layer.add(
-      label(this, 0, topY + (rows - 1) * step * 0.86 + size / 2 + 26, 'how many?', {
-        size: 18,
-      })
-    );
-
     if (hasClip(clipKeys.number(target))) {
       const speaker = this.add
-        .text(430, 0, '🔊', { fontSize: '46px' })
+        .text(410, 0, '🔊', { fontSize: '46px' })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
       speaker.on('pointerup', () => this.speak());
@@ -129,31 +133,31 @@ export default class Numbers extends QuizScene {
     }
   }
 
-  tileColor() {
-    return COLORS.card;
+  /** One hue per digit, so a star is a colour before it is a number. */
+  tileColor(id) {
+    return STAR_COLORS[numbersById.get(id).value % STAR_COLORS.length];
   }
 
   decorateTile(tile, id) {
     const glyph = numberGlyph(id);
     if (glyph) {
+      // Sat a little above centre: a star is widest above its middle, and a
+      // numeral centred in the bounding box hangs into the bottom notch.
       tile.add(
-        addGlyph(this, 0, -6, `numbers:choice:${id}:96`, glyph, {
-          height: 96,
-          color: COLORS.accentCss,
-        })
+        addGlyph(this, 0, -18, `numbers:choice:${id}:82:chunky`, glyph, chunkyGlyph(82))
       );
     }
     // The Latin numeral underneath, small: it is for the parent counting along,
     // and for a child who meets 4 and ۴ in the same week.
     tile.add(
-      label(this, 0, 62, String(numbersById.get(id).value), {
-        size: 20,
-        color: COLORS.inkDim,
+      label(this, 0, 34, String(numbersById.get(id).value), {
+        size: 18,
+        color: COLORS.onColorDim,
       })
     );
   }
 
   speak() {
-    if (hasClip(clipKeys.number(this.target))) play(clipKeys.number(this.target));
+    sayNumber(this.target);
   }
 }

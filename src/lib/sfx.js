@@ -77,6 +77,22 @@ export function nudge() {
   tone({ freq: 320, endFreq: 280, duration: 0.16, type: 'sine', gain: 0.4 });
 }
 
+/**
+ * The bigger one, for finishing a run rather than answering a question.
+ *
+ * A rising arpeggio over a held fifth. It has to be audibly different from
+ * `correct()` or the milestone lands as just another right answer, which
+ * defeats the point of having one.
+ */
+export function fanfare() {
+  const notes = [523, 659, 784, 1047, 1319];
+  notes.forEach((freq, i) =>
+    tone({ freq, start: i * 0.11, duration: 0.3, type: 'triangle', gain: 0.45 })
+  );
+  tone({ freq: 262, duration: 0.75, type: 'sine', gain: 0.22 });
+  tone({ freq: 392, duration: 0.75, type: 'sine', gain: 0.18 });
+}
+
 /** Page or scene transition. */
 export function swoosh() {
   tone({ freq: 420, endFreq: 720, duration: 0.16, type: 'sine', gain: 0.3 });

@@ -11,6 +11,7 @@ import {
 import { addGlyph } from '../lib/glyph.js';
 import { addWordImage, queueWordImages } from '../lib/images.js';
 import { clipKeys, hasClip, play, playSequence, stopAll } from '../lib/audio.js';
+import { sayLetter } from '../lib/say.js';
 import * as sfx from '../lib/sfx.js';
 import { addScenery } from '../lib/scenery.js';
 import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
@@ -109,7 +110,7 @@ export default class Flashcards extends Phaser.Scene {
 
     // Say the first letter once the scene is up. Reaching here always took a
     // tap on Home, so the audio context is already unlocked.
-    play(clipKeys.letterName(this.sequence[this.selectedIndex]));
+    sayLetter(this.sequence[this.selectedIndex]);
   }
 
   /** The scrollable letter picker across the bottom, laid out right to left. */
@@ -231,9 +232,10 @@ export default class Flashcards extends Phaser.Scene {
     this.layoutStrip();
     this.buildCard();
 
-    // Say the letter's name on arrival. For a child who cannot read, this is
-    // the whole point of picking a letter.
-    play(clipKeys.letterName(this.sequence[index]));
+    // Its name, then the word it teaches. For a child who cannot read, this is
+    // the whole point of picking a letter, and the word is what makes the
+    // letter mean something rather than being a noise attached to a squiggle.
+    sayLetter(this.sequence[index]);
   }
 
   /** The large letter, its positional forms, and its word. */

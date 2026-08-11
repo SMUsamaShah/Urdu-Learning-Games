@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
-import { cheer, confetti, flyStar } from '../lib/celebrate.js';
+import { addBanner } from '../lib/banner.js';
+import { confetti, dance, flyStar, paperFall } from '../lib/celebrate.js';
+import { addStageMascot } from '../lib/mascot.js';
 import { addScenery } from '../lib/scenery.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 
@@ -27,6 +29,9 @@ import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
  * A subclass supplies what a round is made of: pickTarget, lineUpFor,
  * buildPrompt and decorateTile.
  */
+
+/** Right answers in a row that earn the full-screen celebration. */
+const MILESTONE = 5;
 export default class QuizScene extends Phaser.Scene {
   constructor(key) {
     super(key);
@@ -37,6 +42,17 @@ export default class QuizScene extends Phaser.Scene {
     this.tileGap = 34;
     this.choicesY = 500;
     this.promptY = 216;
+    /**
+     * Answers and prompt sit right of centre, because the cub stands at the
+     * left of every screen and a four-wide line-up centred on the canvas would
+     * put its last tile through the cub's ear.
+     */
+    this.stageX = DESIGN.width / 2 + 48;
+    /** Shape of a choice: 'card', or 'star' for the games whose answers float. */
+    this.tileShape = 'card';
+    /** The ribbon at the top. Subclasses set these; see content/ui.json. */
+    this.instruction = null;
+    this.instructionRoman = null;
 
     this.streak = 0;
     this.best = 0;
@@ -105,7 +121,18 @@ export default class QuizScene extends Phaser.Scene {
       color: COLORS.accentCss,
     });
 
-    this.promptLayer = this.add.container(DESIGN.width / 2, this.promptY);
+    if (this.instruction) {
+      this.banner = addBanner(this, {
+        ui: this.instruction,
+        roman: this.instructionRoman,
+      });
+    }
+
+    // The cub. It goes in before the answers so a tile overlapping it draws on
+    // top, which is the right way round: the answers are what matters.
+    this.mascot = addStageMascot(this);
+
+    this.promptLayer = this.add.container(this.stageX, this.promptY);
     this.choicesLayer = this.add.container(0, 0);
 
     // Leaving mid-word should not leave a voice talking over the menu.
@@ -133,11 +160,18 @@ export default class QuizScene extends Phaser.Scene {
       ids = Phaser.Utils.Array.Shuffle([this.target, ...ids.slice(0, count - 1)]);
     }
 
+    // Back to the question, in case the last round ended on "well done".
+    if (this.instruction) {
+      this.banner?.setInstruction(this.instruction, this.instructionRoman);
+    }
     this.promptLayer.removeAll(true);
     this.buildPrompt(this.promptLayer, this.target);
     this.buildChoices(ids);
     this.updateStreak();
     this.speak();
+    // The cub points at the answers once they are all on screen, which is the
+    // whole of its job during a question: "look over there".
+    this.mascot?.point();
   }
 
   buildChoices(ids) {
@@ -145,7 +179,7 @@ export default class QuizScene extends Phaser.Scene {
     const size = this.tileSize;
     const step = size + this.tileGap;
     // Right to left, matching how the script is read.
-    const startX = DESIGN.width / 2 + ((ids.length - 1) * step) / 2;
+    const startX = this.stageX + ((ids.length - 1) * step) / 2;
 
     ids.forEach((id, index) => {
       const tile = makeButton(this, {
@@ -154,6 +188,7 @@ export default class QuizScene extends Phaser.Scene {
         width: size,
         height: size,
         color: this.tileColor(id),
+        shape: this.tileShape,
         onTap: () => this.choose(id, tile),
       });
       // A couple of degrees of tilt, alternating. A row of perfectly square
@@ -164,6 +199,20 @@ export default class QuizScene extends Phaser.Scene {
       tile.choiceId = id;
       this.decorateTile(tile, id, size);
       this.choicesLayer.add(tile);
+
+      // Each one drops in a beat after the last, so the line-up assembles
+      // itself instead of being there already. It also stops a child tapping
+      // before they have looked at all of them.
+      // Not from zero: a container scaled to nothing has no hit area, and a
+      // child who taps the instant they see the answer must not be ignored.
+      tile.setScale(0.35);
+      this.tweens.add({
+        targets: tile,
+        scale: 1,
+        delay: index * 90,
+        duration: 320,
+        ease: 'Back.easeOut',
+      });
     });
   }
 
@@ -201,6 +250,9 @@ export default class QuizScene extends Phaser.Scene {
       sfx.nudge();
       this.streak = 0;
       this.updateStreak();
+      // A puzzled tilt of the head, never a frown. There is no fail state here
+      // and the cub must not look like there is one.
+      this.mascot?.wonder();
       this.tweens.add({
         targets: tile,
         x: tile.x + 10,
@@ -223,8 +275,20 @@ export default class QuizScene extends Phaser.Scene {
     for (const other of this.choicesLayer.list) {
       if (other !== tile) this.tweens.add({ targets: other, alpha: 0.2, duration: 220 });
     }
-    cheer(this, tile);
     confetti(this, tile.x, tile.y);
+    // The answer performs, rather than something happening next to it: the
+    // shape they just recognised is the shape that dances.
+    dance(this, tile);
+    this.mascot?.cheer();
+
+    // Paper across the whole screen is saved for every fifth in a row. It is
+    // the biggest thing this app does, and doing it on every single answer
+    // would turn it into wallpaper within a minute.
+    if (this.streak % MILESTONE === 0) {
+      paperFall(this);
+      sfx.fanfare();
+      this.banner?.setInstruction('well-done', 'Well done!');
+    }
     // The star updates the score when it lands, so the row of stars visibly
     // grows *because* of the answer rather than alongside it.
     flyStar(
@@ -234,6 +298,6 @@ export default class QuizScene extends Phaser.Scene {
       () => this.updateStreak()
     );
 
-    this.time.delayedCall(1100, () => this.newRound());
+    this.time.delayedCall(1500, () => this.newRound());
   }
 }

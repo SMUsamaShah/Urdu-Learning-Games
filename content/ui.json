@@ -24,6 +24,11 @@
     { "id": "initial",     "text": "شروع",          "roman": "initial" },
     { "id": "medial",      "text": "درمیان",        "roman": "medial" },
     { "id": "final",       "text": "آخر",           "roman": "final" },
+    { "id": "pop-balloon", "text": "غبارہ پھوڑو",   "roman": "Pop the balloon" },
+    { "id": "find-picture","text": "تصویر ڈھونڈو",  "roman": "Find the picture" },
+    { "id": "how-many",    "text": "کتنے ہیں؟",     "roman": "How many?" },
+    { "id": "fill-letter", "text": "حرف بھرو",      "roman": "Fill the letter" },
+    { "id": "well-done",   "text": "شاباش",         "roman": "Well done" },
     { "id": "loading",     "text": "انتظار کریں",   "roman": "Please wait" },
     { "id": "icon-word",   "text": "اردو",          "roman": "Urdu (app icon)" },
     { "id": "install",     "text": "انسٹال کریں",   "roman": "Install" }

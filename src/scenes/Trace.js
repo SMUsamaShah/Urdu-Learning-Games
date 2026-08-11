@@ -1,9 +1,12 @@
 import Phaser from 'phaser';
-import { letterGlyph, lettersById, sequenceFor, uiGlyph } from '../lib/content.js';
-import { addGlyph, glyphTexture, glyphWidth } from '../lib/glyph.js';
-import { clipKeys, hasClip, play, playSequence, stopAll } from '../lib/audio.js';
+import { letterGlyph, lettersById, sequenceFor } from '../lib/content.js';
+import { glyphTexture, glyphWidth } from '../lib/glyph.js';
+import { stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
-import { confetti } from '../lib/celebrate.js';
+import { addBanner } from '../lib/banner.js';
+import { confetti, paperFall } from '../lib/celebrate.js';
+import { addMascot } from '../lib/mascot.js';
+import { sayLetter } from '../lib/say.js';
 import { addScenery } from '../lib/scenery.js';
 import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
 
@@ -85,13 +88,12 @@ export default class Trace extends Phaser.Scene {
       this.add.text(0, 0, '⌂', { fontSize: '34px', color: COLORS.ink }).setOrigin(0.5)
     );
 
-    const title = uiGlyph('trace');
-    if (title) {
-      addGlyph(this, DESIGN.width / 2, 52, 'ui:trace:44:ink', title, {
-        height: 44,
-        color: COLORS.ink,
-      });
-    }
+    this.banner = addBanner(this, { ui: 'fill-letter', roman: 'Fill the letter' });
+
+    // Smaller and lower than on the quiz screens: a traced letter is 400px tall
+    // and some of them are very wide, so the cub has to keep out of the way of
+    // the thing being drawn.
+    this.mascot = addMascot(this, 86, 694, { scale: 0.6 });
 
     makeButton(this, {
       x: DESIGN.width - 250,
@@ -206,9 +208,10 @@ export default class Trace extends Phaser.Scene {
       })
     );
 
-    if (hasClip(clipKeys.letterName(id))) {
-      playSequence([clipKeys.letterName(id), clipKeys.letterSound(id)]);
-    }
+    // Name, sound, then the word. This is the screen where a child stays with
+    // one letter for a while, so it is the one place worth saying all three.
+    sayLetter(id, { sound: true });
+    this.mascot?.point();
   }
 
   /**
@@ -383,15 +386,21 @@ export default class Trace extends Phaser.Scene {
     this.locked = true;
     this.drawing = false;
     sfx.correct();
+    sfx.fanfare();
     this.drawProgress(1);
     confetti(this, DESIGN.width / 2, 300, { count: 30, spread: 320 });
+    // Finishing a letter is a whole activity completed, not one answer among
+    // many, so it gets the full-screen version every time.
+    paperFall(this);
+    this.mascot?.cheer();
+    this.banner.setInstruction('well-done', 'Well done!');
 
     // Clear the rest of the cover, so the reward is seeing the letter complete
     // rather than the patchy version they happened to stop at.
     this.cover.context.clearRect(0, 0, this.cover.width, this.cover.height);
     this.cover.refresh();
 
-    this.time.delayedCall(900, () => this.nextLetter());
+    this.time.delayedCall(1600, () => this.nextLetter());
   }
 
   // ------------------------------------------------------------- navigation
@@ -404,6 +413,7 @@ export default class Trace extends Phaser.Scene {
   nextLetter() {
     sfx.swoosh();
     stopAll();
+    this.banner.setInstruction('fill-letter', 'Fill the letter');
     this.index = (this.index + 1) % this.sequence.length;
     this.buildLetter();
   }

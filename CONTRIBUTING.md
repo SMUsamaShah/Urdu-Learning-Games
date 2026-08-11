@@ -57,6 +57,11 @@ Three clip types exist per letter and they are genuinely different things:
 - **sound** — the phoneme it makes (`b`)
 - **word** — the example word
 
+The games say a letter through `sayLetter()` in `src/lib/say.js`, which plays
+the name and then the word — "bay ... bakri". Nothing outside that module
+should be assembling a sequence of clip keys by hand: what the app says when a
+letter appears is a teaching decision, and it belongs in one place.
+
 Recording tips:
 
 - Speak the sound clips as bare phonemes. The instinct is to say the letter's
@@ -194,13 +199,40 @@ whatever the gloss produces.
 
 ## How it looks
 
-`src/lib/scenery.js` paints the sky, sun, clouds, hills and ground that every
-screen sits on, and `src/lib/celebrate.js` has the confetti, the flying star and
-the bounce. Both draw procedurally rather than loading art — the app has to work
-offline on a phone, and a few hundred lines of arcs cost nothing next to a set of
-background images at every screen size.
+Four modules, all drawing procedurally rather than loading art — the app has to
+work offline on a phone, and a few hundred lines of arcs cost nothing next to a
+character sprite sheet and a set of backgrounds at every screen density:
 
-Two rules that keep the look consistent:
+- `src/lib/scenery.js` — the sky, sun, clouds, hills and ground every screen
+  sits on.
+- `src/lib/mascot.js` — the cub.
+- `src/lib/banner.js` — the instruction ribbon across the top of a game.
+- `src/lib/celebrate.js` — confetti, the flying star, the dance and the paper.
+
+**The cub is the narrator, not decoration.** It points at the answers while a
+question is up, tilts its head at a wrong tap and blows a party horn at a right
+one. Any new game should give it something to do; `addStageMascot()` puts it in
+the same spot every other screen does, which is most of what makes it read as
+the same character rather than as a drawing that moved.
+
+Its outline is drawn by fattening every shape and filling it in ink, then
+drawing the same shapes again at their real size on top. Stroking each shape
+instead would draw lines straight through the middle of a character made of
+overlapping circles. Anything added to it has to follow the same two-pass shape,
+which is why the draw functions take `(g, grow, forced)`.
+
+**Every game gets a ribbon.** Set `instruction` and `instructionRoman` on a
+QuizScene subclass, or call `addBanner()` directly. The id is a string in
+`content/ui.json`; a typo there renders an empty ribbon and nothing else, so
+`tests/ui-strings.test.mjs` checks every id a scene references really exists and
+really got baked.
+
+**Celebration comes in two sizes.** Confetti and a dance for one right answer;
+the full-screen paper fall for finishing something, which is every fifth answer
+in a row or a completed letter. Firing the big one on every answer makes it
+wallpaper and leaves nothing to mark actually finishing.
+
+Two more rules that keep the look consistent:
 
 **Anything on a coloured surface gets an outline.** `chunkyGlyph()` in
 `theme.js` gives a letter the heavy dark edge these apps use. It is not
@@ -209,6 +241,13 @@ choosing between ب and ت is working entirely from edges.
 
 **Cards are solid, never translucent.** The scenery behind them moves, and a
 cloud drifting through the middle of a letter card reads as a bug.
+
+`makeButton` can draw a card, a star or a scalloped blob. Which one to use is
+decided by what goes inside it, not by taste: a five-pointed star is thin across
+its middle, so an Urdu letter dropped into one has to shrink a long way to clear
+the notches, and letter legibility is the whole point of the letter games. Stars
+are for the numerals, which are compact; letters get the blob, which keeps
+nearly all of the area.
 
 ## Audio hardware
 
