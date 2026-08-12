@@ -303,10 +303,18 @@ are fine" is not evidence that the output path is fine.
 The buffer size is a setting, in the sound check, because how much is enough
 depends on the device and no amount of testing here can find that out.
 
-For the same reason `celebrate.js` draws confetti as tinted Images sharing one
-texture instead of a Graphics object per piece. Each Graphics is its own draw
-call, so a full-screen celebration used to break the batch sixty-odd times a
-frame — handed to a cheap phone at the exact moment it is also decoding a clip.
+This was a real bug on a real phone, and the buffer alone was the cause. Two
+other things changed in the same commit and neither of them was it: confetti
+became cheaper to draw, and microphone processing became selectable. The
+confetti was ruled out by the person who could hear the fault — the screens they
+tested play a clip with no confetti on them at all — and the microphone settings
+cannot change clips that were already recorded. Worth recording, because "we
+changed three things and it went away" is not a diagnosis.
+
+`celebrate.js` drawing confetti as tinted Images sharing one texture instead of
+a Graphics object per piece is therefore a plain optimisation rather than a fix.
+It is still worth having: each Graphics is its own draw call, so a full-screen
+celebration used to break the batch sixty-odd times a frame.
 
 ### The sound check
 
