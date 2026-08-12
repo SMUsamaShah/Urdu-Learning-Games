@@ -32,6 +32,12 @@ import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js'
  *      so the row is built from what the data actually contains.
  */
 
+/** How far a finger may move and still count as a tap rather than a drag. */
+const TAP_SLOP = 8;
+
+/** How fast a flick slows down. Per frame, so ~0.92 stops in about half a second. */
+const FLICK_DECAY = 0.92;
+
 const FORM_LABELS = {
   isolated: 'isolated',
   initial: 'initial',
@@ -155,7 +161,14 @@ export default class Flashcards extends Phaser.Scene {
 
       cell.setSize(size, size);
       cell.setInteractive({ useHandCursor: true });
-      cell.on('pointerup', () => this.select(index));
+      // A drag that ends on a cell must not also pick it. Scrolling the strip
+      // and choosing a letter are the same gesture up to the moment the finger
+      // moves, and landing on a letter you were only scrolling past is the most
+      // annoying thing a strip like this can do.
+      cell.on('pointerup', () => {
+        if (this.dragMoved > TAP_SLOP) return;
+        this.select(index);
+      });
 
       cell.bgGraphic = bg;
       cell.letter = letter;
@@ -176,15 +189,63 @@ export default class Flashcards extends Phaser.Scene {
     this.layoutStrip(false);
     this.highlightStrip();
 
-    // Drag to scroll, with the pointer moving the strip 1:1.
-    this.input.on('pointermove', (pointer) => {
-      if (!pointer.isDown || pointer.y < stripY - 70) return;
-      strip.x = Phaser.Math.Clamp(
-        strip.x + (pointer.x - pointer.prevPosition.x),
-        this.stripMin,
-        this.stripMax
-      );
+    this.attachStripDrag(stripY);
+  }
+
+  /**
+   * Drag to scroll, with the pointer moving the strip 1:1, plus a flick.
+   *
+   * The delta is measured against this handler's own last position rather than
+   * `pointer.prevPosition`. That property is the pointer's position at the
+   * *previous frame*, not at the previous event, so a pointermove that fires
+   * twice in one frame applies the same delta twice and one that does not fire
+   * applies nothing — which is exactly what a jerky scroll is made of.
+   */
+  attachStripDrag(stripY) {
+    this.dragging = false;
+    this.dragMoved = 0;
+    this.dragLastX = 0;
+    this.flick = 0;
+
+    const inStrip = (pointer) => pointer.y > stripY - 70;
+
+    this.input.on('pointerdown', (pointer) => {
+      if (!inStrip(pointer)) return;
+      this.dragging = true;
+      this.dragMoved = 0;
+      this.dragLastX = pointer.x;
+      this.flick = 0;
+      // A finger on the strip beats an in-flight centring tween, or the strip
+      // fights the hand holding it.
+      this.tweens.killTweensOf(this.strip);
     });
+
+    this.input.on('pointermove', (pointer) => {
+      if (!this.dragging || !pointer.isDown) return;
+      const delta = pointer.x - this.dragLastX;
+      this.dragLastX = pointer.x;
+      this.dragMoved += Math.abs(delta);
+      this.flick = delta;
+      this.strip.x = Phaser.Math.Clamp(this.strip.x + delta, this.stripMin, this.stripMax);
+    });
+
+    const release = () => {
+      this.dragging = false;
+    };
+    this.input.on('pointerup', release);
+    this.input.on('pointerupoutside', release);
+  }
+
+  update() {
+    // Carry on after the finger lifts, slowing to a stop. Without it a strip of
+    // 38 letters has to be dragged across in stages.
+    if (this.dragging || Math.abs(this.flick) < 0.4) return;
+    this.flick *= FLICK_DECAY;
+    this.strip.x = Phaser.Math.Clamp(
+      this.strip.x + this.flick,
+      this.stripMin,
+      this.stripMax
+    );
   }
 
   layoutStrip(animate = true) {

@@ -90,6 +90,36 @@
         font-size: 13px;
         color: #7b7360;
       }
+
+      /*
+        The frame-rate readout. Fixed to the viewport rather than the canvas so
+        it stays put while the game letterboxes, and pointer-events: none so it
+        can never swallow a tap meant for the game underneath.
+      */
+      .fps-meter {
+        position: fixed;
+        top: max(6px, env(safe-area-inset-top));
+        right: max(6px, env(safe-area-inset-right));
+        z-index: 20;
+        padding: 3px 8px;
+        border-radius: 8px;
+        font:
+          600 13px/1.2 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        background: rgba(43, 48, 71, 0.72);
+        color: #fff;
+        pointer-events: none;
+      }
+
+      .fps-meter[data-level='fair'] {
+        color: #ffd166;
+      }
+
+      .fps-meter[data-level='poor'] {
+        color: #ff8f8f;
+      }
     </style>
   </head>
   <body>

@@ -54,6 +54,17 @@ export const COLORS = {
  * The outline is not decoration: a white letter on a mid-tone tile has weak
  * edges, and a child picking between ب and ت is working entirely from edges.
  *
+ * It has to scale all the way down, though. This used to have a floor of 3px,
+ * which is invisible on a 150px letter and ruinous on a 24px one: Nastaliq is
+ * thin where the pen turns, so a 3px outline on both sides of a 2px stroke
+ * closes the gap entirely and the word turns into a dark smudge. Menu labels
+ * are sized to fit their tile, so long names like حرف ڈھونڈو end up exactly
+ * that small.
+ *
+ * Purely proportional, therefore, with only enough of a floor to stay visible.
+ * Fractional widths are fine — glyphs rasterise at 3x and scale down, so a
+ * 1.25px line lands as a clean soft edge rather than a dropped pixel.
+ *
  * @param {number} height
  * @param {string} [fill]
  */
@@ -62,7 +73,7 @@ export function chunkyGlyph(height, fill = '#ffffff') {
     height,
     color: fill,
     stroke: COLORS.outlineCss,
-    strokeWidth: Math.max(3, Math.round(height * 0.035)),
+    strokeWidth: Math.max(0.8, Math.round(height * 0.038 * 4) / 4),
   };
 }
 

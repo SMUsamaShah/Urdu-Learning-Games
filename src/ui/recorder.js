@@ -23,6 +23,7 @@ import {
   createRecorder,
   isRecordingSupported,
 } from '../lib/recorder.js';
+import { setShowFps, showFps } from '../lib/fps.js';
 import { buildSoundCheck } from './audio-check.js';
 import { buildArchive, readArchive } from '../lib/clip-archive.js';
 import * as store from '../lib/clip-store.js';
@@ -97,6 +98,10 @@ export function openRecorder({ onClose } = {}) {
         <h2 class="rec-title">Recordings</h2>
         <span class="rec-progress"></span>
         <span class="rec-head-spacer"></span>
+        <label class="rec-toggle">
+          <input type="checkbox" data-act="fps" ${showFps() ? 'checked' : ''} />
+          Frame rate
+        </label>
         <button type="button" class="rec-btn" data-act="check">Sound check</button>
         <button type="button" class="rec-btn" data-act="export">Export…</button>
         <button type="button" class="rec-btn" data-act="import">Import…</button>
@@ -426,6 +431,10 @@ export function openRecorder({ onClose } = {}) {
   // Changing microphone settings drops the open stream, so the next take
   // reopens with them. See setProfile() for why it is not reconfigured live.
   root.addEventListener('change', (event) => {
+    if (event.target.dataset?.act === 'fps') {
+      setShowFps(event.target.checked);
+      return;
+    }
     if (event.target.dataset?.act !== 'profile') return;
     micProfile = event.target.value;
     localStorage.setItem('urdu:mic-profile', micProfile);

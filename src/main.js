@@ -11,6 +11,7 @@ import Sequence from './scenes/Sequence.js';
 import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
 import { createAppAudioContext } from './lib/audio-context.js';
+import { mountFpsMeter } from './lib/fps.js';
 import { COLORS, DESIGN } from './lib/theme.js';
 
 /**
@@ -64,4 +65,8 @@ const game = new Phaser.Game({
 // assert that a clip really decoded and played, which is otherwise invisible
 // from outside the page.
 window.__game = game;
+
+// Hidden unless switched on from the grown-ups screen. Mounted regardless so
+// the toggle takes effect without a reload.
+mountFpsMeter(game);
 window.__audio = audio;

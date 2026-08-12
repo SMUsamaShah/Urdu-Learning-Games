@@ -316,6 +316,20 @@ a Graphics object per piece is therefore a plain optimisation rather than a fix.
 It is still worth having: each Graphics is its own draw call, so a full-screen
 celebration used to break the batch sixty-odd times a frame.
 
+### The frame-rate readout
+
+`src/lib/fps.js`, switched on from the grown-ups screen. It exists because "it
+feels jerky" has two causes that need opposite fixes — the app is dropping
+frames, or the app is running at sixty and mishandling the input — and by eye
+they are indistinguishable. Check the number before optimising anything.
+
+That distinction has already bitten once here. The letter strip scrolled badly
+and the obvious suspect was its 38 draw calls; the actual cause was reading the
+drag delta from `pointer.prevPosition`, which is the pointer's position at the
+*previous frame* rather than at the previous event. A pointermove that fires
+twice in one frame therefore applied the same delta twice, and one that did not
+fire applied nothing. Frame rate was never the problem.
+
 ### The sound check
 
 `src/ui/audio-check.js`, reachable from the recorder. It plays the same clip four
