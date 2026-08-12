@@ -82,6 +82,17 @@ export function wordGlyph(wordId) {
   return glyphs?.words[wordId] ?? null;
 }
 
+/**
+ * The font's units per em.
+ *
+ * Baked path coordinates are in these units, so anything that wants to size
+ * something relative to the *letterforms* rather than to the box they were
+ * scaled into has to work in them. See the outline in src/lib/glyph.js.
+ */
+export function glyphUpem() {
+  return glyphs?.upem ?? 1000;
+}
+
 /** A baked Urdu UI string (menu labels, headings). See content/ui.json. */
 export function uiGlyph(stringId) {
   return glyphs?.ui[stringId] ?? null;

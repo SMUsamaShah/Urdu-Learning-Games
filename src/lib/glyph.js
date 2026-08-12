@@ -13,6 +13,8 @@
  * @property {number} advance Advance width of the run.
  */
 
+import { glyphUpem } from './content.js';
+
 /**
  * Supersample factor for rasterised glyphs.
  *
@@ -21,6 +23,21 @@
  * every texture is generated once and cached for the session.
  */
 const SUPERSAMPLE = 3;
+
+/**
+ * Below this em size, an outline is dropped entirely rather than drawn thin.
+ *
+ * Nastaliq at label size is already close to the limit of what a screen can
+ * resolve — the pen is a pixel or two where it turns — so *any* dark edge
+ * closes the counters and the word reads as a smudge rather than as writing.
+ * The honest answer at that size is no outline at all: a white glyph on a
+ * mid-tone tile has plenty of contrast without one.
+ *
+ * 50 is not a guess. Measured across the app, every menu label lands between
+ * 17 and 42, and every letter drawn as part of a game lands between 67 and 163.
+ * Nothing sits near the line.
+ */
+const MIN_OUTLINE_EM = 50;
 
 /**
  * Builds (or returns a cached) Phaser texture containing one glyph.
@@ -37,7 +54,9 @@ const SUPERSAMPLE = 3;
  * @param {number} [options.height=200]  Target height in game pixels.
  * @param {string} [options.color='#ffffff']
  * @param {string} [options.stroke]      Outline colour, for the tracing guide.
- * @param {number} [options.strokeWidth=0]
+ * @param {number} [options.strokeWidth=0] A constant line in game pixels.
+ * @param {number} [options.strokeEm=0] A line as a fraction of the font's em,
+ *   which keeps it proportional to the letterforms. Wins over strokeWidth.
  * @param {number} [options.padding=0.06] Fraction of height kept as margin.
  * @returns {string} The texture key, for `scene.add.image(x, y, key)`.
  */
@@ -49,6 +68,7 @@ export function glyphTexture(scene, key, glyph, options = {}) {
     color = '#ffffff',
     stroke = null,
     strokeWidth = 0,
+    strokeEm = 0,
     padding = 0.06,
   } = options;
 
@@ -80,10 +100,30 @@ export function glyphTexture(scene, key, glyph, options = {}) {
   ctx.fillStyle = color;
   ctx.fill(path, 'nonzero');
 
-  if (stroke && strokeWidth > 0) {
+  // How big the letterforms themselves are, as opposed to the box they were
+  // fitted into. Everything about outlining depends on this rather than on
+  // `height`; see MIN_OUTLINE_EM and strokeEm below.
+  const emPixels = scale * glyphUpem();
+  const outlined =
+    stroke && (strokeWidth > 0 || (strokeEm > 0 && emPixels >= MIN_OUTLINE_EM));
+
+  if (outlined) {
     ctx.strokeStyle = stroke;
-    // Stroke width is given in game pixels, so undo the glyph scale.
-    ctx.lineWidth = strokeWidth / scale;
+    // Two ways to ask for a line, and which one you want depends on what the
+    // outline is *for*.
+    //
+    // `strokeEm` is a fraction of the font's em, so it scales with the pen that
+    // drew the letterforms. That is what a decorative outline wants: a glyph's
+    // bounding box says nothing about how thick its strokes are, and Nastaliq
+    // makes the gap enormous. گنتی has a deep descender, so at a given display
+    // height it is scaled down about ten times harder than a bare ب — and a
+    // line specified in screen pixels then lands ten times heavier on it,
+    // closing the counters until the word is a black smudge.
+    //
+    // `strokeWidth` is in game pixels, for the cases that really do want a
+    // constant on-screen line whatever the glyph — the tracing guide, which has
+    // to stay visible at any size.
+    ctx.lineWidth = strokeEm > 0 ? strokeEm * glyphUpem() : strokeWidth / scale;
     ctx.lineJoin = 'round';
     ctx.stroke(path);
   }

@@ -264,10 +264,29 @@ wallpaper and leaves nothing to mark actually finishing.
 
 Two more rules that keep the look consistent:
 
-**Anything on a coloured surface gets an outline.** `chunkyGlyph()` in
-`theme.js` gives a letter the heavy dark edge these apps use. It is not
-decoration — a white letter on a mid-tone tile has weak edges, and a child
-choosing between ب and ت is working entirely from edges.
+**Big letters on a coloured surface get an outline; small ones do not.**
+`chunkyGlyph()` in `theme.js` gives a letter the heavy dark edge these apps use.
+It is not decoration — a white letter on a mid-tone tile has weak edges, and a
+child choosing between ب and ت is working entirely from edges.
+
+Two things about how it is measured, both learned the hard way:
+
+The width is a fraction of the font's **em**, not a number of pixels. A glyph's
+display height says nothing about how thick its strokes are: گنتی has a deep
+descender on its ی, so fitting it into a 44px label scales it down about ten
+times harder than a bare ب at the same height. A line in pixels then lands ten
+times heavier on it — 103‰ of the em against 32‰ — and the word reads as fuzzy
+black rather than as white with an edge.
+
+Below 50px of em, `glyph.js` drops the outline entirely rather than drawing it
+thin. Nastaliq at label size is already at the limit of what a screen resolves,
+so *any* dark edge closes the counters. That number is measured, not guessed:
+every menu label in the app lands between 17 and 42, every letter drawn as part
+of a game lands between 67 and 163, and nothing sits near the line.
+
+`strokeWidth` still exists for the one case that genuinely wants a constant
+on-screen line whatever the glyph — the tracing guide, which has to stay visible
+at any size.
 
 **Cards are solid, never translucent.** The scenery behind them moves, and a
 cloud drifting through the middle of a letter card reads as a bug.

@@ -49,21 +49,26 @@ export const COLORS = {
 };
 
 /**
+ * How heavy the outline is, as a fraction of the font's em.
+ *
+ * Not a number of pixels, and that distinction is the whole point. A glyph's
+ * display height says nothing about how thick its strokes are: گنتی has a deep
+ * descender on its ی, so fitting it into a 44px label scales it down about ten
+ * times harder than a bare ب at the same height. A line specified in pixels
+ * then lands ten times heavier on it — measured at 103‰ of the em against 32‰
+ * for the ب — which is why the word read as fuzzy black rather than as white
+ * with an edge.
+ *
+ * In em units every glyph gets the same outline relative to the pen that drew
+ * it, whatever box it was squeezed into.
+ */
+const OUTLINE_EM = 0.032;
+
+/**
  * Glyph options that give a letter the heavy outline preschool apps use.
  *
  * The outline is not decoration: a white letter on a mid-tone tile has weak
  * edges, and a child picking between ب and ت is working entirely from edges.
- *
- * It has to scale all the way down, though. This used to have a floor of 3px,
- * which is invisible on a 150px letter and ruinous on a 24px one: Nastaliq is
- * thin where the pen turns, so a 3px outline on both sides of a 2px stroke
- * closes the gap entirely and the word turns into a dark smudge. Menu labels
- * are sized to fit their tile, so long names like حرف ڈھونڈو end up exactly
- * that small.
- *
- * Purely proportional, therefore, with only enough of a floor to stay visible.
- * Fractional widths are fine — glyphs rasterise at 3x and scale down, so a
- * 1.25px line lands as a clean soft edge rather than a dropped pixel.
  *
  * @param {number} height
  * @param {string} [fill]
@@ -73,7 +78,7 @@ export function chunkyGlyph(height, fill = '#ffffff') {
     height,
     color: fill,
     stroke: COLORS.outlineCss,
-    strokeWidth: Math.max(0.8, Math.round(height * 0.038 * 4) / 4),
+    strokeEm: OUTLINE_EM,
   };
 }
 
