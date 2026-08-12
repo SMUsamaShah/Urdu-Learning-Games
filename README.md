@@ -10,8 +10,8 @@ comparable for Urdu. This is an attempt at one.
 **No ads. No in-app purchases. No tracking. No network calls at runtime.**
 
 Everything you hear that is not a human voice is synthesised at runtime — the
-music, the taps, the pops, the fanfares — so the whole app is a few hundred
-kilobytes and works on a plane.
+music, the taps, the pops, the fanfares — so there is no audio to download and
+it all works on a plane.
 
 ## Status
 

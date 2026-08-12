@@ -97,10 +97,18 @@ const music = await page.evaluate(async () => {
   stopMusic();
   startMusic();
 
-  // Listening to the tune's own output, so this measures sound rather than
-  // state. A module that believes it is playing and is not would pass every
-  // assertion made against its variables and fail this one.
-  const output = musicOutput();
+  // The band is built on first start, and building it loads a library and
+  // renders a reverb impulse offline, so there is nothing to listen to for a
+  // moment. Waited for rather than slept through.
+  const output = await new Promise((resolve) => {
+    const until = performance.now() + 15000;
+    const look = () => {
+      const node = musicOutput();
+      if (node || performance.now() > until) return resolve(node);
+      setTimeout(look, 100);
+    };
+    look();
+  });
   if (!output) return { noOutput: true };
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 2048;
@@ -123,31 +131,37 @@ const music = await page.evaluate(async () => {
     const until = performance.now() + ms;
     while (performance.now() < until) {
       peak = Math.max(peak, rms());
-      await new Promise((r) => setTimeout(r, 30));
+      await new Promise((r) => setTimeout(r, 25));
     }
     return peak;
   };
+  const settle = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // It fades in over about a second.
-  const playing = await peakOver(2600);
+  // Past the fade-in before measuring anything. A baseline taken during the
+  // fade is lower than the real one, which then makes the duck below look
+  // shallower than it is and the assertions meaningless in both directions.
+  await settle(2200);
+  const playing = await peakOver(3000);
 
-  duck(1.2);
-  const ducked = await peakOver(900);
+  duck(1.6);
+  // Past the duck ramp, then measure inside the hold.
+  await settle(400);
+  const ducked = await peakOver(1000);
 
-  // And back up. The duck holds for its stated time and then ramps.
-  await new Promise((r) => setTimeout(r, 1400));
-  const restored = await peakOver(1400);
+  // And back up, once the hold has expired and the ramp has run.
+  await settle(2400);
+  const restored = await peakOver(2000);
 
   stopMusic();
-  await new Promise((r) => setTimeout(r, 700));
-  const stopped = await peakOver(500);
+  await settle(1200);
+  const stopped = await peakOver(600);
 
   output.disconnect(analyser);
   return { playing, ducked, restored, stopped };
 });
 
 if (music.noOutput) {
-  fail('the music module has no output node — it never initialised');
+  fail('the music module never produced an output node — it failed to build');
   await browser.close();
   process.exit(1);
 }

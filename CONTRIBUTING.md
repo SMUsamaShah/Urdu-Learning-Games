@@ -209,6 +209,18 @@ wall-clock speed, and a 760ms `delayedCall` can take 1.6s of real time. A test
 that sleeps a fixed number of milliseconds will pass on your machine and fail in
 CI.
 
+Judging whether the tune is any good is the one thing no check can do, so there
+is a command that hands you a file to listen to:
+
+```sh
+npm run dev & npm run music:preview -- 40 tune.wav
+```
+
+It records the real thing — same instruments, same reverb, same transport, in a
+browser — and normalises it, because in the app the music sits at about -19 dB
+so it stays under the voice, which is far too quiet to judge on laptop speakers.
+The level it actually plays at is printed alongside.
+
 If you touched the music, the particles or the animation helpers:
 
 ```sh

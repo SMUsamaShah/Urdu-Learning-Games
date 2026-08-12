@@ -13,6 +13,7 @@
     "icons": "node tools/make-icons.mjs",
     "images": "node tools/make-word-images.mjs",
     "mascot": "node tools/make-mascot.mjs",
+    "music:preview": "node tools/preview-music.mjs",
     "audio:manifest": "node tools/build-audio-manifest.mjs",
     "record": "node tools/record-studio/server.mjs",
     "verify:studio": "node tools/verify-studio.mjs",
@@ -28,7 +29,8 @@
   },
   "dependencies": {
     "@fontsource/noto-nastaliq-urdu": "^5.3.0",
-    "phaser": "^4.2.1"
+    "phaser": "^4.2.1",
+    "tone": "^15.1.22"
   },
   "devDependencies": {
     "harfbuzzjs": "^1.6.0",
