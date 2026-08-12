@@ -180,6 +180,15 @@ back, hands the same zip to the studio and checks the file lands in
 `public/audio/recorded/`. It also asserts a wrong gate answer and a quick tap
 both fail to open the recorder. Everything it writes is cleaned up.
 
+It also checks the gate is *styled* the first time it appears, which sounds
+trivial and is not. Anything shown before a dynamic import cannot rely on the
+CSS that import pulls in, and the gate is the thing that decides whether the
+recorder loads at all. Its rules lived in `recorder.css` for a while, so the
+first prompt anyone ever saw was unstyled text in the corner of the screen and
+every one after it looked right — a bug that fixes itself after one use, which
+means nobody reports it and everybody hits it. Styles for anything on that side
+of a dynamic import belong with the module that draws it.
+
 `tests/clip-archive.test.mjs` checks the export against the system `unzip`,
 including CRCs, and reads back an archive compressed by the system `zip`. The
 export format is only useful if ordinary tools can open it, so it is tested

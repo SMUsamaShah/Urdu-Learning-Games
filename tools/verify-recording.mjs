@@ -149,6 +149,38 @@ await page.evaluate(() => {
 });
 // The hold is 900ms of real game time; the gate appears once it completes.
 await page.waitForSelector('.gate', { timeout: 10000 });
+
+// The gate has to be styled the *first* time it is shown, before the recorder
+// has ever been opened. Its rules used to live in the recorder's stylesheet,
+// which is loaded by the dynamic import the gate itself decides whether to
+// make — so the first prompt was unstyled text in a corner and every one after
+// it looked right. Nobody reports a bug that fixes itself after one use, which
+// is exactly why it needs a check.
+const gateLook = await page.evaluate(() => {
+  const backdrop = document.querySelector('.gate-backdrop');
+  const dialog = document.querySelector('.gate');
+  const box = dialog.getBoundingClientRect();
+  return {
+    position: getComputedStyle(backdrop).position,
+    dialogBg: getComputedStyle(dialog).backgroundColor,
+    centreOffsetX: Math.abs(box.left + box.width / 2 - window.innerWidth / 2),
+    centreOffsetY: Math.abs(box.top + box.height / 2 - window.innerHeight / 2),
+  };
+});
+
+if (gateLook.position !== 'fixed') {
+  fail(`the gate backdrop is position:${gateLook.position} — its stylesheet did not load`);
+} else if (gateLook.dialogBg === 'rgba(0, 0, 0, 0)') {
+  fail('the gate dialog has no background — its stylesheet did not load');
+} else if (gateLook.centreOffsetX > 40 || gateLook.centreOffsetY > 40) {
+  fail(
+    `the gate is ${gateLook.centreOffsetX.toFixed(0)},` +
+      `${gateLook.centreOffsetY.toFixed(0)}px off centre — it is not laid out as a dialog`
+  );
+} else {
+  step('gate is styled and centred on its first appearance');
+}
+
 step('gate appeared, answering the question');
 
 const question = await page.textContent('#gate-q');

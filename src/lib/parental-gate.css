@@ -1,0 +1,86 @@
+/*
+ * The parental gate.
+ *
+ * Its own stylesheet, and that is the whole point of this file existing.
+ *
+ * These rules used to live in recorder.css, which is loaded by the dynamic
+ * import of the recorder — and the gate is shown *before* that import runs,
+ * because it is what decides whether the recorder opens at all. So the very
+ * first time anyone held the Grown-ups button, the question appeared as
+ * unstyled text in the corner of the screen; every time after that it looked
+ * right, because the stylesheet was by then in the document. A bug that fixes
+ * itself after one use is one nobody reports and everybody hits.
+ *
+ * parental-gate.js imports this directly, so it cannot arrive late.
+ */
+
+.gate-backdrop {
+  --panel: #ffffff;
+  --panel-2: #f4eee1;
+  --bg: #fdf3e3;
+  --ink: #2b3047;
+  --dim: #767f9c;
+  --accent: #e98a1f;
+
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: rgba(58, 46, 30, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gate {
+  background: var(--panel);
+  padding: 22px;
+  border-radius: 14px;
+  width: min(320px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 18px 50px rgba(58, 46, 30, 0.28);
+}
+
+.gate-title {
+  margin: 0;
+  color: var(--dim);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gate-input {
+  font: inherit;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.gate-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.gate-cancel,
+.gate-ok {
+  font: inherit;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
+.gate-ok {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+}

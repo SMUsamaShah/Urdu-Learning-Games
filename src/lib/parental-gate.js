@@ -18,6 +18,8 @@
  * keyboard handling.
  */
 
+import './parental-gate.css';
+
 export const HOLD_MS = 900;
 
 /**

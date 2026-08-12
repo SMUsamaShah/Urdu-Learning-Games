@@ -7,8 +7,7 @@
  * game's visual language, only its palette.
  */
 
-.rec-root,
-.gate-backdrop {
+.rec-root {
   --bg: #fdf3e3;
   --panel: #ffffff;
   --panel-2: #f4eee1;
@@ -270,67 +269,6 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-/* -------------------------------------------------------------------- gate */
-
-.gate-backdrop {
-  background: rgba(58, 46, 30, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.gate {
-  background: var(--panel);
-  padding: 22px;
-  border-radius: 14px;
-  width: min(320px, 90vw);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 18px 50px rgba(58, 46, 30, 0.28);
-}
-
-.gate-title {
-  margin: 0;
-  color: var(--dim);
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.gate-input {
-  font: inherit;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: var(--bg);
-  color: var(--ink);
-}
-
-.gate-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.gate-cancel,
-.gate-ok {
-  font: inherit;
-  padding: 8px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  background: var(--panel-2);
-  color: var(--ink);
-}
-
-.gate-ok {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #ffffff;
-  font-weight: 600;
 }
 
 /* Narrow screens: the stage moves above the list rather than beside it. */
