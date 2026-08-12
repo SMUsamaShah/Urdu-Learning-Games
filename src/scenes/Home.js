@@ -57,6 +57,13 @@ const GAMES = [
     number: 'n3',
   },
   {
+    scene: 'Memory',
+    ui: 'memory',
+    roman: 'Pairs',
+    color: 0xc2557f,
+    icon: { letter: 'jim', form: 'isolated' },
+  },
+  {
     scene: 'Trace',
     ui: 'trace',
     roman: 'Write',
@@ -64,6 +71,15 @@ const GAMES = [
     icon: { letter: 'alif', form: 'isolated' },
   },
 ];
+
+/**
+ * The grid and the title sit right of centre, because the spider sits at the
+ * left of every screen including this one. Laid out against this rather than
+ * against the canvas, so adding a game shrinks the tiles instead of pushing the
+ * last one through the character.
+ */
+const STAGE = { left: 250, right: DESIGN.width - 60 };
+const STAGE_X = (STAGE.left + STAGE.right) / 2;
 
 export default class Home extends Phaser.Scene {
   constructor() {
@@ -121,23 +137,22 @@ export default class Home extends Phaser.Scene {
 
     const title = uiGlyph('app-title');
     if (title) {
-      addGlyph(this, DESIGN.width / 2, 118, 'ui:app-title:96', title, {
+      addGlyph(this, STAGE_X, 118, 'ui:app-title:96', title, {
         height: 96,
         color: COLORS.accentCss,
       });
     }
-    label(this, DESIGN.width / 2, 190, 'Urdu Learning Games', { size: 20 });
+    label(this, STAGE_X, 190, 'Urdu Learning Games', { size: 20 });
 
     // A grid rather than one row. Games keep getting added, and squeezing them
     // all into a single row shrinks every tile until none of them is a
     // comfortable target for a small finger — better to wrap and keep them big.
     const gap = 26;
-    const margin = 70;
     const perRow = GAMES.length <= 4 ? GAMES.length : Math.ceil(GAMES.length / 2);
     const rows = Math.ceil(GAMES.length / perRow);
     const tileW = Math.min(
       252,
-      (DESIGN.width - margin * 2 - gap * (perRow - 1)) / perRow
+      (STAGE.right - STAGE.left - gap * (perRow - 1)) / perRow
     );
     const tileH = Math.round(tileW * (rows > 1 ? 0.74 : 0.92));
     const iconSize = Math.round(tileW * 0.32);
@@ -154,7 +169,7 @@ export default class Home extends Phaser.Scene {
       const indexInRow = index % perRow;
       // Right-to-left within each row, matching the script.
       const rowW = inRow * tileW + (inRow - 1) * gap;
-      const rowStartX = DESIGN.width / 2 + rowW / 2 - tileW / 2;
+      const rowStartX = STAGE_X + rowW / 2 - tileW / 2;
 
       const button = makeButton(this, {
         x: rowStartX - indexInRow * (tileW + gap),

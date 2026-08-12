@@ -236,6 +236,137 @@ if (!process.exitCode) {
   else step(`${idle.count} balloons on screen, answer present`);
 }
 
+// ------------------------------------------------------------------ memory
+
+if (!process.exitCode) {
+  await start('Memory');
+  step('Memory: checking the board is solvable');
+
+  const board = () =>
+    page.evaluate(() => {
+      const scene = window.__game.scene.getScene('Memory');
+      return {
+        cards: scene.cards.map((c) => ({
+          pairId: c.pairId,
+          kind: c.kind,
+          faceUp: c.faceUp,
+          done: c.done,
+        })),
+        matched: scene.matched,
+        round: scene.round,
+      };
+    });
+
+  const first = await board();
+
+  // The invariant that makes this game playable at all: every card has exactly
+  // one partner, and a pair is one letter and one picture. A board with an odd
+  // card out cannot be finished, and the child has no way to tell that it is
+  // the game that is stuck rather than themselves.
+  const counts = new Map();
+  for (const card of first.cards) {
+    counts.set(card.pairId, [...(counts.get(card.pairId) ?? []), card.kind]);
+  }
+  for (const [pairId, kinds] of counts) {
+    if (kinds.length !== 2) {
+      fail(`"${pairId}" is on the board ${kinds.length} times, not twice`);
+      continue;
+    }
+    const sorted = [...kinds].sort().join(',');
+    if (sorted !== 'letter,picture') {
+      fail(`"${pairId}" is a ${sorted} pair, not a letter and a picture`);
+    }
+  }
+  if (!process.exitCode) step(`${counts.size} pairs, each a letter and a picture`);
+
+  /** Waits for the board to accept input again. */
+  const settle = () =>
+    page.waitForFunction(() => !window.__game.scene.getScene('Memory').locked, null, {
+      timeout: 20000,
+    });
+
+  /** Turns two cards over by index. */
+  const turnTwo = async (a, b) => {
+    await settle();
+    await page.evaluate(([i, j]) => {
+      const scene = window.__game.scene.getScene('Memory');
+      scene.cards[i].emit('pointerup');
+      scene.cards[j].emit('pointerup');
+    }, [a, b]);
+  };
+
+  // A wrong pair must turn back over, or the board solves itself by attrition.
+  const wrongA = first.cards.findIndex((c) => c.kind === 'letter');
+  const wrongB = first.cards.findIndex(
+    (c, i) => i !== wrongA && c.pairId !== first.cards[wrongA].pairId
+  );
+  if (wrongB === -1) {
+    step('only one pair on the board, skipping the mismatch check');
+  } else {
+    await turnTwo(wrongA, wrongB);
+    const turnedBack = await page
+      .waitForFunction(
+        ([i, j]) => {
+          const scene = window.__game.scene.getScene('Memory');
+          return !scene.cards[i].faceUp && !scene.cards[j].faceUp && !scene.locked;
+        },
+        [wrongA, wrongB],
+        { timeout: 20000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (!turnedBack) fail('a mismatched pair did not turn back over');
+    else step('mismatched pair turned back over');
+  }
+
+  // Solve the whole board. Finishing has to start a new one, or the game ends
+  // in a dead screen.
+  step('Memory: solving the board');
+  const solved = await (async () => {
+    for (let i = 0; i < 12; i++) {
+      const state = await board();
+      const next = state.cards.findIndex((c) => !c.done);
+      if (next === -1) return true;
+      const partner = state.cards.findIndex(
+        (c, index) => index !== next && c.pairId === state.cards[next].pairId
+      );
+      await turnTwo(next, partner);
+      const took = await page
+        .waitForFunction(
+          ([i, j]) => {
+            const scene = window.__game.scene.getScene('Memory');
+            return scene.cards[i].done && scene.cards[j].done;
+          },
+          [next, partner],
+          { timeout: 20000 }
+        )
+        .then(() => true)
+        .catch(() => false);
+      if (!took) {
+        fail(`a matching pair was not accepted (cards ${next} and ${partner})`);
+        return false;
+      }
+    }
+    return false;
+  })();
+
+  if (solved) {
+    const moved = await page
+      .waitForFunction(
+        (was) => {
+          const scene = window.__game.scene.getScene('Memory');
+          return scene.round > was && scene.matched === 0 && !scene.locked;
+        },
+        first.round,
+        { timeout: 30000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (!moved) fail('finishing the board did not start a new one');
+    else step('board finished and a new one dealt');
+  }
+}
+
 if (errors.length) {
   for (const e of errors) console.error('  console: ' + e);
   fail(`${errors.length} console error(s)`);

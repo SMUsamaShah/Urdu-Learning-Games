@@ -6,6 +6,7 @@ import FindLetter from './scenes/FindLetter.js';
 import Balloons from './scenes/Balloons.js';
 import WordPictures from './scenes/WordPictures.js';
 import Numbers from './scenes/Numbers.js';
+import Memory from './scenes/Memory.js';
 import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
 import { COLORS, DESIGN } from './lib/theme.js';
@@ -40,6 +41,7 @@ const game = new Phaser.Game({
     Balloons,
     WordPictures,
     Numbers,
+    Memory,
     Trace,
   ],
 });

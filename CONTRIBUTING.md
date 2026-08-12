@@ -120,6 +120,12 @@ unplayable rather than merely ugly: that the answer is always among the choices,
 that a right answer advances and a wrong one keeps the round, and that balloons
 do not multiply between rounds.
 
+It also plays a whole board of Pairs, because that game has an unwinnable state
+the others cannot reach: a card with no partner. Every card must have exactly
+one, and a pair must be one letter and one picture — a board with an odd card
+out can never be finished, and a child has no way to tell that the game is
+stuck rather than themselves.
+
 Note that everything in there waits on a condition, never on a duration. Phaser
 advances its clock by a fixed per-frame delta, so under headless WebGL — which
 renders at roughly half the usual frame rate — game time passes at about half

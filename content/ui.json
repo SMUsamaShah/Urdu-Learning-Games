@@ -24,6 +24,8 @@
     { "id": "initial",     "text": "شروع",          "roman": "initial" },
     { "id": "medial",      "text": "درمیان",        "roman": "medial" },
     { "id": "final",       "text": "آخر",           "roman": "final" },
+    { "id": "match-pairs", "text": "جوڑے ملاؤ",     "roman": "Match the pairs" },
+    { "id": "memory",      "text": "جوڑے",          "roman": "Pairs" },
     { "id": "pop-balloon", "text": "غبارہ پھوڑو",   "roman": "Pop the balloon" },
     { "id": "find-picture","text": "تصویر ڈھونڈو",  "roman": "Find the picture" },
     { "id": "how-many",    "text": "کتنے ہیں؟",     "roman": "How many?" },
