@@ -359,27 +359,35 @@ of that work, sixty times a second. Sprites and Images upload once and batch;
 Graphics do not, so the usual intuition that "a few dozen simple shapes is
 nothing" does not apply.
 
-Measured across the screens, render cost tracks the Graphics count almost
-linearly:
+Render cost tracks the Graphics count almost linearly:
 
-| screen | Graphics | median render |
+| screen | Graphics | render, relative |
 |---|---|---|
-| Flashcards, before | 49 | 8.0 ms |
-| Flashcards, after | 11 | 2.7 ms |
-| Home | 26 | 5.9 ms |
-| Find the letter | 15 | 2.8 ms |
+| Flashcards, before | 49 | 8.0 |
+| Flashcards, after | 11 | 2.7 |
+| Home | 26 | 5.9 |
+| Find the letter | 15 | 2.8 |
 
-8 ms is half a 60fps budget on a desktop GPU, which is a dropped frame on a
-phone. The letter strip's 38 cells are now three shared canvas textures used as
-tinted Images instead of a Graphics each.
+Confirmed on real hardware: the letters screen ran at 30fps on a Pixel with 49
+Graphics and 60fps with 11. The strip's 38 cells are now three shared canvas
+textures used as tinted Images instead of a Graphics each.
 
-**Baking `makeButton` the same way was tried and reverted.** Creating textures
-at runtime past a handful is not reliable in this Phaser build — faces came out
-with rectangular chunks missing, through both `textures.createCanvas` and
-Phaser's own `generateTexture`, which is consistent with the note below that
-`RenderTexture` and `DynamicTexture` render nothing here at all. A small, fixed
-number of small textures (as the strip uses) is fine; one per colour is not. If
-you try again, check the result on screen rather than trusting that it drew.
+Those numbers are **ratios, not milliseconds**. Every measurement in this repo
+is taken under headless Chromium, which has no GPU at all — it runs SwiftShader,
+a software rasteriser. Relative costs on the CPU side carry over to a real
+device; absolute timings do not, and neither does anything that depends on the
+GL driver. Check `npm run dev` with the frame-rate readout on a real phone
+before believing a rendering conclusion.
+
+**Baking `makeButton` the same way was tried and reverted, and why it failed is
+not settled.** Creating roughly twenty textures at runtime produced faces with
+rectangular chunks missing, through both `textures.createCanvas` and Phaser's
+own `generateTexture`. That was only ever observed under SwiftShader, which is
+exactly what a software rasteriser does when it runs out of room, so it may well
+work on a GPU — it is *not* established that Phaser cannot do this. The same
+caveat applies to the note further down about `RenderTexture` and
+`DynamicTexture` rendering nothing. If you retry any of it, do so on a device
+and look at the screen.
 
 ### The frame-rate readout
 
@@ -440,6 +448,12 @@ with no error anywhere.
 plain `fill()`. Anything that needs a surface to paint into should use
 `textures.createCanvas` and its 2D context, which is what every glyph already
 goes through. See `src/scenes/Trace.js`.
+
+Caveat worth keeping in mind: that was observed under headless SwiftShader, like
+everything else measured here, and has never been checked on a GPU. It may be a
+software-renderer problem rather than a Phaser one. The canvas route works
+everywhere and is what the app relies on, so nothing depends on the answer — but
+do not quote it as a fact about Phaser.
 
 ## Colour
 
