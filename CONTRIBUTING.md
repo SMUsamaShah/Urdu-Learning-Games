@@ -144,7 +144,8 @@ it, and using it is cheaper than inventing tweens per scene:
 | `src/lib/liveliness.js` | `popIn`, `bob`, `breathe`, `sway` for idle; `squash`, `jig`, `hop` for reactions |
 | `src/lib/particles.js` | `sparkleBurst`, `popPuff`, `ringBurst`, `starShower`, `sparkleTrail` |
 | `src/lib/celebrate.js` | `confetti` and `dance` for one answer, `paperFall` for finishing something |
-| `src/lib/sfx.js` | `tap`, `pop`, `boing`, `flip`, `sparkle`, `correct`, `nudge`, `fanfare`, `drumroll`, `tada`, `whoosh` |
+| `src/lib/sfx.js` | `tap`, `pop`, `boing`, `flip`, `sparkle`, `nudge`, `whoosh` — short synthesised gestures |
+| `src/lib/flourish.js` | `rightAnswer`, `milestone`, `finished` — the rewards, played on a sampled instrument |
 | `src/lib/music.js` | the background tune; `duck()` is called for you whenever a clip plays |
 
 Three things about it that are decisions rather than taste:
@@ -152,6 +153,13 @@ Three things about it that are decisions rather than taste:
 - **A tap has to move the thing that was tapped, within a frame.** `squash` on
   the `pointerdown` event, not after whatever the tap triggers. A tap that
   produces no movement feels broken however correct the response is.
+- **Rewards are music, gestures are noise.** A tap blip or a balloon pop is over
+  in a tenth of a second and nobody has ever wished a UI click sounded richer —
+  those stay synthesised in `sfx.js`. The sound for a right answer is the most
+  heard thing in the app, a child gets it a hundred times a session, and it is
+  judged as music: those live in `flourish.js` and are played on a real
+  instrument through a reverb. The synthesised versions are still there as the
+  fallback for before the samples load.
 - **Ration the big effects.** `paperFall` and `starShower` are for finishing
   something — a fifth right answer, a completed board, a traced letter. Firing
   them on every answer turns them into wallpaper within a minute, and then there

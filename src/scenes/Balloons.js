@@ -9,6 +9,7 @@ import {
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip, stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
+import { milestone, rightAnswer } from '../lib/flourish.js';
 import { addBanner } from '../lib/banner.js';
 import { paperFall } from '../lib/celebrate.js';
 import { addStageMascot } from '../lib/mascot.js';
@@ -376,7 +377,7 @@ export default class Balloons extends Phaser.Scene {
 
     this.locked = true;
     sfx.pop();
-    sfx.correct();
+    rightAnswer();
     sfx.sparkle();
     this.streak++;
     this.updateStreak();
@@ -388,7 +389,7 @@ export default class Balloons extends Phaser.Scene {
     if (this.streak % 5 === 0) {
       paperFall(this);
       starShower(this);
-      sfx.fanfare();
+      milestone();
       this.banner.setInstruction('well-done', 'Well done!');
       jig(this, this.banner, { angle: 4, repeats: 5 });
     }

@@ -199,6 +199,81 @@ if (music.stopped > music.playing * 0.35) {
   fail(`switching the tune off left it playing at rms ${music.stopped.toFixed(4)}`);
 }
 
+// --- 2b. A stalled main thread must not take the app down --------------------
+
+step('stalling the main thread under the music');
+const survived = await page.evaluate(async () => {
+  const { startMusic, setMusicOn } = window.__music;
+  const ctx = window.__game.sound.context;
+  if (ctx.state === 'suspended') await ctx.resume();
+  setMusicOn(true);
+  startMusic();
+  await new Promise((r) => setTimeout(r, 2500));
+
+  const errors = [];
+  const onError = (e) => errors.push(String(e.message || e.reason));
+  window.addEventListener('error', onError);
+  window.addEventListener('unhandledrejection', onError);
+
+  // Blocks the thread hard, several times, which is what a scene change or a
+  // garbage collection does on a cheap phone. Tone clamps every event whose
+  // time has passed up to `currentTime`, so a stall makes two scheduled hits
+  // land on the same instant — and a Source that is already playing refuses to
+  // restart at a time that is not strictly later than its last. That threw
+  // "Start time must be strictly greater than previous start time" from inside
+  // the audio clock, which the boot handler in index.html then reported as the
+  // game having failed to load.
+  for (let i = 0; i < 6; i++) {
+    const until = performance.now() + 320;
+    while (performance.now() < until) {
+      /* deliberately busy */
+    }
+    await new Promise((r) => setTimeout(r, 60));
+  }
+  await new Promise((r) => setTimeout(r, 1200));
+
+  window.removeEventListener('error', onError);
+  window.removeEventListener('unhandledrejection', onError);
+
+  return {
+    errors,
+    stillRunning: Boolean(window.__game?.scene.getScenes(true).length),
+  };
+});
+
+for (const message of survived.errors) {
+  fail(`the music threw while the main thread was stalled: ${message}`);
+}
+if (!survived.stillRunning) fail('the game stopped running after the stall');
+if (!survived.errors.length) step('  survived 6 stalls with no uncaught errors');
+
+// The other half of that bug, and the half a user actually saw. Whatever the
+// music does, a runtime error arriving after the game is up must not put a
+// full-screen "The game could not load" over a game that is visibly running:
+// that handler speaks for startup only. Driven directly, because the condition
+// that produced it in the wild — a dropped note on a stalling phone — is not
+// something this can reliably reproduce, whereas the reporting bug it exposed
+// is exactly reproducible and was the damaging part.
+step('checking a late error does not claim the app failed to load');
+const overlay = await page.evaluate(() => {
+  window.dispatchEvent(
+    new ErrorEvent('error', { message: 'synthetic late failure', filename: 'test', lineno: 1 })
+  );
+  const el = document.getElementById('boot-error');
+  return {
+    shown: el ? getComputedStyle(el).display !== 'none' : false,
+    gameUp: Boolean(window.__game),
+  };
+});
+
+if (!overlay.gameUp) {
+  fail('window.__game was missing, so the boot handler cannot tell startup from runtime');
+} else if (overlay.shown) {
+  fail('a late runtime error put up the "game could not load" screen over a running game');
+} else {
+  step('  the boot screen stayed out of the way');
+}
+
 // --- 3. Bursts clean up -----------------------------------------------------
 
 step('firing bursts and counting what is left behind');

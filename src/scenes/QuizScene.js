@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
+import { milestone, rightAnswer } from '../lib/flourish.js';
 import { addBanner } from '../lib/banner.js';
 import { confetti, dance, flyStar, paperFall } from '../lib/celebrate.js';
 import { addStageMascot } from '../lib/mascot.js';
@@ -296,7 +297,11 @@ export default class QuizScene extends Phaser.Scene {
     }
 
     this.locked = true;
-    sfx.correct();
+    // Played on a real glockenspiel through a reverb rather than three
+    // oscillator beeps. This is the most-heard sound in the app — a child
+    // answers a hundred questions in a session — and it has to still be worth
+    // hearing the hundredth time. See src/lib/flourish.js.
+    rightAnswer();
     sfx.sparkle();
     this.streak++;
     this.onCorrect(id);
@@ -325,7 +330,7 @@ export default class QuizScene extends Phaser.Scene {
     if (this.streak % MILESTONE === 0) {
       paperFall(this);
       starShower(this);
-      sfx.fanfare();
+      milestone();
       this.banner?.setInstruction('well-done', 'Well done!');
       // The ribbon joins in. It is the thing that has been giving instructions
       // all game, so it saying well done and then jumping about is the closest

@@ -70,9 +70,24 @@ await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
   timeout: 20000,
 });
 
+// `navigator.serviceWorker.ready` resolves as soon as there is an active
+// worker, which can be while that worker is still in "activating" — so reading
+// the state once races the browser and fails about one run in three. Waited
+// for instead.
 const swState = await page.evaluate(async () => {
   const reg = await navigator.serviceWorker.ready;
-  return reg.active?.state ?? 'none';
+  const worker = reg.active;
+  if (!worker) return 'none';
+  if (worker.state === 'activated') return worker.state;
+  return new Promise((resolve) => {
+    const deadline = setTimeout(() => resolve(worker.state), 10000);
+    worker.addEventListener('statechange', () => {
+      if (worker.state === 'activated') {
+        clearTimeout(deadline);
+        resolve(worker.state);
+      }
+    });
+  });
 });
 if (swState !== 'activated') fail(`service worker state is "${swState}"`);
 else step(`service worker ${swState}`);
@@ -140,13 +155,66 @@ if (clipKeys.length > 0) {
   step('no recordings present, skipping offline playback check');
 }
 
+// The console has to be clean *while offline*, which is what the section above
+// was testing. Judged here, before the network comes back, so that a fetch
+// still unwinding from the offline reload cannot be blamed on the check that
+// follows — which is what made this verification flaky for one run.
+const offlineErrors = [...errors];
+if (offlineErrors.length) {
+  for (const e of offlineErrors) console.error('  console: ' + e);
+  fail(`${offlineErrors.length} console error(s) while offline`);
+}
+
+// -------------------------------------------------- the update indicator
+
+// The badge is the only thing telling anybody whether the app they opened is
+// current. It is easy for it to be quietly broken — a wrong selector, a state
+// that never clears — and nothing else would notice, so its states are driven
+// directly here rather than waiting for a real deploy to happen.
+step('checking the update indicator');
+await context.setOffline(false);
+errors.length = 0;
+
+const badge = await page.evaluate(async () => {
+  const el = document.querySelector('.update-badge');
+  if (!el) return { missing: true };
+  const seen = { hiddenAtRest: el.hidden };
+
+  // Through the app's own module, not a fresh import: this runs against the
+  // built preview, where /src/ does not exist at all.
+  const { checkForUpdate } = window.__updates;
+  // Watched rather than sampled: 'checking' is replaced by a result as soon as
+  // the browser answers, and on a warm cache that can be within a frame.
+  const states = new Set();
+  const observer = new MutationObserver(() => {
+    if (!el.hidden) states.add(el.dataset.state);
+  });
+  observer.observe(el, { attributes: true });
+
+  const ran = await checkForUpdate();
+  await new Promise((r) => setTimeout(r, 1500));
+  observer.disconnect();
+
+  return { ...seen, ran, states: [...states], spinner: Boolean(el.querySelector('.update-spinner')) };
+});
+
+if (badge.missing) {
+  fail('no update indicator was mounted');
+} else {
+  if (!badge.hiddenAtRest) fail('the update indicator is showing when nothing is happening');
+  if (!badge.spinner) fail('the update indicator has no spinner element');
+  if (!badge.ran) fail('checkForUpdate() found no service worker registration');
+  if (!badge.states.length) fail('the update indicator never became visible during a check');
+  else step(`  indicator showed: ${badge.states.join(' -> ')}`);
+}
+
 await page.screenshot({
   path: process.argv[2] || path.join(ROOT, 'offline-check.png'),
 });
 
 if (errors.length) {
   for (const e of errors) console.error('  console: ' + e);
-  fail(`${errors.length} console error(s) while offline`);
+  fail(`${errors.length} console error(s) while checking for updates`);
 }
 
 await browser.close();

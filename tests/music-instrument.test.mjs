@@ -32,7 +32,13 @@ const block = defaultTune
   ? tunes.slice(tunes.indexOf(`'${defaultTune[1]}': {`))
   : '';
 const inMusic = block.match(/instrument: '([\w-]+)'/);
-const inConfig = read('vite.config.js').match(/const MUSIC_INSTRUMENT = '([\w-]+)'/);
+const config = read('vite.config.js');
+const inConfig = config.match(/const MUSIC_INSTRUMENT = '([\w-]+)'/);
+
+// The reward flourishes are played on a second instrument, precached the same
+// way and with the same failure mode if the two names drift.
+const flourish = read('src/lib/flourish.js').match(/const INSTRUMENT = '([\w-]+)'/);
+const flourishConfig = config.match(/const FLOURISH_INSTRUMENT = '([\w-]+)'/);
 
 describe('background music instrument', () => {
   test('is named in both places', () => {
@@ -51,6 +57,17 @@ describe('background music instrument', () => {
     );
   });
 
+  test('the flourish instrument agrees too', () => {
+    assert.ok(flourish, 'could not find INSTRUMENT in src/lib/flourish.js');
+    assert.ok(flourishConfig, 'could not find FLOURISH_INSTRUMENT in vite.config.js');
+    assert.equal(
+      flourish[1],
+      flourishConfig[1],
+      `flourishes play "${flourish[1]}" but vite.config.js precaches ` +
+        `"${flourishConfig[1]}" — every right answer would fall back to a beep offline`
+    );
+  });
+
   test('its samples are committed', () => {
     const dir = path.join(ROOT, 'public/audio/instruments', inMusic[1]);
     assert.ok(
@@ -64,6 +81,14 @@ describe('background music instrument', () => {
     );
   });
 
+  test("the flourish instrument's samples are committed", () => {
+    const dir = path.join(ROOT, 'public/audio/instruments', flourish[1]);
+    assert.ok(
+      fs.existsSync(dir),
+      `public/audio/instruments/${flourish[1]}/ is missing — run node tools/fetch-instruments.mjs`
+    );
+  });
+
   test('the samples are not gitignored', () => {
     // The alternates are deliberately ignored and the chosen one deliberately
     // is not. Getting that backwards produces a repo that builds and deploys
@@ -73,6 +98,11 @@ describe('background music instrument', () => {
       ignore,
       new RegExp(`^!public/audio/instruments/${inMusic[1]}/`, 'm'),
       `.gitignore does not re-include public/audio/instruments/${inMusic[1]}/`
+    );
+    assert.match(
+      ignore,
+      new RegExp(`^!public/audio/instruments/${flourish[1]}/`, 'm'),
+      `.gitignore does not re-include public/audio/instruments/${flourish[1]}/`
     );
   });
 });

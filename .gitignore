@@ -19,3 +19,4 @@ trace-check.png
 # Re-fetch them with: node tools/fetch-instruments.mjs
 public/audio/instruments/*/
 !public/audio/instruments/music_box/
+!public/audio/instruments/glockenspiel/

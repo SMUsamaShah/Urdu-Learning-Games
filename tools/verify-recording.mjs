@@ -101,6 +101,13 @@ const page = await context.newPage();
 //   1. a second AudioContext — a second claim on the audio device
 //   2. the microphone held open while playback is happening, which moves a
 //      phone's audio path into its communications profile
+//
+// What counts is how many are *live*. A context that has been constructed and
+// then closed holds nothing — and one gets constructed whether we like it or
+// not, because importing Tone.js builds its own before any of our code can
+// intervene, which src/lib/tone-setup.js then disposes. Counting constructions
+// instead of open devices fails on that, which is a true statement about the
+// wrong thing.
 await page.addInitScript(() => {
   window.__audioProbe = { contexts: [], streams: [] };
   const Ctor = window.AudioContext;
@@ -123,7 +130,8 @@ const audioProbe = () =>
     const probe = window.__audioProbe;
     const tracks = probe.streams.flatMap((s) => s.getTracks());
     return {
-      contexts: probe.contexts.length,
+      contexts: probe.contexts.filter((c) => c.state !== 'closed').length,
+      contextsBuilt: probe.contexts.length,
       micLive: tracks.filter((t) => t.readyState === 'live').length,
       micTotal: tracks.length,
     };
@@ -252,11 +260,14 @@ if (idle.micLive !== 0) {
 }
 if (idle.contexts !== 1) {
   fail(
-    `${idle.contexts} AudioContexts exist; the app must hold exactly one. ` +
-      `A second context is a second claim on the audio device.`
+    `${idle.contexts} live AudioContexts (${idle.contextsBuilt} built); the app must ` +
+      `hold exactly one. A second open context is a second claim on the audio device.`
   );
 } else {
-  step('exactly one AudioContext');
+  step(
+    `exactly one live AudioContext` +
+      (idle.contextsBuilt > 1 ? ` (${idle.contextsBuilt} built, the rest closed)` : '')
+  );
 }
 
 const stats = await page.evaluate(() => window.__audio.audioStats());

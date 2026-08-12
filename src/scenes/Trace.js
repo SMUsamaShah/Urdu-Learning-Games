@@ -3,6 +3,7 @@ import { letterGlyph, lettersById, sequenceFor } from '../lib/content.js';
 import { glyphTexture, glyphWidth } from '../lib/glyph.js';
 import { stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
+import { finished } from '../lib/flourish.js';
 import { addBanner } from '../lib/banner.js';
 import { confetti, paperFall } from '../lib/celebrate.js';
 import { addMascot } from '../lib/mascot.js';
@@ -421,8 +422,7 @@ export default class Trace extends Phaser.Scene {
     this.locked = true;
     this.drawing = false;
     this.trail?.stop();
-    sfx.correct();
-    sfx.tada();
+    finished();
     this.drawProgress(1);
     confetti(this, DESIGN.width / 2, 300, { count: 30, spread: 320 });
     // The sparkles burst out of the letter itself rather than from the middle

@@ -41,6 +41,7 @@
  */
 
 import { DEFAULT_TUNE, TUNES } from './tunes.js';
+import { loadTone } from './tone-setup.js';
 
 const KEY = 'urdu:music';
 
@@ -269,9 +270,10 @@ function setFeel(transport, tune) {
 
 /** Builds the live band, once. */
 async function build() {
-  Tone = await import('tone');
-  // Before any Tone object exists, or it builds a second AudioContext.
-  Tone.setContext(ctx);
+  // Shared, so the reward flourishes and the tune are the same Tone pointed at
+  // the same context. Two setContext calls would leave one of them scheduling
+  // into a context nobody is rendering, silently.
+  Tone = await loadTone();
 
   tap = ctx.createGain();
   tap.connect(ctx.destination);
@@ -309,12 +311,13 @@ async function build() {
  * @returns {Promise<{sampleRate:number, channels:Float32Array[]}>}
  */
 export async function renderMusic(seconds, options = {}) {
+  const T0 = await loadTone();
+  Tone = T0;
   const tune = {
     ...(TUNES[options.tune] ?? TUNE),
     ...(options.instrument ? { instrument: options.instrument } : {}),
   };
-  const T = Tone ?? (await import('tone'));
-  Tone = T;
+  const T = Tone;
   const live = ctx ?? undefined;
   if (live) T.setContext(live);
 
@@ -332,6 +335,34 @@ export async function renderMusic(seconds, options = {}) {
     channels: Array.from({ length: buffer.numberOfChannels }, (_, c) =>
       buffer.getChannelData(c)
     ),
+  };
+}
+
+/**
+ * Wraps a scheduled callback so a missed note cannot take the app down.
+ *
+ * Tone clamps an event whose time has already passed up to `currentTime`, and
+ * a Source that is already playing refuses to restart at a time that is not
+ * strictly later than its last one. So when the main thread stalls — a scene
+ * change, a garbage collection, a slow frame on a cheap phone — two late hits
+ * clamp to the same instant and the second throws "Start time must be strictly
+ * greater than previous start time" from inside the audio clock.
+ *
+ * It is only the shaker and the bass that can do this, because each reuses a
+ * single source; every other voice makes a new one per note. And the correct
+ * response to a shaker hit arriving late is to drop it, not to stop the app:
+ * this used to surface as an uncaught error, which the boot handler in
+ * index.html then reported as the game having failed to load, on a screen
+ * where the game was visibly running fine.
+ */
+function safely(callback) {
+  return (...args) => {
+    try {
+      callback(...args);
+    } catch (error) {
+      // Deliberately quiet. This fires when the device is already struggling,
+      // and a console full of warnings is not what it needs.
+    }
   };
 }
 
@@ -358,11 +389,11 @@ function scheduleParts(T, transport, { lead, bass, pad, drone, shaker }, tune) {
     );
   }
 
-  new T.Part((time, value) => {
+  new T.Part(safely((time, value) => {
     // Velocity varies a little note to note. Identical strikes are the single
     // most machine-like thing a sequenced part can do.
     lead.triggerAttackRelease(value.note, value.hold, time, 0.55 + Math.random() * 0.2);
-  }, melody).start(0);
+  }), melody).start(0);
 
   const bassNotes = [];
   const padChords = [];
@@ -374,14 +405,16 @@ function scheduleParts(T, transport, { lead, bass, pad, drone, shaker }, tune) {
     padChords.push({ time: beats(base), notes: bar.pad });
   });
 
-  new T.Part((time, value) => {
-    bass.triggerAttackRelease(value.note, '4n', time, 0.8);
-  }, bassNotes).start(0);
+  new T.Part(
+    safely((time, value) => bass.triggerAttackRelease(value.note, '4n', time, 0.8)),
+    bassNotes
+  ).start(0);
 
   const padHold = seconds(tune.padLength ?? tune.beats * 0.75);
-  new T.Part((time, value) => {
-    pad.triggerAttackRelease(value.notes, padHold, time, 0.5);
-  }, padChords).start(0);
+  new T.Part(
+    safely((time, value) => pad.triggerAttackRelease(value.notes, padHold, time, 0.5)),
+    padChords
+  ).start(0);
 
   // The pulse, with the downbeat fractionally louder so there is a beat rather
   // than a hiss. Which beats get one is the tune's business: eighths for the
@@ -392,17 +425,23 @@ function scheduleParts(T, transport, { lead, bass, pad, drone, shaker }, tune) {
       shakes.push({ time: beats(bar * tune.beats + beat), accent: beat === 0 });
     }
   }
-  new T.Part((time, value) => {
-    shaker.triggerAttackRelease('32n', time, value.accent ? 0.9 : 0.45);
-  }, shakes).start(0);
+  new T.Part(
+    safely((time, value) =>
+      shaker.triggerAttackRelease('32n', time, value.accent ? 0.9 : 0.45)
+    ),
+    shakes
+  ).start(0);
 
   // A drone, for the modal tune, held right through and re-struck each loop so
   // it never decays away. Nothing else has one; a drone under a chord
   // progression fights every chord that is not the tonic.
   if (drone) {
-    new T.Part((time, value) => {
-      drone.triggerAttackRelease(value.notes, seconds(loopBeats), time, 0.5);
-    }, [{ time: beats(0), notes: tune.drone }]).start(0);
+    new T.Part(
+      safely((time, value) =>
+        drone.triggerAttackRelease(value.notes, seconds(loopBeats), time, 0.5)
+      ),
+      [{ time: beats(0), notes: tune.drone }]
+    ).start(0);
   }
 
   transport.loop = true;

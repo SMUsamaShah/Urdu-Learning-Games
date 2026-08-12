@@ -8,6 +8,7 @@ import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { addScenery } from '../lib/scenery.js';
 import { bob, popIn, squash } from '../lib/liveliness.js';
 import { musicOn, setMusicOn, startMusic } from '../lib/music.js';
+import { prepareFlourishes } from '../lib/flourish.js';
 import { ringBurst } from '../lib/particles.js';
 import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, chunkyGlyphEm, label, makeButton } from '../lib/theme.js';
@@ -293,7 +294,12 @@ export default class Home extends Phaser.Scene {
     // The browser only lets audio play after the page has been touched, so the
     // tune starts at whatever the child taps first. Harmless if it is already
     // going — startMusic returns immediately.
-    this.input.once('pointerdown', () => startMusic());
+    this.input.once('pointerdown', () => {
+      startMusic();
+      // Fetches the reward instrument now, so the first right answer of a
+      // session gets the real sound rather than the synthesised fallback.
+      prepareFlourishes();
+    });
   }
 
   /**

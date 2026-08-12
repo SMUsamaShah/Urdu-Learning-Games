@@ -12,7 +12,10 @@ import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
 import { createAppAudioContext } from './lib/audio-context.js';
 import { mountFpsMeter } from './lib/fps.js';
+import * as updates from './lib/updates.js';
 import * as music from './lib/music.js';
+import * as flourish from './lib/flourish.js';
+import { useAudioContext } from './lib/tone-setup.js';
 import { COLORS, DESIGN } from './lib/theme.js';
 
 /**
@@ -31,6 +34,9 @@ import { COLORS, DESIGN } from './lib/theme.js';
  * and the voice breaks up. See src/lib/audio-context.js.
  */
 const audioContext = createAppAudioContext();
+// Handed over before any module asks for Tone, so the tune and the reward
+// flourishes are built on the app's context rather than one of Tone's own.
+useAudioContext(audioContext);
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -75,8 +81,16 @@ const game = new Phaser.Game({
 // running app rather than imported afresh.
 window.__game = game;
 window.__music = music;
+window.__flourish = flourish;
+window.__updates = updates;
 
 // Hidden unless switched on from the grown-ups screen. Mounted regardless so
 // the toggle takes effect without a reload.
 mountFpsMeter(game);
+
+// Shows a spinner while the app is fetching a new version of itself. It
+// updates silently — a three-year-old will not tap "a new version is
+// available" — and the point of this is only that somebody can tell whether
+// what they are looking at is current.
+updates.mountUpdateIndicator();
 window.__audio = audio;

@@ -11,6 +11,15 @@ import { VitePWA } from 'vite-plugin-pwa';
  */
 const MUSIC_INSTRUMENT = 'music_box';
 
+/**
+ * The instrument the reward flourishes are played on, from src/lib/flourish.js.
+ *
+ * A second one, and worth the extra 75 KB: it has to cut through the tune
+ * without the tune ducking for it, which a bright metal strike does and a soft
+ * wooden one does not.
+ */
+const FLOURISH_INSTRUMENT = 'glockenspiel';
+
 export default defineConfig({
   // Relative base so the built app works from a GitHub Pages project subpath
   // (user.github.io/Urdu-Learning-Games/) as well as from a domain root.
@@ -83,7 +92,7 @@ export default defineConfig({
         // nobody ever hears, and a build that differs from CI's by what happens
         // to be lying around is worth ruling out at the source.
         globIgnores: [
-          `audio/instruments/!(${MUSIC_INSTRUMENT})/**`,
+          `audio/instruments/!(${MUSIC_INSTRUMENT}|${FLOURISH_INSTRUMENT})/**`,
         ],
 
         // The Phaser bundle alone is ~1.4 MB, over Workbox's 2 MiB default once

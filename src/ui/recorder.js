@@ -24,6 +24,7 @@ import {
   isRecordingSupported,
 } from '../lib/recorder.js';
 import { setShowFps, showFps } from '../lib/fps.js';
+import { checkForUpdate } from '../lib/updates.js';
 import { polishTake } from '../lib/take-polish.js';
 import { buildSoundCheck } from './audio-check.js';
 import { buildArchive, readArchive } from '../lib/clip-archive.js';
@@ -109,6 +110,7 @@ export function openRecorder({ onClose } = {}) {
           Frame rate
         </label>
         <button type="button" class="rec-btn" data-act="check">Sound check</button>
+        <button type="button" class="rec-btn" data-act="update">Check for update</button>
         <button type="button" class="rec-btn" data-act="export">Export…</button>
         <button type="button" class="rec-btn" data-act="import">Import…</button>
         <button type="button" class="rec-btn" data-act="close">Done</button>
@@ -453,6 +455,8 @@ export function openRecorder({ onClose } = {}) {
         return fileInput.click();
       case 'check':
         return toggleCheck();
+      case 'update':
+        return checkUpdate();
       default:
         if (target.classList.contains('rec-row')) select(Number(target.dataset.i));
     }
@@ -479,6 +483,23 @@ export function openRecorder({ onClose } = {}) {
 
   /** @type {HTMLElement|null} */
   let checkEl = null;
+  /**
+   * The deliberate version of "is this the latest build?".
+   *
+   * The app updates itself silently, which is right for the child using it and
+   * useless for the person trying to work out whether the bug they are looking
+   * at is already fixed. The badge in the corner shows the answer; this is the
+   * button that asks the question.
+   */
+  function checkUpdate() {
+    statusEl.innerHTML = '<span>Checking for an update…</span>';
+    checkForUpdate().then((found) => {
+      statusEl.innerHTML = found
+        ? '<span>Checked — the badge in the corner shows the result.</span>'
+        : '<span class="rec-warn">No service worker. Updates only apply to the installed app, not to a dev server.</span>';
+    });
+  }
+
   function toggleCheck() {
     if (checkEl) {
       checkEl.remove();

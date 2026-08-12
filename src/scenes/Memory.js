@@ -3,6 +3,7 @@ import { allLetterGlyphs, lettersById, letterGlyph, wordForLetter } from '../lib
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
+import { finished, rightAnswer } from '../lib/flourish.js';
 import { addBanner } from '../lib/banner.js';
 import { dance, paperFall } from '../lib/celebrate.js';
 import { addWordImage, hasWordImage, queueWordImages } from '../lib/images.js';
@@ -314,7 +315,7 @@ export default class Memory extends Phaser.Scene {
   }
 
   pairFound(first, second) {
-    sfx.correct();
+    rightAnswer();
     sfx.sparkle();
     this.matched++;
 
@@ -352,9 +353,8 @@ export default class Memory extends Phaser.Scene {
     // A beat of build-up before the celebration. The pause is doing work: a
     // reward that lands the instant the last pair is turned is over before it
     // has been noticed.
-    sfx.drumroll();
+    finished();
     this.time.delayedCall(700, () => {
-      sfx.tada();
       paperFall(this);
       starShower(this, { duration: 2600 });
       jig(this, this.banner, { angle: 4, repeats: 5 });
