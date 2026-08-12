@@ -64,6 +64,13 @@ const GAMES = [
     icon: { letter: 'jim', form: 'isolated' },
   },
   {
+    scene: 'Sequence',
+    ui: 'order',
+    roman: 'Order',
+    color: 0x4f8f3f,
+    icon: { letter: 'te', form: 'isolated' },
+  },
+  {
     scene: 'Trace',
     ui: 'trace',
     roman: 'Write',

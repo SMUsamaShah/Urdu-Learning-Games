@@ -150,7 +150,7 @@ function shrink(points, factor) {
  * @param {number} config.width
  * @param {number} config.height
  * @param {number} [config.color]
- * @param {'card'|'star'|'blob'} [config.shape='card']
+ * @param {'card'|'star'|'blob'|'circle'} [config.shape='card']
  * @param {boolean} [config.rim=true] The white-and-dark sticker edge. Off for
  *   the small chrome buttons, where it is just noise.
  * @param {() => void} config.onTap
@@ -172,6 +172,9 @@ export function makeButton(scene, config) {
   let outline = null;
   if (shape === 'star') outline = starPoints(width, height);
   else if (shape === 'blob') outline = blobPoints(width, height);
+  // A circle is a blob with no bumps. Same code path, so the rim and shadow are
+  // drawn exactly the same way for all three.
+  else if (shape === 'circle') outline = blobPoints(width, height, 4, 0);
 
   const shadow = scene.add.graphics();
   shadow.fillStyle(COLORS.shadow, 0.22);

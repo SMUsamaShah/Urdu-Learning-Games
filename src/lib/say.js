@@ -38,6 +38,19 @@ export function sayLetter(letterId, options = {}) {
   return playSequence(keys.filter(hasClip), GAP_MS);
 }
 
+/**
+ * Says several letters' names in a row.
+ *
+ * For teaching order rather than shape: hearing "alif, bay, pay" as a run is
+ * the thing that makes the sequence a sequence rather than a list of pictures.
+ */
+export function sayLetters(letterIds) {
+  return playSequence(
+    letterIds.map((id) => clipKeys.letterName(id)).filter(hasClip),
+    GAP_MS
+  );
+}
+
 export function sayWord(wordId) {
   return playSequence([clipKeys.word(wordId)].filter(hasClip), GAP_MS);
 }

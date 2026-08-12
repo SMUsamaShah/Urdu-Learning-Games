@@ -90,6 +90,14 @@ export default class QuizScene extends Phaser.Scene {
   /** Says the prompt aloud, if there is a recording for it. */
   speak() {}
 
+  /**
+   * Called when the round has been won, before the celebration.
+   *
+   * For the games where the answer is worth saying only once it has been found
+   * — in a sequence, naming the letter beforehand would be the whole answer.
+   */
+  onCorrect(id) {}
+
   // ----------------------------------------------------------------- scene
 
   create() {
@@ -270,6 +278,7 @@ export default class QuizScene extends Phaser.Scene {
     this.locked = true;
     sfx.correct();
     this.streak++;
+    this.onCorrect(id);
 
     // Fade the others so the right one is unmistakably the one that stayed.
     for (const other of this.choicesLayer.list) {

@@ -28,6 +28,7 @@ const QUIZZES = [
   { key: 'FindLetter', rounds: 12 },
   { key: 'WordPictures', rounds: 8 },
   { key: 'Numbers', rounds: 8 },
+  { key: 'Sequence', rounds: 10 },
 ];
 
 const fail = (msg) => {
@@ -234,6 +235,73 @@ if (!process.exitCode) {
   // which quietly multiplies the balloons each round until the screen is a mess.
   else if (idle.count > 8) fail(`${idle.count} balloons on screen — they are leaking`);
   else step(`${idle.count} balloons on screen, answer present`);
+}
+
+// ---------------------------------------------------------------- sequence
+
+if (!process.exitCode) {
+  await start('Sequence');
+  step('Sequence: checking the run is real and the answers are not already in it');
+
+  for (let round = 0; round < 8; round++) {
+    const state = await page.evaluate(() => {
+      const scene = window.__game.scene.getScene('Sequence');
+      return {
+        sequence: scene.sequence,
+        window: scene.window(),
+        gapIndex: scene.gapIndex,
+        gapSlot: scene.gapSlot,
+        target: scene.target,
+        ids: scene.choicesLayer.list.map((t) => t.choiceId),
+      };
+    });
+
+    // The caterpillar has to be a genuine run of the alphabet, or the question
+    // has no answer that reasoning could reach.
+    const from = state.sequence.indexOf(state.window[0]);
+    const expected = state.sequence.slice(from, from + state.window.length);
+    if (expected.join() !== state.window.join()) {
+      fail(
+        `Sequence round ${round + 1}: the caterpillar is not consecutive — ` +
+          `[${state.window.join(', ')}]`
+      );
+      break;
+    }
+    if (state.window[state.gapSlot] !== state.target) {
+      fail(
+        `Sequence round ${round + 1}: the gap is at "${state.window[state.gapSlot]}" ` +
+          `but the answer is "${state.target}"`
+      );
+      break;
+    }
+
+    // A distractor already sitting in the caterpillar makes the round
+    // unanswerable by reasoning: the child can see that letter is elsewhere.
+    const alsoShown = state.ids.filter(
+      (id) => id !== state.target && state.window.includes(id)
+    );
+    if (alsoShown.length) {
+      fail(
+        `Sequence round ${round + 1}: [${alsoShown.join(', ')}] offered as answers ` +
+          'while already visible in the caterpillar'
+      );
+      break;
+    }
+
+    await page.evaluate(() => {
+      const scene = window.__game.scene.getScene('Sequence');
+      scene.choicesLayer.list.find((t) => t.choiceId === scene.target).emit('pointerup');
+    });
+    await page
+      .waitForFunction(
+        (was) => window.__game.scene.getScene('Sequence').target !== was,
+        state.target,
+        { timeout: 20000 }
+      )
+      .catch(() => fail(`Sequence round ${round + 1}: a correct answer did not advance`));
+    if (process.exitCode) break;
+  }
+  if (!process.exitCode) step('every run was consecutive and every line-up was answerable');
 }
 
 // ------------------------------------------------------------------ memory
