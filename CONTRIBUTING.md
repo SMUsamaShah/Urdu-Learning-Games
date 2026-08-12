@@ -158,6 +158,22 @@ Three things about it that are decisions rather than taste:
   is nothing left to mark actually finishing with.
 - **Anything infinite gets a per-item delay.** `stagger()` does this. Eight
   tiles bobbing in unison is a machine.
+- **Never read `target.scale`.** The getter returns the *average* of scaleX and
+  scaleY and `setScale(n)` writes that average back to both, so an animation
+  that round-trips through it squares up whatever it touched — a little more on
+  every tap. Every picture here is sized with `setDisplaySize` and is not
+  square. The helpers in `liveliness.js` keep the two axes apart; anything new
+  must too, and the check in `verify:fun` uses a deliberately non-square target
+  because a square one cannot see the bug.
+
+Backdrops and anything else that does not move belong in a **baked texture**,
+not a Graphics object. `scenery.js` rasterises sun, hills, grass and flowers
+into one canvas texture drawn as a single Image; a Graphics re-tessellates its
+geometry on the CPU every frame whether or not it changed, so the previous
+version was paying for four hundred ellipses sixty times a second to show a
+still picture. Baking it made the meadow both far more detailed and measurably
+cheaper — a frame on the menu went from 76ms to 65ms under software rendering,
+and on a game screen from 62ms to 48ms.
 
 ## Before opening a pull request
 

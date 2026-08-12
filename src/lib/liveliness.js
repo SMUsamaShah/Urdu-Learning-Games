@@ -46,6 +46,21 @@ export function bob(scene, target, options = {}) {
 }
 
 /**
+ * The scale a target is currently at, as a pair.
+ *
+ * Never `target.scale`. That getter returns the *average* of scaleX and scaleY,
+ * and `setScale(n)` then writes that average to both — so any animation that
+ * round-trips through it silently squares up whatever it touched. Every picture
+ * in this app is sized with setDisplaySize and is not square, so the bug is one
+ * tap away on the word plate, the counting objects and the memory cards: they
+ * come back from a hop very slightly the wrong shape, and again on the next tap,
+ * and again.
+ */
+function scaleOf(target) {
+  return { x: target.scaleX ?? 1, y: target.scaleY ?? 1 };
+}
+
+/**
  * Swells and shrinks by a hair, for ever. For anything that should look alive
  * without moving off its mark — a tile in a grid, a card in a line-up.
  *
@@ -54,10 +69,11 @@ export function bob(scene, target, options = {}) {
  */
 export function breathe(scene, target, options = {}) {
   const { amount = 0.03, duration = 1900, delay = 0 } = options;
-  const base = target.scale ?? 1;
+  const base = scaleOf(target);
   return scene.tweens.add({
     targets: target,
-    scale: base * (1 + amount),
+    scaleX: base.x * (1 + amount),
+    scaleY: base.y * (1 + amount),
     duration,
     delay,
     yoyo: true,
@@ -93,11 +109,12 @@ export function sway(scene, target, options = {}) {
  */
 export function popIn(scene, target, options = {}) {
   const { delay = 0, duration = 380, from = 0.2 } = options;
-  const base = target.scale ?? 1;
-  target.setScale(base * from);
+  const base = scaleOf(target);
+  target.setScale(base.x * from, base.y * from);
   return scene.tweens.add({
     targets: target,
-    scale: base,
+    scaleX: base.x,
+    scaleY: base.y,
     delay,
     duration,
     ease: 'Back.easeOut',
@@ -114,16 +131,16 @@ export function popIn(scene, target, options = {}) {
  */
 export function squash(scene, target, options = {}) {
   const { amount = 0.12, duration = 90 } = options;
-  const base = target.scale ?? 1;
+  const base = scaleOf(target);
   scene.tweens.killTweensOf(target);
   return scene.tweens.add({
     targets: target,
-    scaleX: base * (1 + amount),
-    scaleY: base * (1 - amount),
+    scaleX: base.x * (1 + amount),
+    scaleY: base.y * (1 - amount),
     duration,
     yoyo: true,
     ease: 'Quad.easeOut',
-    onComplete: () => target.setScale(base),
+    onComplete: () => target.setScale(base.x, base.y),
   });
 }
 
@@ -159,22 +176,22 @@ export function jig(scene, target, options = {}) {
 export function hop(scene, target, options = {}) {
   const { height = 26, duration = 260 } = options;
   const baseY = target.y;
-  const base = target.scale ?? 1;
+  const base = scaleOf(target);
   scene.tweens.chain({
     targets: target,
     tweens: [
       { y: baseY - height, duration, ease: 'Sine.easeOut' },
       { y: baseY, duration: duration * 0.7, ease: 'Quad.easeIn' },
       {
-        scaleX: base * 1.14,
-        scaleY: base * 0.86,
+        scaleX: base.x * 1.14,
+        scaleY: base.y * 0.86,
         duration: 70,
         yoyo: true,
         ease: 'Quad.easeOut',
       },
     ],
     onComplete: () => {
-      target.setScale(base);
+      target.setScale(base.x, base.y);
       target.y = baseY;
     },
   });

@@ -266,9 +266,15 @@ const drift = await page.evaluate(async () => {
     ['jig', jig],
     ['squash', squash],
   ]) {
+    // Deliberately not square, and deliberately not uniformly scaled. Phaser's
+    // `scale` getter returns the average of scaleX and scaleY, and `setScale(n)`
+    // writes that average back to both — so an animation that round-trips
+    // through it squares up whatever it touched, a little more on every tap.
+    // Every picture in this app is sized with setDisplaySize and is not square,
+    // so a square test target cannot see the bug at all.
     const target = scene.add.image(500, 400, '__DEFAULT');
-    target.setScale(1).setAngle(0);
-    const mark = { x: target.x, y: target.y, scaleX: 1, scaleY: 1, angle: 0 };
+    target.setScale(1.6, 0.7).setAngle(0);
+    const mark = { x: target.x, y: target.y, scaleX: 1.6, scaleY: 0.7, angle: 0 };
 
     animate(scene, target);
 

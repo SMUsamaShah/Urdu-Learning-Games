@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
 import { allNumberGlyphs, numberGlyph, numbers, numbersById } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
+import { hop } from '../lib/liveliness.js';
+import { ringBurst } from '../lib/particles.js';
+import * as sfx from '../lib/sfx.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import { addWordImage, illustratedWords, queueWordImages } from '../lib/images.js';
 import { sayNumber } from '../lib/say.js';
@@ -115,6 +118,24 @@ export default class Numbers extends QuizScene {
           duration: 260,
           ease: 'Back.easeOut',
         });
+
+        // Each one can be poked, and each poke counts it out loud: one, two,
+        // three. This is the actual skill the game is about — a three-year-old
+        // counts by touching things, one at a time, and a screen where the
+        // things cannot be touched is asking them to count in their head.
+        //
+        // Nothing is scored and nothing can go wrong. Tapping them in a silly
+        // order, or the same one eight times, is allowed; the point is the
+        // pairing of one touch with one number.
+        const ordinal = i + 1;
+        image.setInteractive({ useHandCursor: true });
+        image.on('pointerdown', () => {
+          if (this.locked) return;
+          hop(this, image, { height: 18, duration: 190 });
+          ringBurst(this, image.x + layer.x, image.y + layer.y, COLORS.accent);
+          sfx.tap();
+          this.countAloud(ordinal);
+        });
       } else {
         const dot = this.add.graphics();
         dot.fillStyle(COLORS.accent, 1);
@@ -165,5 +186,20 @@ export default class Numbers extends QuizScene {
 
   speak() {
     sayNumber(this.target);
+  }
+
+  /**
+   * Says a number as one of the objects is touched.
+   *
+   * Interrupts whatever was already speaking, because a child tapping quickly
+   * along a row wants one number per tap — queueing them would run the count
+   * on long after they had finished, and the whole value of this is that the
+   * sound lands with the finger.
+   *
+   * Silent if that number has not been recorded yet, like everything else here.
+   */
+  countAloud(value) {
+    const number = numbers.find((n) => n.value === value);
+    if (number) sayNumber(number.id);
   }
 }
