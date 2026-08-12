@@ -4,10 +4,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 /**
  * The instrument the background tune is played on.
  *
- * Kept in step with INSTRUMENT in src/lib/music.js by
- * tests/music-instrument.test.mjs — the failure otherwise is that the app asks
- * for samples the service worker never cached, so the tune works in development
- * and is silent offline.
+ * Must match the instrument of DEFAULT_TUNE in src/lib/tunes.js. Kept in step
+ * by tests/music-instrument.test.mjs — the failure otherwise is that the app
+ * asks for samples the service worker never cached, so the tune works in
+ * development and is silent offline.
  */
 const MUSIC_INSTRUMENT = 'music_box';
 

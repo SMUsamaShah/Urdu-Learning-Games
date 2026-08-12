@@ -1,7 +1,8 @@
 /**
  * The instrument the tune is played on is named in two places. They must agree.
  *
- * `src/lib/music.js` decides which sample folder the sampler fetches from.
+ * `src/lib/tunes.js` decides which sample folder the sampler fetches from — via
+ * DEFAULT_TUNE, whose `instrument` is the one that matters.
  * `vite.config.js` decides which sample folder the service worker precaches.
  * Change one without the other and the app asks for files that were never
  * cached — which works perfectly in development, works on the first online
@@ -23,12 +24,20 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
-const inMusic = read('src/lib/music.js').match(/const INSTRUMENT = '([\w-]+)'/);
+const tunes = read('src/lib/tunes.js');
+const defaultTune = tunes.match(/export const DEFAULT_TUNE = '([\w-]+)'/);
+// The instrument belonging to that tune: find its block, then the first
+// `instrument:` inside it.
+const block = defaultTune
+  ? tunes.slice(tunes.indexOf(`'${defaultTune[1]}': {`))
+  : '';
+const inMusic = block.match(/instrument: '([\w-]+)'/);
 const inConfig = read('vite.config.js').match(/const MUSIC_INSTRUMENT = '([\w-]+)'/);
 
 describe('background music instrument', () => {
   test('is named in both places', () => {
-    assert.ok(inMusic, "could not find INSTRUMENT in src/lib/music.js");
+    assert.ok(defaultTune, 'could not find DEFAULT_TUNE in src/lib/tunes.js');
+    assert.ok(inMusic, `could not find an instrument for tune "${defaultTune?.[1]}"`);
     assert.ok(inConfig, 'could not find MUSIC_INSTRUMENT in vite.config.js');
   });
 
@@ -36,7 +45,8 @@ describe('background music instrument', () => {
     assert.equal(
       inMusic[1],
       inConfig[1],
-      `music.js plays "${inMusic[1]}" but vite.config.js precaches "${inConfig[1]}" — ` +
+      `tune "${defaultTune[1]}" plays "${inMusic[1]}" but vite.config.js precaches ` +
+        `"${inConfig[1]}" — ` +
         'the tune would be silent offline'
     );
   });

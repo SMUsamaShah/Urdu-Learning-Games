@@ -40,6 +40,8 @@
  * see src/lib/audio.js.
  */
 
+import { DEFAULT_TUNE, TUNES } from './tunes.js';
+
 const KEY = 'urdu:music';
 
 /** How loud the tune sits under everything else, in decibels. */
@@ -49,70 +51,15 @@ const DUCK_DB = -14;
 const DUCK_FADE = 0.12;
 const UNDUCK_FADE = 0.6;
 
-const BPM = 104;
-
 /**
- * The sampled voice the melody is played on.
+ * Which piece of music plays, and everything about it.
  *
- * One of the folders under public/audio/instruments. Only this one is fetched
- * at runtime; the others are kept so the tune can be auditioned on a different
- * voice with `npm run music:preview -- --instrument celesta` rather than by
- * editing this line and reloading.
+ * The compositions live in src/lib/tunes.js as data — melody, chords, metre,
+ * feel and voice together — because they are the part a person has an opinion
+ * about, and changing one should not mean reading a scheduler. Audition them
+ * with `npm run music:preview -- --tune waltz`.
  */
-const INSTRUMENT = 'music_box';
-
-/**
- * The tune: eight bars, as [note, length] with lengths in beats.
- *
- * Written out rather than generated. A melody assembled from random notes in a
- * safe scale sounds exactly like what it is — a toy with a flat battery — and
- * what makes a loop bearable on the hundredth listen is that it has a shape: a
- * phrase, an answering phrase, and a rest to breathe in. `null` is a rest, and
- * the rests are as deliberate as the notes.
- *
- * C major pentatonic almost throughout, which is the scale that cannot produce
- * a sour note. The B in bar four is the one exception, and it is what leaves
- * the phrase unfinished — which is what carries the loop round again.
- */
-const MELODY = [
-  // Bars 1-2: the question.
-  ['C5', 0.5], ['C5', 0.5], ['A4', 1], ['G4', 1], ['E4', 1],
-  ['A4', 0.5], ['A4', 0.5], ['G4', 1], ['E4', 1], ['C4', 1],
-  // Bars 3-4: it climbs, and lands unresolved.
-  ['F4', 0.5], ['G4', 0.5], ['A4', 1], ['C5', 1], ['A4', 1],
-  ['G4', 1], ['B4', 1], ['D5', 1.5], [null, 0.5],
-  // Bars 5-6: the answer, a step higher.
-  ['C5', 0.5], ['D5', 0.5], ['E5', 1], ['C5', 1], ['G4', 1],
-  ['A4', 0.5], ['C5', 0.5], ['A4', 1], ['G4', 1], ['E4', 1],
-  // Bars 7-8: home, with room to breathe before it comes round again.
-  ['F4', 1], ['A4', 1], ['C5', 1], ['A4', 1],
-  ['G4', 0.5], ['A4', 0.5], ['C5', 2], [null, 1],
-];
-
-/**
- * One chord per bar: I - vi - IV - V, twice.
- *
- * The progression half of all nursery music is built on, for the reason that it
- * goes round for ever without ever sounding finished.
- *
- * The bass plays the root on beat one and the fifth on beat three, which is the
- * oldest trick there is for making four chords sound like movement. Both sit
- * around 100-200 Hz, where a phone speaker can actually reproduce them; an
- * octave lower would be inaudible on the device this is played on.
- */
-const BARS = [
-  { pad: ['C3', 'E3', 'G3'], bass: ['C3', 'G2'] },
-  { pad: ['A2', 'C3', 'E3'], bass: ['A2', 'E2'] },
-  { pad: ['F2', 'A2', 'C3'], bass: ['F3', 'C3'] },
-  { pad: ['G2', 'B2', 'D3'], bass: ['G3', 'D3'] },
-  { pad: ['C3', 'E3', 'G3'], bass: ['C3', 'G2'] },
-  { pad: ['A2', 'C3', 'E3'], bass: ['A2', 'E2'] },
-  { pad: ['F2', 'A2', 'C3'], bass: ['F3', 'C3'] },
-  { pad: ['G2', 'B2', 'D3'], bass: ['G3', 'D3'] },
-];
-
-const BEATS_PER_BAR = 4;
-const LOOP_BEATS = BARS.length * BEATS_PER_BAR;
+const TUNE = TUNES[DEFAULT_TUNE];
 
 /** @type {AudioContext|null} */
 let ctx = null;
@@ -152,6 +99,10 @@ export function setMusicOn(on) {
  * generating, a gain left at zero — and none of those throw. See
  * tools/verify-fun.mjs.
  */
+export function tuneNames() {
+  return Object.entries(TUNES).map(([id, tune]) => ({ id, name: tune.name }));
+}
+
 export function musicOutput() {
   return tap;
 }
@@ -204,9 +155,9 @@ export function initMusic(game) {
  *
  * @param {*} T the Tone module
  * @param {*} destination what the mix connects to
- * @param {string} [instrument] which sampled voice the lead plays
+ * @param {import('./tunes.js').Tune} [tune] which piece is being built
  */
-async function createBand(T, destination, instrument = INSTRUMENT) {
+async function createBand(T, destination, tune = TUNE) {
   const master = new T.Gain(0);
   // A limiter rather than trust: three instruments and a reverb tail can
   // coincide, and a clipped background tune is unpleasant in a way a quiet one
@@ -234,7 +185,7 @@ async function createBand(T, destination, instrument = INSTRUMENT) {
   // Five notes, pitched to fill the gaps. See tools/fetch-instruments.mjs.
   const lead = new T.Sampler({
     urls: { C4: 'C4.mp3', 'F#4': 'Gb4.mp3', C5: 'C5.mp3', 'F#5': 'Gb5.mp3', C6: 'C6.mp3' },
-    baseUrl: `${import.meta.env.BASE_URL}audio/instruments/${instrument}/`,
+    baseUrl: `${import.meta.env.BASE_URL}audio/instruments/${tune.instrument}/`,
     release: 1.4,
     volume: -7,
   });
@@ -284,15 +235,35 @@ async function createBand(T, destination, instrument = INSTRUMENT) {
   const shakerTone = new T.Filter({ type: 'highpass', frequency: 5500 });
   shaker.chain(shakerTone, master);
 
-  return { master, reverb, lead, bass, pad, shaker };
+  // A tanpura, near enough: two notes a fifth apart, held for ever, slightly
+  // out of tune with each other so the pair shimmers. Built only for the tune
+  // that asks for one, because a drone underneath a chord progression fights
+  // every chord that is not the tonic.
+  let drone = null;
+  if (tune.drone) {
+    drone = new T.PolySynth(T.AMSynth, {
+      harmonicity: 1.005,
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: 2.5, decay: 1, sustain: 0.85, release: 3 },
+      modulation: { type: 'sine' },
+      volume: -30,
+    });
+    const droneTone = new T.Filter({ type: 'lowpass', frequency: 900 });
+    drone.chain(droneTone, reverb);
+    drone.connect(master);
+  }
+
+  return { master, reverb, lead, bass, pad, shaker, drone };
 }
 
 /** Sets the tempo and feel on a transport, live or offline. */
-function setFeel(transport) {
-  transport.bpm.value = BPM;
-  // A little behind the beat on the offbeats. Dead-straight eighths are the
-  // other half of why the first version sounded mechanical.
-  transport.swing = 0.12;
+function setFeel(transport, tune) {
+  transport.bpm.value = tune.bpm;
+  // A little behind the beat on the offbeats, where the tune asks for it. Dead
+  // straight is right for the waltz and wrong for the skipping one; it was
+  // uniformly straight before, which was half of why the whole thing sounded
+  // mechanical.
+  transport.swing = tune.swing;
   transport.swingSubdivision = '8n';
 }
 
@@ -305,10 +276,10 @@ async function build() {
   tap = ctx.createGain();
   tap.connect(ctx.destination);
 
-  const band = await createBand(Tone, tap);
+  const band = await createBand(Tone, tap, TUNE);
   const transport = Tone.getTransport();
-  setFeel(transport);
-  scheduleParts(Tone, transport, band);
+  setFeel(transport, TUNE);
+  scheduleParts(Tone, transport, band, TUNE);
 
   voices = { ...band, transport };
 }
@@ -332,19 +303,25 @@ async function build() {
  * tune should be stopped around a call to this.
  *
  * @param {number} seconds
- * @param {string} [instrument] a voice to audition instead of the usual one
+ * @param {object} [options]
+ * @param {string} [options.tune] a piece to audition instead of the usual one
+ * @param {string} [options.instrument] a voice to hear that piece on
  * @returns {Promise<{sampleRate:number, channels:Float32Array[]}>}
  */
-export async function renderMusic(seconds, instrument = INSTRUMENT) {
+export async function renderMusic(seconds, options = {}) {
+  const tune = {
+    ...(TUNES[options.tune] ?? TUNE),
+    ...(options.instrument ? { instrument: options.instrument } : {}),
+  };
   const T = Tone ?? (await import('tone'));
   Tone = T;
   const live = ctx ?? undefined;
   if (live) T.setContext(live);
 
   const buffer = await T.Offline(async ({ transport }) => {
-    const band = await createBand(T, T.getDestination(), instrument);
-    setFeel(transport);
-    scheduleParts(T, transport, band);
+    const band = await createBand(T, T.getDestination(), tune);
+    setFeel(transport, tune);
+    scheduleParts(T, transport, band, tune);
     band.master.gain.value = T.dbToGain(VOLUME_DB);
     transport.start(0);
   }, seconds);
@@ -359,16 +336,26 @@ export async function renderMusic(seconds, instrument = INSTRUMENT) {
 }
 
 /** Lays the tune out on the transport as one repeating block. */
-function scheduleParts(T, transport, { lead, bass, pad, shaker }) {
+function scheduleParts(T, transport, { lead, bass, pad, drone, shaker }, tune) {
+  const loopBeats = tune.bars.length * tune.beats;
   const beats = (n) => `0:${n}`;
-  const seconds = (beatCount) => (beatCount * 60) / BPM;
+  const seconds = (beatCount) => (beatCount * 60) / tune.bpm;
 
-  // The melody, placed by walking the note lengths.
+  // The melody, placed by walking the note lengths. Rests take up time and
+  // produce nothing, which is the only thing that needs saying about them.
   let at = 0;
   const melody = [];
-  for (const [note, length] of MELODY) {
+  for (const [note, length] of tune.melody) {
     if (note) melody.push({ time: beats(at), note, hold: seconds(length * 0.92) });
     at += length;
+  }
+  // A tune whose note lengths do not add up to its bars drifts against the
+  // chords underneath, a little more each loop, and sounds like a mistake long
+  // before anybody works out what it is.
+  if (Math.abs(at - loopBeats) > 0.001) {
+    console.warn(
+      `Tune "${tune.name}" is ${at} beats of melody over ${loopBeats} beats of bars.`
+    );
   }
 
   new T.Part((time, value) => {
@@ -379,10 +366,11 @@ function scheduleParts(T, transport, { lead, bass, pad, shaker }) {
 
   const bassNotes = [];
   const padChords = [];
-  BARS.forEach((bar, index) => {
-    const base = index * BEATS_PER_BAR;
-    bassNotes.push({ time: beats(base), note: bar.bass[0] });
-    bassNotes.push({ time: beats(base + 2), note: bar.bass[1] });
+  tune.bars.forEach((bar, index) => {
+    const base = index * tune.beats;
+    for (const [beat, note] of bar.bass) {
+      bassNotes.push({ time: beats(base + beat), note });
+    }
     padChords.push({ time: beats(base), notes: bar.pad });
   });
 
@@ -390,23 +378,36 @@ function scheduleParts(T, transport, { lead, bass, pad, shaker }) {
     bass.triggerAttackRelease(value.note, '4n', time, 0.8);
   }, bassNotes).start(0);
 
+  const padHold = seconds(tune.padLength ?? tune.beats * 0.75);
   new T.Part((time, value) => {
-    pad.triggerAttackRelease(value.notes, '2n.', time, 0.5);
+    pad.triggerAttackRelease(value.notes, padHold, time, 0.5);
   }, padChords).start(0);
 
-  // Eighth notes, with the downbeats fractionally louder so there is a pulse
-  // rather than a hiss.
+  // The pulse, with the downbeat fractionally louder so there is a beat rather
+  // than a hiss. Which beats get one is the tune's business: eighths for the
+  // even one, offbeats for the skipping one, two-and-three for the waltz.
   const shakes = [];
-  for (let eighth = 0; eighth < LOOP_BEATS * 2; eighth++) {
-    shakes.push({ time: beats(eighth / 2), accent: eighth % 4 === 0 });
+  for (let bar = 0; bar < tune.bars.length; bar++) {
+    for (const beat of tune.pulse) {
+      shakes.push({ time: beats(bar * tune.beats + beat), accent: beat === 0 });
+    }
   }
   new T.Part((time, value) => {
     shaker.triggerAttackRelease('32n', time, value.accent ? 0.9 : 0.45);
   }, shakes).start(0);
 
+  // A drone, for the modal tune, held right through and re-struck each loop so
+  // it never decays away. Nothing else has one; a drone under a chord
+  // progression fights every chord that is not the tonic.
+  if (drone) {
+    new T.Part((time, value) => {
+      drone.triggerAttackRelease(value.notes, seconds(loopBeats), time, 0.5);
+    }, [{ time: beats(0), notes: tune.drone }]).start(0);
+  }
+
   transport.loop = true;
   transport.loopStart = 0;
-  transport.loopEnd = `0:${LOOP_BEATS}`;
+  transport.loopEnd = beats(loopBeats);
 }
 
 /**

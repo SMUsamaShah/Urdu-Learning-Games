@@ -56,8 +56,25 @@ const SOURCE =
  */
 const NOTES = ['C4', 'Gb4', 'C5', 'Gb5', 'C6'];
 
-/** Everything worth auditioning as the voice of the tune. */
-const INSTRUMENTS = ['music_box', 'celesta', 'marimba', 'kalimba', 'glockenspiel'];
+/**
+ * Everything worth auditioning as a voice.
+ *
+ * Mallets and boxes for the gentle tunes; sitar and koto because this app
+ * teaches Urdu and a subcontinental voice belongs in the running rather than
+ * being a novelty; nylon guitar as the plainest, least twinkly option, since
+ * five variations on "twinkly" is not a choice.
+ */
+const INSTRUMENTS = [
+  'music_box',
+  'celesta',
+  'marimba',
+  'kalimba',
+  'glockenspiel',
+  'sitar',
+  'koto',
+  'acoustic_guitar_nylon',
+  'pizzicato_strings',
+];
 
 const wanted = process.argv.slice(2).length ? process.argv.slice(2) : INSTRUMENTS;
 

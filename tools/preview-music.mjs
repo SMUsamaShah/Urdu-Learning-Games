@@ -27,7 +27,9 @@
  * that class of problem announces itself instead of being mistaken for
  * songwriting.
  *
- * Usage: npm run dev &  then  node tools/preview-music.mjs [seconds] [outfile]
+ * Usage: npm run dev &  then
+ *   node tools/preview-music.mjs --list
+ *   node tools/preview-music.mjs [seconds] [outfile] [--tune waltz] [--instrument koto]
  */
 
 import fs from 'node:fs';
@@ -35,9 +37,18 @@ import { chromium } from 'playwright';
 import { hasBrowser, launchOptions } from './browser.mjs';
 
 const args = process.argv.slice(2);
-const at = args.indexOf('--instrument');
-const INSTRUMENT = at >= 0 ? args[at + 1] : undefined;
-const rest = at >= 0 ? args.filter((_, i) => i !== at && i !== at + 1) : args;
+/** Pulls `--name value` out of the arguments, leaving the positional ones. */
+function option(name) {
+  const at = args.indexOf(`--${name}`);
+  if (at < 0) return undefined;
+  const value = args[at + 1];
+  args.splice(at, 2);
+  return value;
+}
+const INSTRUMENT = option('instrument');
+const TUNE = option('tune');
+const LIST = args.includes('--list');
+const rest = args.filter((a) => !a.startsWith('--'));
 const SECONDS = Number(rest[0] || 40);
 const OUT = rest[1] || 'music-preview.wav';
 const APP = process.env.APP_URL || 'http://localhost:5173';
@@ -60,16 +71,28 @@ await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
   timeout: 30000,
 });
 
-process.stderr.write(`· rendering ${SECONDS}s of the tune${INSTRUMENT ? ` on ${INSTRUMENT}` : ''}\n`);
+if (LIST) {
+  const tunes = await page.evaluate(() => window.__music.tuneNames());
+  for (const { id, name } of tunes) console.log(`${id.padEnd(12)} ${name}`);
+  await browser.close();
+  process.exit(0);
+}
 
-const rendered = await page.evaluate(async ([seconds, instrument]) => {
+process.stderr.write(
+  `· rendering ${SECONDS}s of ${TUNE ?? 'the tune'}${INSTRUMENT ? ` on ${INSTRUMENT}` : ''}\n`
+);
+
+const rendered = await page.evaluate(async ([seconds, tune, instrument]) => {
   const { renderMusic, stopMusic } = window.__music;
   // Tone.Offline swaps the global context while it runs, so the live tune has
   // to be out of the way.
   stopMusic();
   await new Promise((r) => setTimeout(r, 600));
 
-  const { sampleRate, channels } = await renderMusic(seconds, instrument || undefined);
+  const { sampleRate, channels } = await renderMusic(seconds, {
+    tune: tune || undefined,
+    instrument: instrument || undefined,
+  });
 
   // Mixed to mono and quantised in the page, because moving forty seconds of
   // stereo float across the bridge is thirty megabytes.
@@ -90,7 +113,7 @@ const rendered = await page.evaluate(async ([seconds, instrument]) => {
     binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
   }
   return { sampleRate, base64: btoa(binary) };
-}, [SECONDS, INSTRUMENT]);
+}, [SECONDS, TUNE, INSTRUMENT]);
 
 await browser.close();
 
