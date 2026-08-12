@@ -24,6 +24,39 @@
  * HTTPS. http://192.168.x.x will not prompt for the microphone at all.
  */
 
+/**
+ * What the microphone is allowed to do to the signal before we get it.
+ *
+ * This matters far more than it looks. `autoGainControl` with no noise
+ * suppression is the classic recipe for a hissy recording: between words the
+ * gain ramps up hunting for signal and amplifies the room's noise floor, then
+ * ducks when a word arrives. The result breathes, and it is baked into the file
+ * — no amount of care on the playback side can take it back out.
+ *
+ * There is no universally right answer, because it depends on the room and the
+ * phone, so the choice is offered rather than assumed. `clean` is the default
+ * because a fixed gain with the hiss removed is the safer bet on a phone.
+ */
+export const MIC_PROFILES = {
+  clean: {
+    label: 'Clean (recommended)',
+    hint: 'Fixed gain, hiss removed. Best in a normal room.',
+    constraints: { echoCancellation: false, noiseSuppression: true, autoGainControl: false },
+  },
+  raw: {
+    label: 'Untouched',
+    hint: 'Nothing processes the signal. Best in a quiet room, close to the mic.',
+    constraints: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+  },
+  loud: {
+    label: 'Auto volume',
+    hint: 'Evens out a quiet or variable voice, at the cost of hiss between words.',
+    constraints: { echoCancellation: false, noiseSuppression: false, autoGainControl: true },
+  },
+};
+
+export const DEFAULT_PROFILE = 'clean';
+
 /** Containers to try, best first. Chrome gives webm/opus, Safari mp4/aac. */
 const MIME_CANDIDATES = [
   ['audio/webm;codecs=opus', 'webm'],
@@ -66,7 +99,8 @@ export function isRecordingSupported() {
  */
 const RELEASE_AFTER_MS = 2500;
 
-export function createRecorder({ onLevel, audioContext = null } = {}) {
+export function createRecorder({ onLevel, audioContext = null, profile = DEFAULT_PROFILE } = {}) {
+  let profileName = MIC_PROFILES[profile] ? profile : DEFAULT_PROFILE;
   /** @type {MediaStream|null} */
   let stream = null;
   /** @type {AudioContext|null} */
@@ -86,14 +120,7 @@ export function createRecorder({ onLevel, audioContext = null } = {}) {
   async function ensureStream() {
     if (stream) return stream;
     stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        // Keep the voice as recorded. Aggressive processing on a quiet room can
-        // gate the start of a short syllable, which is exactly what these clips
-        // are made of.
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: true,
-      },
+      audio: { ...MIC_PROFILES[profileName].constraints },
     });
 
     if (onLevel) {
@@ -154,6 +181,21 @@ export function createRecorder({ onLevel, audioContext = null } = {}) {
 
     /** Whether the microphone is currently open. */
     isMicOpen: () => Boolean(stream),
+
+    profile: () => profileName,
+
+    /**
+     * Switches microphone settings.
+     *
+     * The open stream is thrown away rather than reconfigured: constraints
+     * applied to a live track are honoured inconsistently across browsers, and
+     * a setting that silently did not take is worse than a moment's delay.
+     */
+    setProfile(name) {
+      if (!MIC_PROFILES[name] || name === profileName) return;
+      profileName = name;
+      releaseMic();
+    },
 
     /**
      * Opens the mic ahead of a take so the meter is live while you read the

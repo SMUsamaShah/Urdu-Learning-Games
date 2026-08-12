@@ -10,6 +10,7 @@ import Memory from './scenes/Memory.js';
 import Sequence from './scenes/Sequence.js';
 import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
+import { createAppAudioContext } from './lib/audio-context.js';
 import { COLORS, DESIGN } from './lib/theme.js';
 
 /**
@@ -20,10 +21,20 @@ import { COLORS, DESIGN } from './lib/theme.js';
  * identical on every device, which matters more here than filling every last
  * pixel: the app has to look the same on a cheap Android phone and a tablet.
  */
+/**
+ * Built here rather than left to Phaser, which would construct one with
+ * `latencyHint: 'interactive'` — the smallest buffer the browser will give.
+ * That is right for a game of short blips and wrong for one that plays recorded
+ * speech over a busy WebGL scene, where a starved audio thread drops samples
+ * and the voice breaks up. See src/lib/audio-context.js.
+ */
+const audioContext = createAppAudioContext();
+
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: '#8fd4f5',
+  ...(audioContext ? { audio: { context: audioContext } } : {}),
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

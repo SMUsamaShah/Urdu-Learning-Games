@@ -17,7 +17,13 @@
 import './recorder.css';
 import { letters, numbers, words, glyphForClip } from '../lib/content.js';
 import { expectedClips } from '../lib/clip-list.js';
-import { createRecorder, isRecordingSupported } from '../lib/recorder.js';
+import {
+  DEFAULT_PROFILE,
+  MIC_PROFILES,
+  createRecorder,
+  isRecordingSupported,
+} from '../lib/recorder.js';
+import { buildSoundCheck } from './audio-check.js';
 import { buildArchive, readArchive } from '../lib/clip-archive.js';
 import * as store from '../lib/clip-store.js';
 import {
@@ -63,16 +69,23 @@ const formatDate = (ms) =>
 export function openRecorder({ onClose } = {}) {
   const clips = expectedClips({ letters, numbers, words });
   const bySlug = new Map(clips.map((c) => [c.slug, c]));
+  const byKey = new Map(clips.map((c) => [c.key, c]));
   /** @type {Map<string, {bytes:number, recordedAt:number}>} */
   let device = new Map();
   let index = 0;
   let busy = false;
+
+  // Remembered across visits: choosing microphone settings and having them
+  // reset every time you come back would make comparing two takes impossible.
+  let micProfile = localStorage.getItem('urdu:mic-profile') ?? DEFAULT_PROFILE;
+  if (!MIC_PROFILES[micProfile]) micProfile = DEFAULT_PROFILE;
 
   const recorder = isRecordingSupported()
     ? createRecorder({
         onLevel: (peak) => setMeter(peak),
         // The app's context, so the page never holds two.
         audioContext: getAudioContext(),
+        profile: micProfile,
       })
     : null;
 
@@ -84,6 +97,7 @@ export function openRecorder({ onClose } = {}) {
         <h2 class="rec-title">Recordings</h2>
         <span class="rec-progress"></span>
         <span class="rec-head-spacer"></span>
+        <button type="button" class="rec-btn" data-act="check">Sound check</button>
         <button type="button" class="rec-btn" data-act="export">Export…</button>
         <button type="button" class="rec-btn" data-act="import">Import…</button>
         <button type="button" class="rec-btn" data-act="close">Done</button>
@@ -170,6 +184,24 @@ export function openRecorder({ onClose } = {}) {
         <button type="button" class="rec-btn" data-act="prev">←</button>
         <button type="button" class="rec-btn" data-act="next">→</button>
       </div>
+      ${
+        recorder
+          ? `<label class="rec-mic">
+               <span>Microphone</span>
+               <select data-act="profile">
+                 ${Object.entries(MIC_PROFILES)
+                   .map(
+                     ([name, p]) =>
+                       `<option value="${name}" ${name === micProfile ? 'selected' : ''}>${escapeHtml(
+                         p.label
+                       )}</option>`
+                   )
+                   .join('')}
+               </select>
+               <em>${escapeHtml(MIC_PROFILES[micProfile].hint)}</em>
+             </label>`
+          : ''
+      }
       <p class="rec-hint">
         ${
           recorder
@@ -253,6 +285,7 @@ export function openRecorder({ onClose } = {}) {
         ext: take.ext,
         mime: take.mime,
         blob: take.blob,
+        profile: recorder.profile(),
       });
       // Tell playback the device now has this clip, and drop the decoded copy
       // of whatever it was playing before, or the old take keeps coming out.
@@ -383,10 +416,36 @@ export function openRecorder({ onClose } = {}) {
         return void exportAll();
       case 'import':
         return fileInput.click();
+      case 'check':
+        return toggleCheck();
       default:
         if (target.classList.contains('rec-row')) select(Number(target.dataset.i));
     }
   });
+
+  // Changing microphone settings drops the open stream, so the next take
+  // reopens with them. See setProfile() for why it is not reconfigured live.
+  root.addEventListener('change', (event) => {
+    if (event.target.dataset?.act !== 'profile') return;
+    micProfile = event.target.value;
+    localStorage.setItem('urdu:mic-profile', micProfile);
+    recorder?.setProfile(micProfile);
+    renderStage();
+  });
+
+  /** @type {HTMLElement|null} */
+  let checkEl = null;
+  function toggleCheck() {
+    if (checkEl) {
+      checkEl.remove();
+      checkEl = null;
+      return;
+    }
+    checkEl = buildSoundCheck((key) => byKey.get(key)?.say ?? key);
+    // Next to the status line, not inside the stage: renderStage() rewrites its
+    // own innerHTML on every selection change and would throw the panel away.
+    statusEl.after(checkEl);
+  }
 
   fileInput.addEventListener('change', () => {
     importFrom(fileInput.files?.[0]);

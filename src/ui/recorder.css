@@ -349,3 +349,89 @@
     height: 96px;
   }
 }
+
+/* --------------------------------------------------- microphone settings */
+
+.rec-mic {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  align-items: center;
+  margin: 14px auto 4px;
+  max-width: 420px;
+  font-size: 14px;
+  color: #4a5170;
+}
+
+.rec-mic select {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid #c9cee0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.rec-mic em {
+  grid-column: 1 / -1;
+  font-style: normal;
+  font-size: 13px;
+  color: #767f9c;
+}
+
+/* -------------------------------------------------------- the sound check */
+
+.rec-check {
+  border: 1px solid #c9cee0;
+  border-radius: 12px;
+  background: #fbfcff;
+  padding: 14px 18px;
+  margin: 0 18px 12px;
+}
+
+.rec-check h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.rec-check-intro {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #767f9c;
+}
+
+.rec-check-steps {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  display: grid;
+  gap: 10px;
+}
+
+.rec-check-steps li {
+  display: grid;
+  gap: 4px;
+}
+
+.rec-check-steps span {
+  font-size: 13px;
+  color: #767f9c;
+}
+
+.rec-check-steps .rec-btn {
+  justify-self: start;
+}
+
+/* Monospace and preserved newlines: this block exists to be read carefully or
+   copied into a bug report, not to look tidy. */
+.rec-check-facts {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #fff;
+  border: 1px solid #e2e6f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  color: #2b3047;
+}

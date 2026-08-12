@@ -25,6 +25,50 @@ import { COLORS } from './theme.js';
 const CONFETTI = [0xffc93c, 0xff6b6b, 0x4ecdc4, 0x9b5fc9, 0x63b04b, 0xff9f45];
 
 /**
+ * One texture for every piece of paper in the app.
+ *
+ * The obvious way to draw confetti is a Graphics object per piece, and it is a
+ * quiet performance trap: each Graphics is its own draw call, so a full-screen
+ * celebration was breaking the batch sixty-odd times a frame. That is a lot of
+ * work to hand a cheap phone at the exact moment it is also decoding and
+ * playing a voice clip, and a starved audio thread drops samples.
+ *
+ * Tinted Images sharing one texture batch into a single call instead. Drawn to
+ * a canvas texture rather than a RenderTexture, which renders nothing at all in
+ * this build — see src/scenes/Trace.js.
+ */
+const PIECE = 'celebrate:piece';
+const DOT = 'celebrate:dot';
+
+function ensurePieces(scene) {
+  if (!scene.textures.exists(PIECE)) {
+    const canvas = scene.textures.createCanvas(PIECE, 16, 12);
+    const ctx = canvas.context;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 16, 12);
+    canvas.refresh();
+  }
+  if (!scene.textures.exists(DOT)) {
+    const canvas = scene.textures.createCanvas(DOT, 16, 16);
+    const ctx = canvas.context;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(8, 8, 8, 0, Math.PI * 2);
+    ctx.fill();
+    canvas.refresh();
+  }
+}
+
+/** One piece of paper: a tinted image, so the whole burst is one draw call. */
+function piece(scene, round, colour, size, depth) {
+  return scene.add
+    .image(0, 0, round ? DOT : PIECE)
+    .setDisplaySize(size, round ? size : size * 0.7)
+    .setTint(colour)
+    .setDepth(depth);
+}
+
+/**
  * Confetti burst.
  *
  * @param {Phaser.Scene} scene
@@ -35,21 +79,24 @@ const CONFETTI = [0xffc93c, 0xff6b6b, 0x4ecdc4, 0x9b5fc9, 0x63b04b, 0xff9f45];
 export function confetti(scene, x, y, options = {}) {
   const { count = 22, spread = 200, depth = 50 } = options;
 
+  ensurePieces(scene);
+
   for (let i = 0; i < count; i++) {
-    const piece = scene.add.graphics().setDepth(depth);
-    const colour = CONFETTI[i % CONFETTI.length];
-    const size = Phaser.Math.Between(7, 14);
-    piece.fillStyle(colour, 1);
     // A mix of squares and circles reads as paper rather than as bubbles.
-    if (i % 3 === 0) piece.fillCircle(0, 0, size / 2);
-    else piece.fillRect(-size / 2, -size / 3, size, size / 1.5);
-    piece.setPosition(x, y);
+    const bit = piece(
+      scene,
+      i % 3 === 0,
+      CONFETTI[i % CONFETTI.length],
+      Phaser.Math.Between(7, 14),
+      depth
+    );
+    bit.setPosition(x, y);
 
     const angle = Phaser.Math.FloatBetween(-Math.PI, 0) + Phaser.Math.FloatBetween(-0.3, 0.3);
     const distance = Phaser.Math.Between(spread * 0.4, spread);
 
     scene.tweens.add({
-      targets: piece,
+      targets: bit,
       x: x + Math.cos(angle) * distance,
       // Falls below where it was thrown, so the burst has gravity to it
       // instead of expanding like a ring.
@@ -58,7 +105,7 @@ export function confetti(scene, x, y, options = {}) {
       alpha: 0,
       duration: Phaser.Math.Between(700, 1150),
       ease: 'Quad.easeIn',
-      onComplete: () => piece.destroy(),
+      onComplete: () => bit.destroy(),
     });
   }
 }
@@ -110,15 +157,18 @@ export function paperFall(scene, options = {}) {
   const { count = 44, duration = 2600, depth = 70 } = options;
   const { width, height } = scene.scale.gameSize;
 
-  for (let i = 0; i < count; i++) {
-    const piece = scene.add.graphics().setDepth(depth);
-    piece.fillStyle(CONFETTI[i % CONFETTI.length], 1);
-    const w = Phaser.Math.Between(10, 18);
-    if (i % 4 === 0) piece.fillCircle(0, 0, w / 2);
-    else piece.fillRect(-w / 2, -w / 3, w, w / 1.5);
+  ensurePieces(scene);
 
+  for (let i = 0; i < count; i++) {
+    const bit = piece(
+      scene,
+      i % 4 === 0,
+      CONFETTI[i % CONFETTI.length],
+      Phaser.Math.Between(10, 18),
+      depth
+    );
     const x = Phaser.Math.Between(0, width);
-    piece.setPosition(x, Phaser.Math.Between(-260, -20));
+    bit.setPosition(x, Phaser.Math.Between(-260, -20));
 
     // Drift sideways on its own timing, so pieces separate on the way down
     // instead of falling as a sheet. Repeats forever, so it has to be stopped
@@ -126,7 +176,7 @@ export function paperFall(scene, options = {}) {
     // a celebration every five answers would leave a growing pile of them
     // running against objects that no longer exist.
     const drift = scene.tweens.add({
-      targets: piece,
+      targets: bit,
       x: x + Phaser.Math.Between(-90, 90),
       duration: Phaser.Math.Between(900, 1500),
       yoyo: true,
@@ -135,14 +185,14 @@ export function paperFall(scene, options = {}) {
     });
 
     scene.tweens.add({
-      targets: piece,
+      targets: bit,
       y: height + 40,
       rotation: Phaser.Math.FloatBetween(-9, 9),
       duration: Phaser.Math.Between(duration * 0.6, duration),
       ease: 'Sine.easeIn',
       onComplete: () => {
         drift.stop();
-        piece.destroy();
+        bit.destroy();
       },
     });
   }

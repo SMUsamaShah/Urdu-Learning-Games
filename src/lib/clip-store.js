@@ -109,7 +109,7 @@ export async function summaries() {
  * Requests persistent storage the first time, when the user has just shown the
  * intent that makes it worth asking for.
  */
-export async function putClip({ key, slug, ext, mime, blob, recordedAt }) {
+export async function putClip({ key, slug, ext, mime, blob, recordedAt, profile }) {
   const record = {
     key,
     slug,
@@ -118,6 +118,10 @@ export async function putClip({ key, slug, ext, mime, blob, recordedAt }) {
     blob,
     bytes: blob.size,
     recordedAt: recordedAt ?? Date.now(),
+    // Which microphone settings produced this take. Recorded because "it sounds
+    // noisy" is otherwise unattributable months later: the same words recorded
+    // under two profiles are two very different files.
+    profile: profile ?? null,
   };
   await run(CLIPS, 'readwrite', (s) => s.put(record));
   requestPersistence().catch(() => {});

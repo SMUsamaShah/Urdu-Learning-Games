@@ -281,8 +281,46 @@ nearly all of the area.
 
 ## Audio hardware
 
-Two rules, both learned from a real bug where playback went stuttery after a
-recording session and stayed that way back in the game:
+### The buffer, and why speech breaks up when beeps do not
+
+`src/lib/audio-context.js` builds the app's AudioContext and hands it to Phaser,
+rather than letting Phaser build its own. Phaser calls `new AudioContext()` with
+no arguments, which means `latencyHint: 'interactive'` — the smallest buffer the
+browser will give. That is right for a game of short blips and wrong for one
+that plays recorded speech over a busy WebGL scene: the audio thread gets very
+little time per block, and when it misses the deadline the output underruns.
+
+The symptom is worth knowing by heart, because it identifies the fault on its
+own: **an underrun lands somewhere different on every play.** A bad recording or
+a bad decode is broken identically every time. If the roughness moves around, the
+file is fine and the audio thread is starving.
+
+It also explains a misleading observation. The synthesised interface sounds can
+be perfectly clean while a two-second voice clip is rough — both lose the same
+fraction of samples, but only one is long enough to hear it happen. "The beeps
+are fine" is not evidence that the output path is fine.
+
+The buffer size is a setting, in the sound check, because how much is enough
+depends on the device and no amount of testing here can find that out.
+
+For the same reason `celebrate.js` draws confetti as tinted Images sharing one
+texture instead of a Graphics object per piece. Each Graphics is its own draw
+call, so a full-screen celebration used to break the batch sixty-odd times a
+frame — handed to a cheap phone at the exact moment it is also decoding a clip.
+
+### The sound check
+
+`src/ui/audio-check.js`, reachable from the recorder. It plays the same clip four
+ways — a bare oscillator, the app's Web Audio path, an `<audio>` element, and the
+app's path with the render loop stopped — so which ones sound wrong says which
+layer is at fault. Add to it rather than debugging by correspondence: this class
+of bug only appears on real phone hardware, so the app has to be able to diagnose
+itself in the hands of whoever can hear it.
+
+### Two rules about the microphone
+
+Both learned from a real bug where playback went stuttery after a recording
+session and stayed that way back in the game:
 
 **The page holds exactly one AudioContext.** It is Phaser's, reachable via
 `getAudioContext()`. A second context is a second claim on the audio device, and
