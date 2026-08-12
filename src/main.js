@@ -12,6 +12,7 @@ import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
 import { createAppAudioContext } from './lib/audio-context.js';
 import { mountFpsMeter } from './lib/fps.js';
+import * as music from './lib/music.js';
 import { COLORS, DESIGN } from './lib/theme.js';
 
 /**
@@ -64,7 +65,16 @@ const game = new Phaser.Game({
 // coordinates, which would break on every layout tweak. `__audio` lets a test
 // assert that a clip really decoded and played, which is otherwise invisible
 // from outside the page.
+//
+// `__music` is here for a subtler reason. A check that wants to listen to the
+// tune cannot simply `import('/src/lib/music.js')`: the dev server serves the
+// app's modules with a cache-busting query string on the URL, so an import
+// without one resolves to a *second copy of the module* with its own
+// module-scope state — uninitialised, silent, and not the one the app is
+// playing. Anything holding state at module scope has to be reached through the
+// running app rather than imported afresh.
 window.__game = game;
+window.__music = music;
 
 // Hidden unless switched on from the grown-ups screen. Mounted regardless so
 // the toggle takes effect without a reload.

@@ -17,6 +17,8 @@ import { clipKeys, hasClip, play, playSequence, stopAll } from '../lib/audio.js'
 import { sayLetter } from '../lib/say.js';
 import * as sfx from '../lib/sfx.js';
 import { addScenery } from '../lib/scenery.js';
+import { breathe, hop, jig, popIn, squash } from '../lib/liveliness.js';
+import { ringBurst, sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -245,6 +247,7 @@ export default class Flashcards extends Phaser.Scene {
       // annoying thing a strip like this can do.
       cell.on('pointerup', () => {
         if (this.dragMoved > TAP_SLOP) return;
+        squash(this, cell);
         this.select(index);
       });
 
@@ -399,16 +402,26 @@ export default class Flashcards extends Phaser.Scene {
     const heroFit = fitEmAlone(allLetterGlyphs('isolated'), HERO_BOX.width, HERO_BOX.height);
     const isolated = letterGlyph(letterId, 'isolated');
     if (isolated) {
-      card.add(
-        addGlyph(
-          this,
-          HERO_X,
-          HERO_BOX.top + HERO_BOX.height / 2,
-          `hero:em${Math.round(heroFit.em)}:${letterId}`,
-          isolated,
-          { em: heroFit.em, color: COLORS.ink }
-        )
+      const heroY = HERO_BOX.top + HERO_BOX.height / 2;
+      const glyph = addGlyph(
+        this,
+        HERO_X,
+        heroY,
+        `hero:em${Math.round(heroFit.em)}:${letterId}`,
+        isolated,
+        { em: heroFit.em, color: COLORS.ink }
       );
+      card.add(glyph);
+      // The letter arrives rather than being there. This screen is the one a
+      // child spends longest on, moving through the alphabet a letter at a
+      // time, and the arrival is what makes each one feel like a new thing
+      // rather than a page refresh.
+      popIn(this, glyph, { duration: 420 });
+      ringBurst(this, HERO_X, heroY, tint);
+      this.time.delayedCall(420, () => {
+        if (glyph.active) breathe(this, glyph, { amount: 0.025, duration: 2400 });
+      });
+      this.heroGlyph = glyph;
     }
 
     // The letter's NAME, which is not the same as the sound it makes. Both are
@@ -425,7 +438,14 @@ export default class Flashcards extends Phaser.Scene {
       .zone(HERO_X, 310, 350, 400)
       .setOrigin(0.5, 0.5);
     card.add(
-      makeTappable(this, heroZone, () => playSequence([nameKey, soundKey]))
+      makeTappable(this, heroZone, () => {
+        // The letter jumps when it is asked to speak, so a tap on a card with
+        // no recording behind it still does something. Silence and no movement
+        // together read as a broken button.
+        if (this.heroGlyph?.active) hop(this, this.heroGlyph, { height: 22 });
+        sparkleBurst(this, HERO_X, 250, { count: 14, speed: 180, tint: [tint, 0xffffff] });
+        playSequence([nameKey, soundKey]);
+      })
     );
     if (hasClip(nameKey) || hasClip(soundKey)) {
       card.add(speakerIcon(this, HERO_X + 140, 140));
@@ -465,16 +485,19 @@ export default class Flashcards extends Phaser.Scene {
       box.fillRoundedRect(x - boxW / 2, FORM_BOX.top, boxW, boxW, 18);
       card.add(box);
 
-      card.add(
-        addGlyph(
-          this,
-          x,
-          FORM_BOX.top + boxW / 2,
-          `form:em${Math.round(formFit.em)}:${letterId}:${form}`,
-          glyph,
-          { em: formFit.em, color: COLORS.ink }
-        )
+      const formGlyph = addGlyph(
+        this,
+        x,
+        FORM_BOX.top + boxW / 2,
+        `form:em${Math.round(formFit.em)}:${letterId}:${form}`,
+        glyph,
+        { em: formFit.em, color: COLORS.ink }
       );
+      card.add(formGlyph);
+      // Right to left, a beat apart, so the four forms are seen as a sequence.
+      // That ordering is the lesson — where in a word each shape belongs — and
+      // showing them all at once flattens it into four unrelated squiggles.
+      popIn(this, formGlyph, { delay: 220 + index * 110, duration: 340 });
 
       // Every form makes the same sound — that is the lesson. Tapping any of
       // them plays it.
@@ -482,7 +505,10 @@ export default class Flashcards extends Phaser.Scene {
         makeTappable(
           this,
           this.add.zone(x, FORM_BOX.top + boxW / 2, boxW, boxW).setOrigin(0.5),
-          () => play(soundKey)
+          () => {
+            if (formGlyph.active) jig(this, formGlyph);
+            play(soundKey);
+          }
         )
       );
 
@@ -539,24 +565,30 @@ export default class Flashcards extends Phaser.Scene {
 
     const wordFit = fitEmAlone(allWordGlyphs(), WORD_BOX.width, WORD_BOX.height);
     const glyph = wordGlyph(word.id);
+    let wordGlyphImage = null;
     if (glyph) {
-      card.add(
-        addGlyph(
-          this,
-          MAIN_X - 60,
-          WORD_BOX.top + WORD_BOX.height / 2,
-          `card-word:em${Math.round(wordFit.em)}:${word.id}`,
-          glyph,
-          { em: wordFit.em, color: COLORS.ink }
-        )
+      wordGlyphImage = addGlyph(
+        this,
+        MAIN_X - 60,
+        WORD_BOX.top + WORD_BOX.height / 2,
+        `card-word:em${Math.round(wordFit.em)}:${word.id}`,
+        glyph,
+        { em: wordFit.em, color: COLORS.ink }
       );
+      card.add(wordGlyphImage);
+      // Last of the three, after the letter and its forms, which is the order
+      // the screen teaches in: this is the shape, these are its disguises, and
+      // here it is doing a job in a real word.
+      popIn(this, wordGlyphImage, { delay: 620, duration: 380 });
     }
 
     const wordKey = clipKeys.word(word.id);
     card.add(
-      makeTappable(this, this.add.zone(MAIN_X, 472, panelW, 172).setOrigin(0.5), () =>
-        play(wordKey)
-      )
+      makeTappable(this, this.add.zone(MAIN_X, 472, panelW, 172).setOrigin(0.5), () => {
+        if (wordGlyphImage?.active) jig(this, wordGlyphImage, { angle: 6 });
+        if (picture?.active) hop(this, picture, { height: 16 });
+        play(wordKey);
+      })
     );
     if (hasClip(wordKey)) {
       card.add(speakerIcon(this, MAIN_X - panelW / 2 + 34, 410, 22));

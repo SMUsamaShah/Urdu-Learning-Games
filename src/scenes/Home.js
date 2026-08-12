@@ -6,6 +6,10 @@ import { canInstall, onInstallAvailability, promptInstall } from '../lib/install
 import { addMascot } from '../lib/mascot.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { addScenery } from '../lib/scenery.js';
+import { bob, popIn, squash } from '../lib/liveliness.js';
+import { musicOn, setMusicOn, startMusic } from '../lib/music.js';
+import { ringBurst } from '../lib/particles.js';
+import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, chunkyGlyphEm, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -158,6 +162,9 @@ export default class Home extends Phaser.Scene {
     }
     label(this, STAGE_X, 190, 'Urdu Learning Games', { size: 20 });
 
+    /** @type {Phaser.GameObjects.Container[]} */
+    const tiles = [];
+
     // A grid rather than one row. Games keep getting added, and squeezing them
     // all into a single row shrinks every tile until none of them is a
     // comfortable target for a small finger — better to wrap and keep them big.
@@ -214,8 +221,16 @@ export default class Home extends Phaser.Scene {
         width: tileW,
         height: tileH,
         color: game.color,
-        onTap: () => this.scene.start(game.scene),
+        onTap: () => {
+          sfx.whoosh();
+          // A beat between the tap and the screen changing, so the tile is
+          // seen to react. Leaving instantly makes the tap feel like it went
+          // to the next screen rather than to the thing that was pressed.
+          this.time.delayedCall(150, () => this.scene.start(game.scene));
+        },
       });
+      button.on('pointerdown', () => squash(this, button));
+      tiles.push(button);
 
       const icon = this.tileIcon(game, iconBox.top + iconFit.baseline, iconBox, iconFit);
       if (icon) button.add(icon);
@@ -242,6 +257,20 @@ export default class Home extends Phaser.Scene {
       );
     });
 
+    // The grid assembles itself instead of being there already. Reading order,
+    // so it builds right to left the way the script does, and quickly — this is
+    // a menu a child comes back to twenty times a day and a slow flourish
+    // becomes an obstacle by the third visit.
+    tiles.forEach((tile, index) => popIn(this, tile, { delay: 60 + index * 55 }));
+    // Then they breathe, out of phase, for as long as the menu is up. Eight
+    // still rectangles read as a form; eight that move a hair read as things
+    // waiting to be picked up.
+    this.time.delayedCall(60 + tiles.length * 55 + 380, () => {
+      tiles.forEach((tile, index) =>
+        bob(this, tile, { distance: 4, duration: 2200, delay: index * 180 })
+      );
+    });
+
     label(
       this,
       DESIGN.width / 2,
@@ -259,6 +288,51 @@ export default class Home extends Phaser.Scene {
 
     this.buildInstallHint();
     this.buildGrownUpsButton();
+    this.buildMusicToggle();
+
+    // The browser only lets audio play after the page has been touched, so the
+    // tune starts at whatever the child taps first. Harmless if it is already
+    // going — startMusic returns immediately.
+    this.input.once('pointerdown', () => startMusic());
+  }
+
+  /**
+   * The music switch, where a child can reach it.
+   *
+   * Not behind the grown-ups gate, unlike the frame-rate readout. Music is the
+   * one setting in this app that somebody may want to change several times a
+   * day — in a waiting room, in a car, at bedtime — and a switch that needs a
+   * hold and a sum first is a switch nobody uses. It is small, in a corner, and
+   * the worst a child can do with it is turn the music off.
+   */
+  buildMusicToggle() {
+    const button = makeButton(this, {
+      x: DESIGN.width - 74,
+      y: 60,
+      width: 84,
+      height: 68,
+      color: COLORS.panel,
+      rim: false,
+      onTap: () => {
+        const on = !musicOn();
+        setMusicOn(on);
+        icon.setText(on ? '\u266a' : '\u266a\u0338');
+        icon.setColor(on ? COLORS.accentCss : COLORS.inkDim);
+        squash(this, button);
+        if (on) ringBurst(this, button.x, button.y, COLORS.accent);
+        else sfx.nudge();
+      },
+    });
+    const icon = this.add
+      .text(0, -2, musicOn() ? '\u266a' : '\u266a\u0338', {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '34px',
+        color: musicOn() ? COLORS.accentCss : COLORS.inkDim,
+      })
+      .setOrigin(0.5);
+    button.add(icon);
+    // Held so the verification run can press it without hunting by pixel.
+    this.musicButton = button;
   }
 
   /**

@@ -7,6 +7,8 @@ import { addBanner } from '../lib/banner.js';
 import { dance, paperFall } from '../lib/celebrate.js';
 import { addWordImage, hasWordImage, queueWordImages } from '../lib/images.js';
 import { addStageMascot } from '../lib/mascot.js';
+import { hop, jig, squash } from '../lib/liveliness.js';
+import { sparkleBurst, starShower } from '../lib/particles.js';
 import { sayLetter, sayWord } from '../lib/say.js';
 import { addScenery } from '../lib/scenery.js';
 import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
@@ -279,6 +281,8 @@ export default class Memory extends Phaser.Scene {
     if (this.locked || card.faceUp || card.done) return;
 
     sfx.tap();
+    sfx.flip();
+    squash(this, card);
     this.flip(card, true);
     this.faceUp.push(card);
 
@@ -311,6 +315,7 @@ export default class Memory extends Phaser.Scene {
 
   pairFound(first, second) {
     sfx.correct();
+    sfx.sparkle();
     this.matched++;
 
     for (const card of [first, second]) {
@@ -326,6 +331,8 @@ export default class Memory extends Phaser.Scene {
         card.size,
         22
       );
+      sparkleBurst(this, card.x, card.y, { count: 20, tint: [COLORS.correct, 0xffffff] });
+      hop(this, card, { height: 18 });
       dance(this, card);
     }
 
@@ -342,9 +349,15 @@ export default class Memory extends Phaser.Scene {
     }
 
     // Board finished. A whole activity completed, so it gets the big one.
+    // A beat of build-up before the celebration. The pause is doing work: a
+    // reward that lands the instant the last pair is turned is over before it
+    // has been noticed.
+    sfx.drumroll();
     this.time.delayedCall(700, () => {
-      sfx.fanfare();
+      sfx.tada();
       paperFall(this);
+      starShower(this, { duration: 2600 });
+      jig(this, this.banner, { angle: 4, repeats: 5 });
       this.mascot?.cheer();
       this.banner.setInstruction('well-done', 'Well done!');
       this.round++;

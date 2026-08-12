@@ -8,6 +8,8 @@ import { confetti, paperFall } from '../lib/celebrate.js';
 import { addMascot } from '../lib/mascot.js';
 import { sayLetter } from '../lib/say.js';
 import { addScenery } from '../lib/scenery.js';
+import { jig } from '../lib/liveliness.js';
+import { sparkleTrail, sparkleBurst, starShower } from '../lib/particles.js';
 import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -129,7 +131,11 @@ export default class Trace extends Phaser.Scene {
     this.buildLetter();
     this.attachDrawing();
 
-    this.events.once('shutdown', stopAll);
+    this.events.once('shutdown', () => {
+      stopAll();
+      this.trail?.destroy();
+      this.trail = null;
+    });
   }
 
   // ------------------------------------------------------------------ setup
@@ -266,10 +272,15 @@ export default class Trace extends Phaser.Scene {
   // --------------------------------------------------------------- drawing
 
   attachDrawing() {
+    this.trail = sparkleTrail(this);
     this.input.on('pointerdown', (pointer) => this.startStroke(pointer));
     this.input.on('pointermove', (pointer) => this.continueStroke(pointer));
-    this.input.on('pointerup', () => (this.drawing = false));
-    this.input.on('pointerupoutside', () => (this.drawing = false));
+    const lift = () => {
+      this.drawing = false;
+      this.trail?.stop();
+    };
+    this.input.on('pointerup', lift);
+    this.input.on('pointerupoutside', lift);
   }
 
   /** Pointer position relative to the ink texture, or null if far outside. */
@@ -295,12 +306,24 @@ export default class Trace extends Phaser.Scene {
     this.drawing = true;
     this.last = point;
     this.dab(point.x, point.y);
+    // Sparkles follow the finger while it is inside the letter, and only while
+    // it is inside. That is the point: the trail is the clearest signal the
+    // game gives about whether a stroke is landing on the letter or on the
+    // background, and it works for a child who cannot read the progress bar.
+    this.trail?.setPosition(pointer.worldX, pointer.worldY);
+    this.trail?.start();
   }
 
   continueStroke(pointer) {
     if (!this.drawing || this.locked) return;
     const point = this.toInk(pointer);
-    if (!point) return;
+    // Outside the letter, so no ink and no sparkles. The trail stopping is the
+    // feedback: a child scribbling on the background can see that nothing is
+    // happening there without being told off for it.
+    if (!point) {
+      this.trail?.stop();
+      return;
+    }
 
     // Interpolate: a fast finger produces pointer events tens of pixels apart,
     // and dabbing only at those would leave a dotted line and under-count what
@@ -316,6 +339,8 @@ export default class Trace extends Phaser.Scene {
       );
     }
     this.last = point;
+    this.trail?.setPosition(pointer.worldX, pointer.worldY);
+    this.trail?.start();
     this.checkDone();
   }
 
@@ -395,15 +420,22 @@ export default class Trace extends Phaser.Scene {
 
     this.locked = true;
     this.drawing = false;
+    this.trail?.stop();
     sfx.correct();
-    sfx.fanfare();
+    sfx.tada();
     this.drawProgress(1);
     confetti(this, DESIGN.width / 2, 300, { count: 30, spread: 320 });
+    // The sparkles burst out of the letter itself rather than from the middle
+    // of the screen: the shape they have just filled in is the thing that
+    // should be seen to go off.
+    sparkleBurst(this, DESIGN.width / 2, 360, { count: 44, speed: 420 });
     // Finishing a letter is a whole activity completed, not one answer among
     // many, so it gets the full-screen version every time.
     paperFall(this);
+    starShower(this, { duration: 2400 });
     this.mascot?.cheer();
     this.banner.setInstruction('well-done', 'Well done!');
+    jig(this, this.banner, { angle: 4, repeats: 5 });
 
     // Clear the rest of the cover, so the reward is seeing the letter complete
     // rather than the patchy version they happened to stop at.

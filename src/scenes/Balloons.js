@@ -14,6 +14,8 @@ import { paperFall } from '../lib/celebrate.js';
 import { addStageMascot } from '../lib/mascot.js';
 import { sayLetter } from '../lib/say.js';
 import { addScenery } from '../lib/scenery.js';
+import { jig, sway } from '../lib/liveliness.js';
+import { popPuff, sparkleBurst, starShower } from '../lib/particles.js';
 import { COLORS, DESIGN, chunkyGlyphEm, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -317,6 +319,12 @@ export default class Balloons extends Phaser.Scene {
       ease: 'Sine.easeInOut',
     });
 
+    // A slow tip from side to side on the way up. A balloon that rises dead
+    // straight reads as a sprite on a rail; one that tips reads as something
+    // with air moving past it.
+    sway(this, balloon, { angle: 5, duration: Phaser.Math.Between(1700, 2600) });
+    balloon.tint = color;
+
     this.balloons.push(balloon);
     return balloon;
   }
@@ -349,7 +357,7 @@ export default class Balloons extends Phaser.Scene {
     if (this.locked) return;
     const right = balloon.letterId === this.target;
 
-    this.burst(balloon.x, balloon.y, right);
+    this.burst(balloon.x, balloon.y, right, balloon.tint);
 
     if (!right) {
       // Costs nothing but the balloon. No fail state, no lost turn.
@@ -369,6 +377,7 @@ export default class Balloons extends Phaser.Scene {
     this.locked = true;
     sfx.pop();
     sfx.correct();
+    sfx.sparkle();
     this.streak++;
     this.updateStreak();
     this.mascot?.cheer();
@@ -378,8 +387,10 @@ export default class Balloons extends Phaser.Scene {
     // balloon. See QuizScene for why this is rationed.
     if (this.streak % 5 === 0) {
       paperFall(this);
+      starShower(this);
       sfx.fanfare();
       this.banner.setInstruction('well-done', 'Well done!');
+      jig(this, this.banner, { angle: 4, repeats: 5 });
     }
 
     // Let the remaining balloons drift off rather than vanishing, then reset.
@@ -389,27 +400,21 @@ export default class Balloons extends Phaser.Scene {
     this.time.delayedCall(900, () => this.newRound());
   }
 
-  /** Confetti-ish burst. Green for right, a puff of the balloon's own colour otherwise. */
-  burst(x, y, right) {
-    const count = right ? 14 : 7;
-    for (let i = 0; i < count; i++) {
-      const bit = this.add.graphics();
-      bit.fillStyle(right ? COLORS.correct : COLORS.accent, 1);
-      bit.fillCircle(0, 0, Phaser.Math.Between(4, 9));
-      bit.setPosition(x, y);
-
-      const angle = (Math.PI * 2 * i) / count;
-      const distance = Phaser.Math.Between(60, 150);
-      this.tweens.add({
-        targets: bit,
-        x: x + Math.cos(angle) * distance,
-        y: y + Math.sin(angle) * distance,
-        alpha: 0,
-        scale: 0.4,
-        duration: Phaser.Math.Between(380, 620),
-        ease: 'Quad.easeOut',
-        onComplete: () => bit.destroy(),
-      });
+  /**
+   * What a balloon leaves behind.
+   *
+   * A puff of its own colour either way — that is what connects the burst to
+   * the thing that burst — plus sparkles when it was the right one, which is
+   * the only visible difference between a correct pop and a wrong one.
+   *
+   * Particles rather than a Graphics per fragment. The old version drew
+   * fourteen of them, each its own draw call, tweened individually, at the
+   * exact moment the app is also playing a voice clip; see particles.js.
+   */
+  burst(x, y, right, tint) {
+    popPuff(this, x, y, tint ?? COLORS.accent);
+    if (right) {
+      sparkleBurst(this, x, y, { count: 30, tint: [tint ?? COLORS.correct, 0xffffff, 0xffc93c] });
     }
   }
 }

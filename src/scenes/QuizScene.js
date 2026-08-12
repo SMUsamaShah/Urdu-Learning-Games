@@ -5,6 +5,8 @@ import { addBanner } from '../lib/banner.js';
 import { confetti, dance, flyStar, paperFall } from '../lib/celebrate.js';
 import { addStageMascot } from '../lib/mascot.js';
 import { addScenery } from '../lib/scenery.js';
+import { bob, hop, jig, popIn, squash } from '../lib/liveliness.js';
+import { sparkleBurst, starShower } from '../lib/particles.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -213,18 +215,28 @@ export default class QuizScene extends Phaser.Scene {
       this.decorateTile(tile, id, size);
       this.choicesLayer.add(tile);
 
+      // Squashes under the finger. This happens on the pointer event itself
+      // rather than after the answer has been judged, so it lands within a
+      // frame of the tap — a tile that does not move when pressed feels broken
+      // whatever the app does a moment later.
+      tile.on('pointerdown', () => squash(this, tile));
+
       // Each one drops in a beat after the last, so the line-up assembles
       // itself instead of being there already. It also stops a child tapping
       // before they have looked at all of them.
-      // Not from zero: a container scaled to nothing has no hit area, and a
-      // child who taps the instant they see the answer must not be ignored.
-      tile.setScale(0.35);
-      this.tweens.add({
-        targets: tile,
-        scale: 1,
-        delay: index * 90,
-        duration: 320,
-        ease: 'Back.easeOut',
+      popIn(this, tile, { delay: index * 90, duration: 320 });
+      this.time.delayedCall(index * 90 + 40, () => sfx.boing());
+
+      // And then they wait, moving. A line-up of still cards is a multiple
+      // choice question; a line-up that shifts a couple of pixels is a row of
+      // things asking to be picked.
+      this.time.delayedCall(index * 90 + 360, () => {
+        if (!tile.active) return;
+        tile.idle = bob(this, tile, {
+          distance: 4,
+          duration: 2000,
+          delay: index * 220,
+        });
       });
     });
   }
@@ -266,6 +278,9 @@ export default class QuizScene extends Phaser.Scene {
       // A puzzled wobble, never a frown. There is no fail state here and the
       // spider must not look like there is one.
       this.mascot?.wonder();
+      // The tile stops bobbing along with the others as it dims, so a dimmed
+      // choice reads as set aside rather than as still on offer.
+      tile.idle?.stop();
       this.tweens.add({
         targets: tile,
         x: tile.x + 10,
@@ -282,16 +297,25 @@ export default class QuizScene extends Phaser.Scene {
 
     this.locked = true;
     sfx.correct();
+    sfx.sparkle();
     this.streak++;
     this.onCorrect(id);
 
-    // Fade the others so the right one is unmistakably the one that stayed.
+    // Fade the others so the right one is unmistakably the one that stayed, and
+    // stop them fidgeting — everything that is still moving pulls the eye, and
+    // at this moment the eye belongs on the answer.
     for (const other of this.choicesLayer.list) {
-      if (other !== tile) this.tweens.add({ targets: other, alpha: 0.2, duration: 220 });
+      if (other === tile) continue;
+      if (other.idle) other.idle.stop();
+      this.tweens.add({ targets: other, alpha: 0.2, duration: 220 });
     }
-    confetti(this, tile.x, tile.y);
+
     // The answer performs, rather than something happening next to it: the
-    // shape they just recognised is the shape that dances.
+    // shape they just recognised is the shape that bursts, hops and dances.
+    tile.idle?.stop();
+    sparkleBurst(this, tile.x, tile.y, { tint: [this.tileColor(id), 0xffffff, 0xffc93c] });
+    confetti(this, tile.x, tile.y);
+    hop(this, tile);
     dance(this, tile);
     this.mascot?.cheer();
 
@@ -300,8 +324,13 @@ export default class QuizScene extends Phaser.Scene {
     // would turn it into wallpaper within a minute.
     if (this.streak % MILESTONE === 0) {
       paperFall(this);
+      starShower(this);
       sfx.fanfare();
       this.banner?.setInstruction('well-done', 'Well done!');
+      // The ribbon joins in. It is the thing that has been giving instructions
+      // all game, so it saying well done and then jumping about is the closest
+      // this app has to somebody in the room being pleased.
+      if (this.banner) jig(this, this.banner, { angle: 4, repeats: 5 });
     }
     // The star updates the score when it lands, so the row of stars visibly
     // grows *because* of the answer rather than alongside it.

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { allLetterGlyphs, letterGlyph, lettersById, sequenceFor } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
+import { bob, breathe } from '../lib/liveliness.js';
 import { sayLetter, sayLetters } from '../lib/say.js';
 import { COLORS, chunkyGlyphEm, familyColor, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
@@ -138,16 +139,20 @@ export default class Sequence extends QuizScene {
         body.lineStyle(5, COLORS.outline, 0.35);
         body.strokeCircle(x, 0, SEGMENT / 2);
         layer.add(body);
-        layer.add(
-          this.add
-            .text(x, 0, '?', {
-              fontFamily: 'system-ui, sans-serif',
-              fontSize: '54px',
-              fontStyle: '700',
-              color: COLORS.inkDim,
-            })
-            .setOrigin(0.5)
-        );
+        const mark = this.add
+          .text(x, 0, '?', {
+            fontFamily: 'system-ui, sans-serif',
+            fontSize: '54px',
+            fontStyle: '700',
+            color: COLORS.inkDim,
+          })
+          .setOrigin(0.5);
+        layer.add(mark);
+        // The question mark pulses, and nothing else on the caterpillar does.
+        // It is the one place on the screen the answer goes, and a child who
+        // has not understood the question yet can find it by following the
+        // thing that is moving.
+        breathe(this, mark, { amount: 0.16, duration: 900 });
         this.gapMarker = { x, y: this.promptY };
         return;
       }
@@ -174,6 +179,10 @@ export default class Sequence extends QuizScene {
         )
       );
     });
+
+    // The whole caterpillar rocks, a segment at a time from the head back, so it
+    // reads as one animal crawling rather than as five circles in a row.
+    bob(this, layer, { distance: 5, duration: 2400 });
 
     // Under the gap, not under the middle of the caterpillar: it is pointing at
     // a place, so it has to be next to that place.

@@ -97,3 +97,108 @@ export function fanfare() {
 export function swoosh() {
   tone({ freq: 420, endFreq: 720, duration: 0.16, type: 'sine', gain: 0.3 });
 }
+
+/**
+ * A short burst of filtered noise, for anything that is a *sound* rather than a
+ * note: a pop, a whoosh, a sprinkle of glitter.
+ *
+ * Oscillators cannot make these. A pop with no noise in it is a beep, and a
+ * beep is the sound of a microwave rather than of something bursting.
+ */
+function noise({ start = 0, duration = 0.2, gain = 0.3, from = 6000, to = 400, type = 'bandpass', q = 1 }) {
+  if (!ctx || !master) return;
+  const t0 = ctx.currentTime + start;
+  const frames = Math.max(1, Math.ceil(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+
+  // The sweep is what turns white noise into a gesture: downwards is something
+  // landing or bursting, upwards is something taking off.
+  const filter = ctx.createBiquadFilter();
+  filter.type = type;
+  filter.Q.value = q;
+  filter.frequency.setValueAtTime(from, t0);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(60, to), t0 + duration);
+
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+
+  source.connect(filter);
+  filter.connect(env);
+  env.connect(master);
+  source.start(t0);
+  source.stop(t0 + duration + 0.02);
+}
+
+/**
+ * Glitter: a handful of very short high notes at random pitches.
+ *
+ * Played alongside a sparkle burst rather than instead of `correct()`. The two
+ * do different jobs — the chime says "yes", the sparkle says "look" — and a
+ * child gets both at once, the same way they do in every app of this kind.
+ */
+export function sparkle() {
+  for (let i = 0; i < 7; i++) {
+    tone({
+      freq: 1400 + Math.random() * 1800,
+      duration: 0.09 + Math.random() * 0.07,
+      start: i * 0.035 + Math.random() * 0.02,
+      type: 'sine',
+      gain: 0.16,
+    });
+  }
+}
+
+/** Something springing into place. Paired with popIn() in liveliness.js. */
+export function boing() {
+  tone({ freq: 260, endFreq: 620, duration: 0.11, type: 'triangle', gain: 0.3 });
+  tone({ freq: 620, endFreq: 480, start: 0.09, duration: 0.1, type: 'sine', gain: 0.2 });
+}
+
+/** A card turning over. */
+export function flip() {
+  noise({ duration: 0.12, gain: 0.22, from: 1200, to: 5200, q: 0.7 });
+}
+
+/**
+ * Four ticks and a chime, for the run-up to a celebration.
+ *
+ * Anticipation is a real part of the reward: the reference apps all put a beat
+ * of build-up before the confetti, and the confetti lands better for it.
+ */
+export function drumroll() {
+  for (let i = 0; i < 10; i++) {
+    noise({ start: i * 0.045, duration: 0.05, gain: 0.12 + i * 0.012, from: 900, to: 220, q: 1.5 });
+  }
+  tone({ freq: 1047, start: 0.48, duration: 0.4, type: 'triangle', gain: 0.4 });
+}
+
+/**
+ * The big one: a rising run with a held chord under it.
+ *
+ * Audibly bigger than `fanfare()`, which marks a streak. This marks finishing —
+ * a whole letter traced, a whole board matched — and if the two sound alike then
+ * neither of them means anything.
+ */
+export function tada() {
+  const run = [523, 659, 784, 1047];
+  run.forEach((freq, i) =>
+    tone({ freq, start: i * 0.07, duration: 0.18, type: 'triangle', gain: 0.4 })
+  );
+  for (const freq of [523, 659, 784, 1047, 1319]) {
+    tone({ freq, start: 0.3, duration: 1.1, type: 'triangle', gain: 0.26 });
+  }
+  tone({ freq: 131, start: 0.3, duration: 1.2, type: 'sine', gain: 0.2 });
+  noise({ start: 0.3, duration: 0.9, gain: 0.16, from: 9000, to: 2000, q: 0.5 });
+}
+
+/** A soft whoosh for something crossing the screen. */
+export function whoosh() {
+  noise({ duration: 0.32, gain: 0.18, from: 400, to: 3600, q: 0.6 });
+}

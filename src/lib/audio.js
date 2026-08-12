@@ -27,6 +27,7 @@
  */
 
 import { allKeys, getClip } from './clip-store.js';
+import { duck } from './music.js';
 
 const BASE = import.meta.env.BASE_URL ?? '/';
 const MANIFEST_URL = new URL('../../content/audio.json', import.meta.url).href;
@@ -222,6 +223,13 @@ export async function play(key, options = {}) {
   }
 
   if (interrupt) stopAll();
+
+  // Pull the tune down underneath the voice. This is the entire reason the
+  // music module exposes a duck at all: the recorded voice saying a letter is
+  // the point of the app, and a three-year-old meeting a new sound needs to
+  // hear it without a melody underneath. A little longer than the clip, so the
+  // music does not swell back up into the gap before the next one.
+  duck(buffer.duration + 0.4);
 
   return new Promise((resolve) => {
     const source = ctx.createBufferSource();

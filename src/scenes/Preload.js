@@ -8,6 +8,7 @@ import {
 } from '../lib/audio.js';
 import { queueMascot } from '../lib/mascot.js';
 import { initSfx } from '../lib/sfx.js';
+import { initMusic, startMusic } from '../lib/music.js';
 import { COLORS, DESIGN, label } from '../lib/theme.js';
 
 /**
@@ -55,6 +56,12 @@ export default class Preload extends Phaser.Scene {
       await Promise.all([loadGlyphs(), loadAudioManifest(), loadDeviceClips()]);
       initAudio(this.game);
       initSfx(this.game);
+      initMusic(this.game);
+      // The context is almost certainly still locked here — nothing has been
+      // tapped yet — so this is a no-op that Home repeats after the first
+      // gesture. Calling it anyway covers the case where a previous visit
+      // already unlocked audio and the tab was only reloaded.
+      startMusic();
 
       const { recorded = 0, expected = 0, device = 0 } = audioStats();
       const have = recorded + device;

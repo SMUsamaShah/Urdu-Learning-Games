@@ -135,6 +135,30 @@ fails if one role is ever drawn at two sizes.
 prompt a retry, never a penalty, a buzzer or a dead end. If a button cannot do
 anything useful, do not show it rather than disabling it.
 
+**Make it move.** A screen where nothing moves reads as switched off, and this
+is the half of the app a three-year-old is actually here for. There is a kit for
+it, and using it is cheaper than inventing tweens per scene:
+
+| module | for |
+|---|---|
+| `src/lib/liveliness.js` | `popIn`, `bob`, `breathe`, `sway` for idle; `squash`, `jig`, `hop` for reactions |
+| `src/lib/particles.js` | `sparkleBurst`, `popPuff`, `ringBurst`, `starShower`, `sparkleTrail` |
+| `src/lib/celebrate.js` | `confetti` and `dance` for one answer, `paperFall` for finishing something |
+| `src/lib/sfx.js` | `tap`, `pop`, `boing`, `flip`, `sparkle`, `correct`, `nudge`, `fanfare`, `drumroll`, `tada`, `whoosh` |
+| `src/lib/music.js` | the background tune; `duck()` is called for you whenever a clip plays |
+
+Three things about it that are decisions rather than taste:
+
+- **A tap has to move the thing that was tapped, within a frame.** `squash` on
+  the `pointerdown` event, not after whatever the tap triggers. A tap that
+  produces no movement feels broken however correct the response is.
+- **Ration the big effects.** `paperFall` and `starShower` are for finishing
+  something — a fifth right answer, a completed board, a traced letter. Firing
+  them on every answer turns them into wallpaper within a minute, and then there
+  is nothing left to mark actually finishing with.
+- **Anything infinite gets a per-item delay.** `stagger()` does this. Eight
+  tiles bobbing in unison is a machine.
+
 ## Before opening a pull request
 
 ```sh
@@ -184,6 +208,28 @@ renders at roughly half the usual frame rate — game time passes at about half
 wall-clock speed, and a 760ms `delayedCall` can take 1.6s of real time. A test
 that sleeps a fixed number of milliseconds will pass on your machine and fail in
 CI.
+
+If you touched the music, the particles or the animation helpers:
+
+```sh
+npm run dev & npm run verify:fun
+```
+
+It listens to the tune through an analyser rather than asking the module whether
+it thinks it is playing, checks it ducks under a voice clip and comes back up,
+fires three dozen bursts and asserts every emitter cleaned itself up, and checks
+each animation both *moved* its target and put it back exactly.
+
+That last pair matters more than it sounds. Everything Phaser drives — tweens,
+timers, particle lifespans — advances by a fixed delta per rendered frame, and
+headless WebGL renders at about nine frames a second, so two seconds of
+`setTimeout` buys roughly three hundred milliseconds of game time. A check that
+waits in milliseconds does not merely flake: a tween that has not started leaves
+its target exactly on its mark, so "the animation puts things back" passes
+because nothing happened. Count frames, and assert the movement happened before
+asserting it was undone. Web Audio is the exception — it runs on the audio
+clock, which is real time — so the music section waits in milliseconds and is
+right to.
 
 If you drew any Urdu at all, check it came out one size and stayed inside its
 card:
