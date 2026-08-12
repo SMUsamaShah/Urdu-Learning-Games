@@ -29,8 +29,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # Nothing in this job drives a browser, so skip the browser download that
-      # installing playwright would otherwise trigger.
+      # No browser here. Nothing this job deploys needs one, and pulling 150 MB
+      # of Chromium into every Pages build to exercise an asset-generation tool
+      # is a bad trade — those tools only ever run locally, by a person who then
+      # looks at the pictures they made.
+      #
+      # Tests that need a browser must gate on hasBrowser() from
+      # tools/browser.mjs and skip out loud. Throwing from a setup hook instead
+      # cancels the subtests, which reads as a red build with three tests
+      # mysteriously missing rather than as "no browser here".
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@v4

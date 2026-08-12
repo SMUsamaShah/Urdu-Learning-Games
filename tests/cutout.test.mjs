@@ -6,14 +6,30 @@
  * symptom is that one word's picture looks odd on one screen. The two cases
  * below are the ones that actually matter.
  *
+ * ## Why this one skips without a browser
+ *
+ * The cut runs in Chromium, which the Pages workflow deliberately does not
+ * install: nothing it deploys needs one, and a 150 MB download on every build
+ * to check an asset-generation tool is a bad trade. The tool only ever runs
+ * locally, by a person who then looks at the pictures it made, so a regression
+ * here cannot reach the deployed app.
+ *
+ * It skips *loudly* — `npm test` reports it as skipped rather than passing
+ * silently — because a check that quietly stops running is worse than one that
+ * was never written.
+ *
  * Run: npm test
  */
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { launchOptions } from '../tools/browser.mjs';
+import { hasBrowser, launchOptions } from '../tools/browser.mjs';
 import { cutLooksWrong, openCutter } from '../tools/cutout.mjs';
+
+const SKIP = hasBrowser()
+  ? false
+  : 'no Chromium installed — run `npx playwright install chromium` to run this';
 
 /** Draws a PNG in a browser, so the test does not need an image encoder. */
 async function drawPng(page, draw) {
@@ -46,7 +62,7 @@ async function alphaAt(page, webp, size, x, y) {
   );
 }
 
-describe('background cut', () => {
+describe('background cut', { skip: SKIP }, () => {
   let browser;
   let page;
   let cutter;
