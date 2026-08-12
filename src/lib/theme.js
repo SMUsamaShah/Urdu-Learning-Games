@@ -70,16 +70,16 @@ const OUTLINE_EM = 0.032;
  * The outline is not decoration: a white letter on a mid-tone tile has weak
  * edges, and a child picking between ب and ت is working entirely from edges.
  *
- * @param {number} height
+ * Sized by the font's em rather than by the glyph's bounding box, because
+ * everything wearing this outline sits next to something else — a row of menu
+ * tiles, four answers, a caterpillar — and has to come out the same size as its
+ * neighbours rather than filling the same box. See fitEmAlone() in glyph.js.
+ *
+ * @param {number} em pixels per em, normally from one of the fitters
  * @param {string} [fill]
  */
-export function chunkyGlyph(height, fill = '#ffffff') {
-  return {
-    height,
-    color: fill,
-    stroke: COLORS.outlineCss,
-    strokeEm: OUTLINE_EM,
-  };
+export function chunkyGlyphEm(em, fill = '#ffffff') {
+  return { em, color: fill, stroke: COLORS.outlineCss, strokeEm: OUTLINE_EM };
 }
 
 /** One hue per shape family, so a family reads as a group at a glance. */

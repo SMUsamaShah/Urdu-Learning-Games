@@ -1,14 +1,17 @@
 import Phaser from 'phaser';
 import {
+  allLetterGlyphs,
+  allWordGlyphs,
   letterForms,
   letterGlyph,
   lettersById,
   sequenceFor,
   uiGlyph,
+  uiGlyphs,
   wordForLetter,
   wordGlyph,
 } from '../lib/content.js';
-import { addGlyph } from '../lib/glyph.js';
+import { addGlyph, addGlyphBaseline, fitEmAlone, fitEmLine } from '../lib/glyph.js';
 import { addWordImage, queueWordImages } from '../lib/images.js';
 import { clipKeys, hasClip, play, playSequence, stopAll } from '../lib/audio.js';
 import { sayLetter } from '../lib/say.js';
@@ -99,6 +102,25 @@ const FORM_LABELS = {
 };
 
 /**
+ * Where each kind of Urdu on this screen is drawn, as a box to fit letters into.
+ *
+ * Every one of these holds a *set* — 38 letters in the strip, four forms in the
+ * row, any of 37 words on the plate — and the whole set has to come out at one
+ * size, so the size is measured from the set against these boxes rather than
+ * typed in as a height. See fitEmAlone() in glyph.js.
+ *
+ * This screen is where getting that wrong showed worst. Fitted to a height, ہ
+ * was drawn three and a half times the size of ل in the strip, so scrolling the
+ * alphabet looked like scrolling through several different alphabets; and in the
+ * forms row, where the entire lesson is that these four shapes are the same
+ * letter, the medial form was routinely drawn at twice the size of the isolated
+ * one.
+ */
+const HERO_BOX = { top: 130, width: 320, height: 270 };
+const FORM_BOX = { top: 152, size: 128 };
+const WORD_BOX = { top: 392, width: 300, height: 126 };
+
+/**
  * Marks something as tappable-to-hear.
  *
  * Only drawn when a recording actually exists: promising sound and delivering
@@ -186,6 +208,8 @@ export default class Flashcards extends Phaser.Scene {
 
     ensureStripTextures(this, size);
 
+    const cellFit = fitEmAlone(allLetterGlyphs('isolated'), size - 14, size - 12);
+
     const strip = this.add.container(0, stripY);
     this.strip = strip;
     // Kept as a plain array rather than read back off the container:
@@ -207,8 +231,8 @@ export default class Flashcards extends Phaser.Scene {
       cell.add([card, ring]);
 
       cell.add(
-        addGlyph(this, 0, 0, `letter:${letterId}:isolated:52`, glyph, {
-          height: 52,
+        addGlyph(this, 0, 0, `strip:em${Math.round(cellFit.em)}:${letterId}`, glyph, {
+          em: cellFit.em,
           color: COLORS.ink,
         })
       );
@@ -372,13 +396,18 @@ export default class Flashcards extends Phaser.Scene {
     hero.strokeRoundedRect(HERO_X - 175, 110, 350, 400, 30);
     card.add(hero);
 
+    const heroFit = fitEmAlone(allLetterGlyphs('isolated'), HERO_BOX.width, HERO_BOX.height);
     const isolated = letterGlyph(letterId, 'isolated');
     if (isolated) {
       card.add(
-        addGlyph(this, HERO_X, 250, `letter:${letterId}:isolated:190`, isolated, {
-          height: 190,
-          color: COLORS.ink,
-        })
+        addGlyph(
+          this,
+          HERO_X,
+          HERO_BOX.top + HERO_BOX.height / 2,
+          `hero:em${Math.round(heroFit.em)}:${letterId}`,
+          isolated,
+          { em: heroFit.em, color: COLORS.ink }
+        )
       );
     }
 
@@ -410,11 +439,21 @@ export default class Flashcards extends Phaser.Scene {
       })
     );
 
-    const boxW = 128;
+    const boxW = FORM_BOX.size;
     const boxGap = 14;
     const totalW = forms.length * boxW + (forms.length - 1) * boxGap;
     // Right-to-left, so isolated sits rightmost.
     const formsRight = MAIN_X + totalW / 2 - boxW / 2;
+
+    // Fitted across every form of every letter, not across this letter's four.
+    // Per-letter would make each row internally consistent and still change size
+    // as the child scrolls, which is the same bug moved somewhere less obvious.
+    //
+    // The names underneath are the one thing on this screen that does share a
+    // baseline: they are a row of words read together, so الگ and درمیانی have
+    // to sit on a line the way the letters above them do not.
+    const formFit = fitEmAlone(allLetterGlyphs(), boxW - 12, boxW - 12);
+    const nameFit = fitEmLine(uiGlyphs(Object.keys(FORM_LABELS)), boxW, 44);
 
     forms.forEach((form, index) => {
       const glyph = letterGlyph(letterId, form);
@@ -423,34 +462,44 @@ export default class Flashcards extends Phaser.Scene {
 
       const box = this.add.graphics();
       box.fillStyle(COLORS.panel, 1);
-      box.fillRoundedRect(x - boxW / 2, 152, boxW, 128, 18);
+      box.fillRoundedRect(x - boxW / 2, FORM_BOX.top, boxW, boxW, 18);
       card.add(box);
 
       card.add(
-        addGlyph(this, x, 216, `letter:${letterId}:${form}:76`, glyph, {
-          height: 76,
-          color: COLORS.ink,
-        })
+        addGlyph(
+          this,
+          x,
+          FORM_BOX.top + boxW / 2,
+          `form:em${Math.round(formFit.em)}:${letterId}:${form}`,
+          glyph,
+          { em: formFit.em, color: COLORS.ink }
+        )
       );
 
       // Every form makes the same sound — that is the lesson. Tapping any of
       // them plays it.
       card.add(
-        makeTappable(this, this.add.zone(x, 216, boxW, 128).setOrigin(0.5), () =>
-          play(soundKey)
+        makeTappable(
+          this,
+          this.add.zone(x, FORM_BOX.top + boxW / 2, boxW, boxW).setOrigin(0.5),
+          () => play(soundKey)
         )
       );
 
       const formName = uiGlyph(form);
       if (formName) {
         card.add(
-          addGlyph(this, x, 308, `ui:${form}:30`, formName, {
-            height: 30,
-            color: COLORS.inkDim,
-          })
+          addGlyphBaseline(
+            this,
+            x,
+            FORM_BOX.top + boxW + 8 + nameFit.baseline,
+            `form-name:em${Math.round(nameFit.em)}:${form}`,
+            formName,
+            { em: nameFit.em, color: COLORS.inkDim }
+          )
         );
       }
-      card.add(label(this, x, 340, FORM_LABELS[form], { size: 13 }));
+      card.add(label(this, x, FORM_BOX.top + boxW + 60, FORM_LABELS[form], { size: 13 }));
     });
 
     // --- Word --------------------------------------------------------------
@@ -488,13 +537,18 @@ export default class Flashcards extends Phaser.Scene {
       );
     }
 
+    const wordFit = fitEmAlone(allWordGlyphs(), WORD_BOX.width, WORD_BOX.height);
     const glyph = wordGlyph(word.id);
     if (glyph) {
       card.add(
-        addGlyph(this, MAIN_X - 60, 452, `word:${word.id}:82`, glyph, {
-          height: 82,
-          color: COLORS.ink,
-        })
+        addGlyph(
+          this,
+          MAIN_X - 60,
+          WORD_BOX.top + WORD_BOX.height / 2,
+          `card-word:em${Math.round(wordFit.em)}:${word.id}`,
+          glyph,
+          { em: wordFit.em, color: COLORS.ink }
+        )
       );
     }
 

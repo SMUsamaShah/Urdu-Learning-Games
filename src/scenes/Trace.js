@@ -45,7 +45,17 @@ import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js'
  */
 const SUPER = 3;
 
-/** Display height of the letter being traced. */
+/**
+ * Display height of the letter being traced.
+ *
+ * The one screen in the app that still sizes a letter by its bounding box
+ * rather than by the em (see fitEmAlone in glyph.js). Everywhere else the
+ * letters are compared — against their neighbours in a row, or against the same letter a
+ * moment earlier — so drawing them all at one em is the whole point. Here the
+ * letter is alone, nothing is compared, and the job is fine-motor control: a
+ * shared em would draw ہ at a quarter the size of ک, which makes it four times
+ * fiddlier to fill in for no lesson at all.
+ */
 const GLYPH_HEIGHT = 400;
 /** Grid cell size in display pixels. Small enough to be fair, big enough to be fast. */
 const CELL = 13;

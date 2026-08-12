@@ -41,7 +41,12 @@ export default class QuizScene extends Phaser.Scene {
     this.tileSize = 190;
     this.tileGap = 34;
     this.choicesY = 500;
-    this.promptY = 216;
+    /**
+     * Low enough to clear the ribbon at its tallest. The ribbon grows downwards
+     * to fit its instruction (see banner.js), and حرف ڈھونڈو makes it tall
+     * enough to touch a prompt any higher than this.
+     */
+    this.promptY = 236;
     /**
      * Answers and prompt sit right of centre, because the spider sits at the
      * left of every screen and a four-wide line-up centred on the canvas would

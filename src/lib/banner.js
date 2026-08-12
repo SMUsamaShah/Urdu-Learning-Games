@@ -11,22 +11,47 @@
  * see src/lib/glyph.js for why none of it is Phaser.Text.
  */
 
-import { uiGlyph } from './content.js';
-import { addGlyph, fitGlyphHeight, glyphWidth } from './glyph.js';
+import { uiGlyph, uiGlyphs } from './content.js';
+import { addGlyph, fitEmAlone, glyphMetrics } from './glyph.js';
 import { COLORS, DESIGN, label } from './theme.js';
 
 const RIBBON = 0x2f7fd6;
 const RIBBON_DARK = 0x1d5aa8;
 
 /**
- * How tall the Urdu is allowed to be, and the ribbon's minimum height.
+ * Every instruction the ribbon can show.
+ *
+ * Listed rather than discovered, because the text has to be measured before any
+ * of it is drawn: all seven are set at one em so a child sees the same size of
+ * writing on every screen, and the em that fits is decided by the most demanding
+ * of them. A scene passing an id that is not here still renders, just not to
+ * scale — tests/ui-strings.test.mjs keeps the list honest.
+ */
+export const INSTRUCTIONS = [
+  'pop-balloon',
+  'match-pairs',
+  'fill-letter',
+  'find-letter',
+  'how-many',
+  'whats-next',
+  'find-picture',
+];
+
+/**
+ * The box the writing is fitted into, and the ribbon's minimum height.
  *
  * The ribbon grows to fit its text rather than the text shrinking to fit the
- * ribbon, because Nastaliq is not a horizontal script: "کتنے ہیں؟" descends a
- * long way below its own baseline, so a glyph squeezed into a short bar ends up
- * with hairline strokes long before it runs out of width.
+ * ribbon, because Nastaliq is not a horizontal script: "کتنے ہیں؟" stacks its
+ * two words almost two ems above the baseline while "جوڑے ملاؤ" barely reaches
+ * one, so a bar sized for the short one crops the tall one and a bar sized for
+ * the tall one leaves the short one swimming.
+ *
+ * What must NOT vary is the size of the letters themselves, which is the whole
+ * point of measuring the set: fitting each instruction to a fixed bar instead
+ * drew لکھو at nearly twice the size of کتنے ہیں؟, on screens a child moves
+ * between one after the other.
  */
-const TEXT_HEIGHT = 62;
+const TEXT_BOX = { width: 460, height: 104 };
 const MIN_HEIGHT = 78;
 
 /**
@@ -36,17 +61,17 @@ const MIN_HEIGHT = 78;
  * of it, because there is scenery behind the ribbon and punching a hole would
  * mean knowing what colour to fill it with.
  */
-function tail(g, side, innerX, height) {
+function tail(g, side, innerX, height, middle) {
   const out = innerX + side * 52;
   const notch = innerX + side * 34;
   g.fillStyle(RIBBON_DARK, 1);
   g.fillPoints(
     [
-      { x: innerX, y: -height / 2 + 12 },
-      { x: out, y: -height / 2 + 24 },
-      { x: notch, y: 4 },
-      { x: out, y: height / 2 + 16 },
-      { x: innerX, y: height / 2 + 2 },
+      { x: innerX, y: middle - height / 2 + 12 },
+      { x: out, y: middle - height / 2 + 24 },
+      { x: notch, y: middle + 4 },
+      { x: out, y: middle + height / 2 + 16 },
+      { x: innerX, y: middle + height / 2 + 2 },
     ],
     true
   );
@@ -71,46 +96,58 @@ export function addBanner(scene, config) {
   /** @type {Phaser.GameObjects.GameObject[]} */
   let text = [];
 
+  const { em } = fitEmAlone(uiGlyphs(INSTRUCTIONS), TEXT_BOX.width, TEXT_BOX.height);
+
   banner.setInstruction = (ui, roman) => {
     for (const item of text) item.destroy();
     text = [];
 
     const glyph = uiGlyph(ui);
-    const textHeight = glyph ? Math.round(fitGlyphHeight(glyph, 460, TEXT_HEIGHT)) : 0;
-    const textWidth = glyph ? glyphWidth(glyph, textHeight) : 0;
-    // Sized to its contents in both directions: "لکھو" and "کتنے ہیں؟" are very
-    // different shapes, and one fixed bar would either crop one or leave the
-    // other swimming.
-    const width = Math.max(300, Math.min(660, textWidth + 150));
-    const height = Math.max(MIN_HEIGHT, textHeight + (roman ? 44 : 26));
+    const metrics = glyph ? glyphMetrics(glyph, em) : { width: 0, height: 0 };
+    // Sized to its contents in both directions. There is no shared baseline
+    // here, unlike the menu tiles: each instruction is alone on its own screen,
+    // so the ribbon around it is the reference the eye uses and centring the
+    // writing in that ribbon is what looks deliberate.
+    const width = Math.max(300, Math.min(660, metrics.width + 150));
+    const height = Math.max(MIN_HEIGHT, metrics.height + (roman ? 44 : 26));
+    // Grows downwards from a fixed top edge rather than outwards from its
+    // centre. The ribbon is the topmost thing on every game screen, so a taller
+    // instruction growing both ways runs off the top of the canvas — کتنے ہیں؟
+    // is half again as tall as the rest and did exactly that.
+    const top = -MIN_HEIGHT / 2;
+    const middle = top + height / 2;
 
     plate.clear();
-    tail(plate, -1, -width / 2 + 14, height);
-    tail(plate, 1, width / 2 - 14, height);
+    tail(plate, -1, -width / 2 + 14, height, middle);
+    tail(plate, 1, width / 2 - 14, height, middle);
 
     plate.fillStyle(COLORS.shadow, 0.2);
-    plate.fillRoundedRect(-width / 2, -height / 2 + 7, width, height, 22);
+    plate.fillRoundedRect(-width / 2, top + 7, width, height, 22);
     plate.fillStyle(RIBBON, 1);
-    plate.fillRoundedRect(-width / 2, -height / 2, width, height, 22);
+    plate.fillRoundedRect(-width / 2, top, width, height, 22);
     plate.lineStyle(5, 0xffffff, 0.9);
-    plate.strokeRoundedRect(-width / 2 + 4, -height / 2 + 4, width - 8, height - 8, 18);
+    plate.strokeRoundedRect(-width / 2 + 4, top + 4, width - 8, height - 8, 18);
     plate.lineStyle(3, COLORS.outline, 0.85);
-    plate.strokeRoundedRect(-width / 2, -height / 2, width, height, 22);
+    plate.strokeRoundedRect(-width / 2, top, width, height, 22);
 
     if (glyph) {
       // No outline on the letters here, unlike everywhere else in the app. The
       // outline exists so a letter survives sitting on a colour that varies;
       // this one sits on a single flat blue, and an outline heavy enough to see
       // simply fills in the thin strokes of Nastaliq until the word reads black.
-      const item = addGlyph(scene, 0, roman ? -10 : 0, `banner:${ui}:${textHeight}`, glyph, {
-        height: textHeight,
-        color: COLORS.onColor,
-      });
+      const item = addGlyph(
+        scene,
+        0,
+        middle - (roman ? 10 : 0),
+        `banner:em${Math.round(em)}:${ui}`,
+        glyph,
+        { em, color: COLORS.onColor }
+      );
       banner.add(item);
       text.push(item);
     }
     if (roman) {
-      const item = label(scene, 0, height / 2 - 17, roman, {
+      const item = label(scene, 0, top + height - 17, roman, {
         size: 14,
         color: COLORS.onColorDim,
       });

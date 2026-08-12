@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import {
+  allLetterGlyphs,
   letterGlyph,
   lettersById,
   sequenceFor,
   shapeFamilySiblings,
 } from '../lib/content.js';
-import { addGlyph, fitGlyphHeight } from '../lib/glyph.js';
+import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip, stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { addBanner } from '../lib/banner.js';
@@ -13,7 +14,7 @@ import { paperFall } from '../lib/celebrate.js';
 import { addStageMascot } from '../lib/mascot.js';
 import { sayLetter } from '../lib/say.js';
 import { addScenery } from '../lib/scenery.js';
-import { COLORS, DESIGN, chunkyGlyph, familyColor, label, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, chunkyGlyphEm, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
  * The same question as FindLetter, but the answers float past.
@@ -217,10 +218,10 @@ export default class Balloons extends Phaser.Scene {
     });
 
     const glyph = letterGlyph(this.target, 'isolated');
-    const height = Math.round(fitGlyphHeight(glyph, 96, 58));
+    const fit = fitEmAlone(allLetterGlyphs('isolated'), 96, 68);
     badge.add(
-      addGlyph(this, 0, -6, `balloon:prompt:${this.target}:${height}:chunky`, glyph,
-        chunkyGlyph(height))
+      addGlyph(this, 0, -6, `balloon-badge:em${Math.round(fit.em)}:${this.target}`, glyph,
+        chunkyGlyphEm(fit.em))
     );
     badge.add(
       spoken
@@ -272,12 +273,19 @@ export default class Balloons extends Phaser.Scene {
     body.strokePath();
     balloon.add(body);
 
+    // Every balloon carries its letter at the same size. Fitted to a height,
+    // the letter was a hint: the child could sort the balloons by how big the
+    // writing on them looked instead of by reading it.
+    const letterFit = fitEmAlone(allLetterGlyphs('isolated'), radius * 1.7, radius * 1.5);
     balloon.add(
-      (() => {
-        const g = letterGlyph(letterId, 'isolated');
-        const h = Math.round(fitGlyphHeight(g, radius * 1.7, 82));
-        return addGlyph(this, 0, -4, `balloon:${letterId}:${h}:chunky`, g, chunkyGlyph(h));
-      })()
+      addGlyph(
+        this,
+        0,
+        -4,
+        `balloon:em${Math.round(letterFit.em)}:${letterId}`,
+        letterGlyph(letterId, 'isolated'),
+        chunkyGlyphEm(letterFit.em)
+      )
     );
 
     balloon.setSize(radius * 2, radius * 2.3);

@@ -72,6 +72,33 @@ describe('ui strings', () => {
     }
   });
 
+  test('every ribbon instruction is in banner.js INSTRUCTIONS', () => {
+    // The ribbon measures all of its possible instructions together to pick one
+    // em, so a scene showing an id the list does not know about gets writing at
+    // the wrong size — and being the wrong size is precisely the bug that list
+    // exists to prevent. Nothing throws, so only this notices.
+    const banner = fs.readFileSync(path.join(ROOT, 'src/lib/banner.js'), 'utf8');
+    const block = banner.match(/INSTRUCTIONS = \[([^\]]*)\]/);
+    assert.ok(block, 'could not find INSTRUCTIONS in src/lib/banner.js');
+    const declared = new Set([...block[1].matchAll(/'([\w-]+)'/g)].map(([, id]) => id));
+
+    const used = new Set();
+    for (const file of sourceFiles(path.join(ROOT, 'src'))) {
+      const source = fs.readFileSync(file, 'utf8');
+      for (const pattern of [
+        /addBanner\(\s*this,\s*\{\s*ui:\s*'([\w-]+)'/g,
+        /\bthis\.instruction\s*=\s*'([\w-]+)'/g,
+      ]) {
+        for (const [, id] of source.matchAll(pattern)) used.add(id);
+      }
+    }
+
+    assert.ok(used.size >= 5, `only found ${used.size} ribbon instructions — the patterns have gone stale`);
+    for (const id of used) {
+      assert.ok(declared.has(id), `"${id}" is shown on a ribbon but missing from INSTRUCTIONS in src/lib/banner.js`);
+    }
+  });
+
   test('every string in ui.json has been baked', () => {
     for (const { id } of strings) {
       assert.ok(glyphs.ui?.[id], `"${id}" is in ui.json but not in glyphs.json — run npm run bake`);

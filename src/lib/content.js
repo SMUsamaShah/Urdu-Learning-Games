@@ -60,6 +60,39 @@ export function numberGlyph(numberId) {
   return glyphs?.numbers[numberId] ?? null;
 }
 
+/**
+ * Every letter glyph, for measuring a set before drawing any of it.
+ *
+ * Sizing letters by the em means the size is decided by the most demanding
+ * letter in whatever set will appear in that space, not by the one currently on
+ * screen — see fitEmLine() and fitEmAlone() in glyph.js. So the caller needs
+ * the whole set, and the whole set is what a game draws over its lifetime rather
+ * than what it draws in this round.
+ *
+ * @param {'isolated'|'initial'|'medial'|'final'} [form] one form, or every form
+ *   of every letter when omitted.
+ */
+export function allLetterGlyphs(form) {
+  const all = Object.values(glyphs?.letters ?? {});
+  if (form) return all.map((forms) => forms[form]).filter(Boolean);
+  return all.flatMap((forms) => Object.values(forms));
+}
+
+/** Every number glyph. See allLetterGlyphs. */
+export function allNumberGlyphs() {
+  return Object.values(glyphs?.numbers ?? {});
+}
+
+/** Every word glyph. See allLetterGlyphs. */
+export function allWordGlyphs() {
+  return Object.values(glyphs?.words ?? {});
+}
+
+/** The named UI strings, as glyphs. See allLetterGlyphs. */
+export function uiGlyphs(stringIds) {
+  return stringIds.map((id) => glyphs?.ui[id]).filter(Boolean);
+}
+
 /** A letter's name written out ("بے"), as opposed to the letter itself ("ب"). */
 export function nameGlyph(letterId) {
   return glyphs?.names[letterId] ?? null;

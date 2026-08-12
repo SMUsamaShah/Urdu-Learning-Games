@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { lettersById, letterGlyph, wordForLetter } from '../lib/content.js';
-import { addGlyph, fitGlyphHeight } from '../lib/glyph.js';
+import { allLetterGlyphs, lettersById, letterGlyph, wordForLetter } from '../lib/content.js';
+import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { addBanner } from '../lib/banner.js';
@@ -218,13 +218,19 @@ export default class Memory extends Phaser.Scene {
     card.size = size;
 
     if (spec.kind === 'letter') {
-      const glyph = letterGlyph(spec.pairId, 'isolated');
-      const height = Math.round(fitGlyphHeight(glyph, size - 40, size - 56));
+      // One em for every letter, so a card cannot be recognised by how big its
+      // writing is — in a memory game that would be a way to win without
+      // remembering anything.
+      const fit = fitEmAlone(allLetterGlyphs('isolated'), size - 40, size - 44);
       face.add(
-        addGlyph(this, 0, 0, `memory:${spec.pairId}:${height}`, glyph, {
-          height,
-          color: COLORS.ink,
-        })
+        addGlyph(
+          this,
+          0,
+          0,
+          `memory-card:em${Math.round(fit.em)}:${spec.pairId}`,
+          letterGlyph(spec.pairId, 'isolated'),
+          { em: fit.em, color: COLORS.ink }
+        )
       );
     } else {
       const word = wordForLetter(spec.pairId);

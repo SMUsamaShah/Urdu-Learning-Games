@@ -95,11 +95,41 @@ contribution of ten good clips is worth having.
 Each screen is a Phaser scene in `src/scenes/`. Add the file, register it in
 `src/main.js`, and add a tile to the `GAMES` list in `src/scenes/Home.js`.
 
-Two rules the existing screens follow:
+Three rules the existing screens follow:
 
 **Never render Urdu with `this.add.text`.** Latin romanisation and English
 glosses are fine that way; Urdu is not. Use `addGlyph` from `src/lib/glyph.js`
 with a glyph from `src/lib/content.js`. The reasons are in the README.
+
+**Size letters by the em, and measure the whole set.** Never ask for a glyph at
+a height. A Nastaliq glyph's bounding box says nothing about how big the letters
+inside it are: ہ's box is short and full, ک's is tall and mostly the rise of one
+stroke, so fitting both to the same height draws ہ at less than a third the size
+of ک. The app did that for a while, and it showed everywhere — a strip of 38
+letters that looked like several different alphabets, menu labels of assorted
+sizes, and answer tiles where the odd big one was a hint.
+
+So pick a box, and hand the whole set of glyphs that will ever be drawn in it to
+one of the two fitters in `src/lib/glyph.js`:
+
+- `fitEmAlone(glyphs, w, h)` for a glyph that is the only thing in its own card
+  — a tile, a balloon, a strip cell, the big letter on a flashcard. Draw it with
+  `addGlyph`, which centres it.
+- `fitEmLine(glyphs, w, h)` for glyphs read together as a line — a menu label
+  under its icon, the row of form names. It also returns the baseline they all
+  sit on; draw them with `addGlyphBaseline` at `boxTop + fit.baseline`. Holding
+  one baseline means reserving room for the tallest ascender and the deepest
+  descender in the set at once, which costs about a third of the size, so only
+  use it where the alignment is worth that.
+
+The set is what the screen draws over its lifetime, not what it draws this
+round: fit the alphabet, not the four letters currently on offer, or the size
+shifts as the child plays. `src/lib/content.js` has `allLetterGlyphs`,
+`allWordGlyphs`, `allNumberGlyphs` and `uiGlyphs` for exactly this.
+
+Name the texture key `<role>:em<N>:<id>` — role being the place on the screen,
+so `strip`, `hero`, `find-choice`. `verify:sizing` reads those keys back and
+fails if one role is ever drawn at two sizes.
 
 **No fail states.** This is for a very young child. A wrong answer should
 prompt a retry, never a penalty, a buzzer or a dead end. If a button cannot do
@@ -154,6 +184,20 @@ renders at roughly half the usual frame rate — game time passes at about half
 wall-clock speed, and a 760ms `delayedCall` can take 1.6s of real time. A test
 that sleeps a fixed number of milliseconds will pass on your machine and fail in
 CI.
+
+If you drew any Urdu at all, check it came out one size and stayed inside its
+card:
+
+```sh
+npm run dev & npm run verify:sizing
+```
+
+It fits every glyph in the app into a range of deliberately awkward boxes and
+asserts none of them overflows and that the fit is actually maximal, then walks
+every screen and asserts no role is drawn at two sizes. Both failures are silent
+— one letter of a hundred and twenty-three hangs over the edge of its tile, or
+one screen quietly disagrees with the rest — so clicking through the game does
+not find them.
 
 Tracing has its own check, because its whole mechanic is input and cannot be
 verified by poking scene state:

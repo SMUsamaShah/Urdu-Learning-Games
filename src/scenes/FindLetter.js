@@ -1,15 +1,16 @@
 import Phaser from 'phaser';
 import {
+  allLetterGlyphs,
   letterForms,
   letterGlyph,
   lettersById,
   sequenceFor,
   shapeFamilySiblings,
 } from '../lib/content.js';
-import { addGlyph, fitGlyphHeight, glyphWidth } from '../lib/glyph.js';
+import { addGlyph, fitEmAlone, glyphMetrics } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import { sayLetter } from '../lib/say.js';
-import { COLORS, chunkyGlyph, familyColor, label } from '../lib/theme.js';
+import { COLORS, chunkyGlyphEm, familyColor, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
 
 /**
@@ -29,6 +30,10 @@ import QuizScene from './QuizScene.js';
  * So the same scene covers both, and it upgrades on its own as recordings are
  * made.
  */
+
+/** The area the letter to look for is drawn in, inside its plate. */
+const PROMPT_BOX = { width: 420, height: 140 };
+
 export default class FindLetter extends QuizScene {
   constructor() {
     super('FindLetter');
@@ -105,11 +110,16 @@ export default class FindLetter extends QuizScene {
     const letter = lettersById.get(target);
     const glyph = letterGlyph(target, form);
 
-    // The plate is sized to the letter rather than fixed. Urdu has letters
+    // One em for every letter in every form, so the letter to look for is
+    // always drawn at the same size. Fitted to a height it was not: the shown
+    // form varies round to round, and a medial ـبـ scaled to fill the plate came
+    // out several times the size of the isolated ب the child had just been
+    // shown, which is the opposite of the lesson.
+    const fit = fitEmAlone(allLetterGlyphs(), PROMPT_BOX.width, PROMPT_BOX.height);
+    // The plate is still sized to the letter rather than fixed. Urdu has letters
     // several times wider than they are tall, and a fixed card leaves those
     // hanging out over the edge of it.
-    const height = fitGlyphHeight(glyph, 420, 112);
-    const plateW = Math.max(220, glyphWidth(glyph, height) + 60);
+    const plateW = Math.max(220, glyphMetrics(glyph, fit.em).width + 60);
     const plateH = 168;
 
     const plate = this.add.graphics();
@@ -120,8 +130,8 @@ export default class FindLetter extends QuizScene {
     layer.add(plate);
 
     layer.add(
-      addGlyph(this, 0, 0, `find:prompt:${target}:${form}:${Math.round(height)}`, glyph, {
-        height,
+      addGlyph(this, 0, 0, `find-prompt:em${Math.round(fit.em)}:${target}:${form}`, glyph, {
+        em: fit.em,
         color: COLORS.ink,
       })
     );
@@ -142,9 +152,13 @@ export default class FindLetter extends QuizScene {
 
   decorateTile(tile, id, size) {
     const glyph = letterGlyph(id, 'isolated');
-    const height = Math.round(fitGlyphHeight(glyph, size - 44, size - 66));
+    // Every choice at one em. Fitting each to its own tile made size a tell —
+    // the child could learn that the odd-looking big one is never the answer —
+    // as well as making a row of four look haphazard.
+    const fit = fitEmAlone(allLetterGlyphs('isolated'), size - 44, size - 56);
     tile.add(
-      addGlyph(this, 0, 0, `find:choice:${id}:${height}:chunky`, glyph, chunkyGlyph(height))
+      addGlyph(this, 0, 0, `find-choice:em${Math.round(fit.em)}:${id}`, glyph,
+        chunkyGlyphEm(fit.em))
     );
   }
 

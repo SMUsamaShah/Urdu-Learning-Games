@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { letterGlyph, lettersById, sequenceFor } from '../lib/content.js';
-import { addGlyph, fitGlyphHeight } from '../lib/glyph.js';
+import { allLetterGlyphs, letterGlyph, lettersById, sequenceFor } from '../lib/content.js';
+import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { sayLetter, sayLetters } from '../lib/say.js';
-import { COLORS, chunkyGlyph, familyColor, label } from '../lib/theme.js';
+import { COLORS, chunkyGlyphEm, familyColor, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
 
 /**
@@ -30,6 +30,9 @@ import QuizScene from './QuizScene.js';
 const WINDOW = 5;
 
 const SEGMENT = 104;
+
+/** The area a letter is drawn in inside a caterpillar segment. */
+const SEGMENT_BOX = { width: SEGMENT - 34, height: SEGMENT - 40 };
 const SEGMENT_STEP = 96;
 
 export default class Sequence extends QuizScene {
@@ -112,6 +115,16 @@ export default class Sequence extends QuizScene {
 
     this.drawHead(layer, xFor(-1));
 
+    // One em along the whole caterpillar, so the run reads as the alphabet in
+    // order rather than as letters of assorted importance. Measured across the
+    // whole alphabet, not this window's five, or the size would shift as the
+    // window moved.
+    const segmentFit = fitEmAlone(
+      allLetterGlyphs('isolated'),
+      SEGMENT_BOX.width,
+      SEGMENT_BOX.height
+    );
+
     letters.forEach((id, slot) => {
       const x = xFor(slot);
       const isGap = slot === this.gapSlot;
@@ -150,10 +163,15 @@ export default class Sequence extends QuizScene {
       body.strokeCircle(x, 0, SEGMENT / 2);
       layer.add(body);
 
-      const glyph = letterGlyph(id, 'isolated');
-      const height = Math.round(fitGlyphHeight(glyph, SEGMENT - 34, SEGMENT - 46));
       layer.add(
-        addGlyph(this, x, 0, `seq:${id}:${height}:chunky`, glyph, chunkyGlyph(height))
+        addGlyph(
+          this,
+          x,
+          0,
+          `segment:em${Math.round(segmentFit.em)}:${id}`,
+          letterGlyph(id, 'isolated'),
+          chunkyGlyphEm(segmentFit.em)
+        )
       );
     });
 
@@ -207,10 +225,13 @@ export default class Sequence extends QuizScene {
   }
 
   decorateTile(tile, id, size) {
-    const glyph = letterGlyph(id, 'isolated');
-    const height = Math.round(fitGlyphHeight(glyph, size - 48, size - 62));
+    // A different em from the caterpillar's segments, because the tiles are a
+    // different size; what matters is that the choices match each other, so that
+    // none of them is picked out by being bigger than the rest.
+    const fit = fitEmAlone(allLetterGlyphs('isolated'), size - 48, size - 52);
     tile.add(
-      addGlyph(this, 0, 0, `seq:choice:${id}:${height}:chunky`, glyph, chunkyGlyph(height))
+      addGlyph(this, 0, 0, `seq-choice:em${Math.round(fit.em)}:${id}`,
+        letterGlyph(id, 'isolated'), chunkyGlyphEm(fit.em))
     );
   }
 

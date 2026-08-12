@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
-import { numberGlyph, numbers, numbersById } from '../lib/content.js';
-import { addGlyph } from '../lib/glyph.js';
+import { allNumberGlyphs, numberGlyph, numbers, numbersById } from '../lib/content.js';
+import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import { addWordImage, illustratedWords, queueWordImages } from '../lib/images.js';
 import { sayNumber } from '../lib/say.js';
-import { COLORS, chunkyGlyph, label } from '../lib/theme.js';
+import { COLORS, chunkyGlyphEm, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
 
 /** Star colours, cycled by value so the same digit is always the same colour. */
@@ -138,13 +138,19 @@ export default class Numbers extends QuizScene {
     return STAR_COLORS[numbersById.get(id).value % STAR_COLORS.length];
   }
 
-  decorateTile(tile, id) {
+  decorateTile(tile, id, size) {
     const glyph = numberGlyph(id);
     if (glyph) {
-      // Sat a little above centre: a star is widest above its middle, and a
-      // numeral centred in the bounding box hangs into the bottom notch.
+      // One em across all ten numerals. Fitted to a height instead, ۱ — a bare
+      // upright stroke — was drawn nearly twice the size of ۴, so the choices
+      // looked like answers of different importance.
+      //
+      // Sat above the star's middle: a star is widest above its centre, and a
+      // numeral any lower hangs into the bottom notch.
+      const fit = fitEmAlone(allNumberGlyphs(), size * 0.5, size * 0.44);
       tile.add(
-        addGlyph(this, 0, -18, `numbers:choice:${id}:82:chunky`, glyph, chunkyGlyph(82))
+        addGlyph(this, 0, -18, `number-choice:em${Math.round(fit.em)}:${id}`, glyph,
+          chunkyGlyphEm(fit.em))
       );
     }
     // The Latin numeral underneath, small: it is for the parent counting along,

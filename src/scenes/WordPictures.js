@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { wordGlyph, wordsById } from '../lib/content.js';
-import { addGlyph } from '../lib/glyph.js';
+import { allWordGlyphs, wordGlyph, wordsById } from '../lib/content.js';
+import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import { addWordImage, illustratedWords, queueWordImages } from '../lib/images.js';
 import { sayWord } from '../lib/say.js';
@@ -19,6 +19,10 @@ import QuizScene from './QuizScene.js';
  * the discrimination being practised is word-to-meaning, and confusable
  * pictures would only add a second puzzle on top of it.
  */
+
+/** The plate the word is written on. */
+const PLATE = { width: 380, height: 132 };
+
 export default class WordPictures extends QuizScene {
   constructor() {
     super('WordPictures');
@@ -42,6 +46,10 @@ export default class WordPictures extends QuizScene {
 
   onCreated() {
     this.pool = illustratedWords().filter((id) => wordsById.has(id));
+    // Measured once, from every word in the app rather than from the ones this
+    // round happens to use, so the writing does not change size between rounds.
+    this.promptFit = fitEmAlone(allWordGlyphs(), PLATE.width - 40, PLATE.height - 16);
+    this.fallbackFit = fitEmAlone(allWordGlyphs(), this.tileSize - 40, this.tileSize - 64);
   }
 
   pickTarget(previous) {
@@ -65,14 +73,19 @@ export default class WordPictures extends QuizScene {
     // seeing the word is the whole exercise rather than a shortcut past it.
     const plate = this.add.graphics();
     plate.fillStyle(COLORS.card, 1);
-    plate.fillRoundedRect(-190, -66, 380, 132, 26);
+    plate.fillRoundedRect(-PLATE.width / 2, -PLATE.height / 2, PLATE.width, PLATE.height, 26);
     layer.add(plate);
 
+    // Every word at one em, so the writing stays the same size round to round.
+    // Fitted to a height instead, بھالو came out twice the size of خرگوش — the
+    // ب is a short, wide shape and the خ a tall stacked one — which on a screen
+    // the child sees one word after another reads as the app changing its mind
+    // rather than as two words.
     const glyph = wordGlyph(target);
     if (glyph) {
       layer.add(
-        addGlyph(this, 0, -4, `words:prompt:${target}:76`, glyph, {
-          height: 76,
+        addGlyph(this, 0, 0, `word-prompt:em${Math.round(this.promptFit.em)}:${target}`, glyph, {
+          em: this.promptFit.em,
           color: COLORS.ink,
         })
       );
@@ -109,8 +122,8 @@ export default class WordPictures extends QuizScene {
     const glyph = wordGlyph(id);
     if (glyph) {
       tile.add(
-        addGlyph(this, 0, 0, `words:fallback:${id}:56`, glyph, {
-          height: 56,
+        addGlyph(this, 0, -8, `word-tile:em${Math.round(this.fallbackFit.em)}:${id}`, glyph, {
+          em: this.fallbackFit.em,
           color: COLORS.ink,
         })
       );

@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
-import { letterGlyph, numberGlyph, uiGlyph } from '../lib/content.js';
-import { addGlyph, fitGlyphHeight } from '../lib/glyph.js';
+import { letterGlyph, numberGlyph, uiGlyph, uiGlyphs } from '../lib/content.js';
+import { addGlyph, addGlyphBaseline, fitEmLine } from '../lib/glyph.js';
 import { addWordImage, queueWordImages } from '../lib/images.js';
 import { canInstall, onInstallAvailability, promptInstall } from '../lib/install.js';
 import { addMascot } from '../lib/mascot.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { addScenery } from '../lib/scenery.js';
-import { COLORS, DESIGN, chunkyGlyph, label, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, chunkyGlyphEm, label, makeButton } from '../lib/theme.js';
 
 /**
  * The menu.
@@ -103,38 +103,45 @@ export default class Home extends Phaser.Scene {
   }
 
   /**
+   * The glyph a tile is illustrated with, where it has one.
+   *
+   * Pulled out so the icons can be measured as a set before any of them is
+   * drawn — see fitEmLine. Tiles illustrated with a picture have no glyph and are
+   * simply absent from the set.
+   */
+  static iconGlyph(game) {
+    if (game.number) return numberGlyph(game.number);
+    if (game.icon) return letterGlyph(game.icon.letter, game.icon.form);
+    return null;
+  }
+
+  /**
    * A tile's picture: a letter, a word illustration or a numeral.
    *
    * Whatever a game is about, drawn the way that game draws it, so the menu
    * previews the thing rather than decorating it.
+   *
+   * The letters and the numeral share one baseline and one em, for the same
+   * reason the names below them do: a row of tiles where ب is twice the size of
+   * م looks like eight unrelated buttons rather than one menu.
    */
-  tileIcon(game, y, size) {
+  tileIcon(game, baselineY, box, fit) {
+    // A picture has no baseline to sit on, so it is centred in the same box the
+    // letters were fitted into, and drawn a little larger than their line: a
+    // letter only inks part of its line box, an apple fills all of its own.
     if (game.picture) {
-      return addWordImage(this, 0, y, game.picture, size * 1.5);
+      return addWordImage(this, 0, box.top + box.height / 2, game.picture, box.height * 1.3);
     }
-    if (game.number) {
-      const glyph = numberGlyph(game.number);
-      return glyph
-        ? addGlyph(
-            this,
-            0,
-            y,
-            `ui:tile:${game.number}:${size}:chunky`,
-            glyph,
-            chunkyGlyph(size)
-          )
-        : null;
-    }
-    const glyph = letterGlyph(game.icon.letter, game.icon.form);
+    const glyph = Home.iconGlyph(game);
     if (!glyph) return null;
-    const h = Math.round(fitGlyphHeight(glyph, size * 2.1, size));
-    return addGlyph(
+    const id = game.number ?? `${game.icon.letter}:${game.icon.form}`;
+    return addGlyphBaseline(
       this,
       0,
-      y,
-      `letter:${game.icon.letter}:${game.icon.form}:${h}:chunky`,
+      baselineY,
+      `tile-icon:em${Math.round(fit.em)}:${id}`,
       glyph,
-      chunkyGlyph(h)
+      chunkyGlyphEm(fit.em)
     );
   }
 
@@ -162,8 +169,31 @@ export default class Home extends Phaser.Scene {
       (STAGE.right - STAGE.left - gap * (perRow - 1)) / perRow
     );
     const tileH = Math.round(tileW * (rows > 1 ? 0.74 : 0.92));
-    const iconSize = Math.round(tileW * 0.32);
     const rowGap = 22;
+
+    // A tile is three stacked lines: the icon, the Urdu name, the roman gloss.
+    // The first two are Urdu, and each is drawn at one em on one baseline across
+    // all eight tiles — measured here rather than typed as a number, because the
+    // tiles resize with the grid and because the whole point is that no tile's
+    // letters come out bigger than its neighbour's.
+    //
+    // The lines are as deep as they are because Nastaliq's vertical range is
+    // enormous: گنتی and لکھو reach two full ems above the baseline, since the
+    // ascender on a گ or a ک is drawn as a long rising stroke, while حروف and
+    // جوڑے drop half an em below it. Reserving room for both at once is the
+    // price of a shared baseline, and it is what decides the sizes below.
+    const iconBox = { top: -tileH * 0.46, height: tileH * 0.4 };
+    const iconFit = fitEmLine(
+      GAMES.map(Home.iconGlyph).filter(Boolean),
+      tileW * 0.66,
+      iconBox.height
+    );
+    const labelTop = -tileH * 0.07;
+    const labelFit = fitEmLine(
+      uiGlyphs(GAMES.map((game) => game.ui)),
+      tileW - 40,
+      tileH * 0.41
+    );
     // Measured from the top of the grid rather than its centre, so adding a
     // second row grows downwards into the space above the footer instead of
     // pushing the last row through it.
@@ -187,22 +217,25 @@ export default class Home extends Phaser.Scene {
         onTap: () => this.scene.start(game.scene),
       });
 
-      const icon = this.tileIcon(game, -tileH * 0.24, iconSize);
+      const icon = this.tileIcon(game, iconBox.top + iconFit.baseline, iconBox, iconFit);
       if (icon) button.add(icon);
 
-      // 44 rather than 52: the glyph is scaled by height, so a long name like
-      // حرف ڈھونڈو gets wide fast and crowds both the icon above and the tile's
-      // own edges.
       const nameGlyph = uiGlyph(game.ui);
       if (nameGlyph) {
-        const h = Math.round(fitGlyphHeight(nameGlyph, tileW - 30, 44));
         button.add(
-          addGlyph(this, 0, tileH * 0.17, `ui:${game.ui}:${h}:chunky`, nameGlyph, chunkyGlyph(h))
+          addGlyphBaseline(
+            this,
+            0,
+            labelTop + labelFit.baseline,
+            `tile-label:em${Math.round(labelFit.em)}:${game.ui}`,
+            nameGlyph,
+            chunkyGlyphEm(labelFit.em)
+          )
         );
       }
 
       button.add(
-        label(this, 0, tileH * 0.39, game.roman, {
+        label(this, 0, tileH * 0.4, game.roman, {
           size: 16,
           color: COLORS.onColorDim,
         })

@@ -54,6 +54,8 @@ const MIN_OUTLINE_EM = 50;
  * @param {number} [options.height=200]  Target height in game pixels.
  * @param {string} [options.color='#ffffff']
  * @param {string} [options.stroke]      Outline colour, for the tracing guide.
+ * @param {number} [options.em=0] Size the glyph by the font's em rather than by
+ *   its bounding box. Wins over `height`. See glyphMetrics() for why.
  * @param {number} [options.strokeWidth=0] A constant line in game pixels.
  * @param {number} [options.strokeEm=0] A line as a fraction of the font's em,
  *   which keeps it proportional to the letterforms. Wins over strokeWidth.
@@ -65,6 +67,7 @@ export function glyphTexture(scene, key, glyph, options = {}) {
 
   const {
     height = 200,
+    em = 0,
     color = '#ffffff',
     stroke = null,
     strokeWidth = 0,
@@ -82,13 +85,17 @@ export function glyphTexture(scene, key, glyph, options = {}) {
     return key;
   }
 
-  const pad = height * padding;
-  const scale = (height - pad * 2) / bh;
+  // Two ways to be asked for a size, and glyphMetrics() explains when each is
+  // right. `em` makes the letterforms a fixed size and lets the box vary;
+  // `height` makes the box a fixed size and lets the letterforms vary.
+  const scale = em > 0 ? em / glyphUpem() : (height - height * padding * 2) / bh;
+  const pad = (em > 0 ? em : height) * padding;
   const width = bw * scale + pad * 2;
+  const boxHeight = em > 0 ? bh * scale + pad * 2 : height;
 
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.ceil(width * SUPERSAMPLE));
-  canvas.height = Math.max(1, Math.ceil(height * SUPERSAMPLE));
+  canvas.height = Math.max(1, Math.ceil(boxHeight * SUPERSAMPLE));
 
   const ctx = canvas.getContext('2d');
   ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
@@ -191,4 +198,170 @@ export function fitGlyphHeight(glyph, boxWidth, boxHeight, padding = 0.06) {
   const wide = glyphWidth(glyph, boxHeight, padding);
   if (wide <= boxWidth || wide <= 0) return boxHeight;
   return boxHeight * (boxWidth / wide);
+}
+
+/**
+ * What a glyph measures when sized by the font's em, and where its baseline is.
+ *
+ * ## Which of the two sizings to use
+ *
+ * `height` fits a glyph's **bounding box** to a number of pixels. That is right
+ * when one glyph should fill a space on its own — a letter in a tile, the hero
+ * on a flashcard — because it makes it as large as the space allows.
+ *
+ * It is wrong the moment two glyphs are seen side by side, because a bounding
+ * box says nothing about how big the letters inside it are. گنتی has a deep
+ * descender on its ی, so its box is tall and mostly empty; جوڑے's is short and
+ * full. Fitted to the same height, گنتی's letterforms come out about a third
+ * the size of جوڑے's, and a row of menu labels looks like a mistake.
+ *
+ * `em` is the same measure a font size is: units per em, so the *letters* are a
+ * fixed size and the box varies. That is what a row of labels wants.
+ *
+ * ## The baseline
+ *
+ * Sizing by em only fixes half of it. Two strings at the same em still have
+ * different box heights, so centring them vertically leaves them visibly
+ * unaligned — one riding high because it has no descender. Text sits on a
+ * baseline instead, which is why this returns one.
+ *
+ * The baker emits paths y-down with the baseline at y = 0 (see
+ * tools/bake-glyphs.mjs), so the baseline within the texture is simply the top
+ * padding plus however far the glyph reaches above it.
+ *
+ * @param {import('./glyph.js').Glyph} glyph
+ * @param {number} em pixels per em
+ * @returns {{width: number, height: number, baseline: number}} in game pixels,
+ *   with `baseline` measured down from the top of the texture.
+ */
+export function glyphMetrics(glyph, em, padding = 0.06) {
+  const scale = em / glyphUpem();
+  const [, by, bw, bh] = glyph.bbox;
+  const pad = em * padding;
+  return {
+    width: bw * scale + pad * 2,
+    height: bh * scale + pad * 2,
+    baseline: pad - by * scale,
+  };
+}
+
+/**
+ * Adds a glyph sized by the em and sitting on a baseline at `y`.
+ *
+ * Not interchangeable with addGlyph: that one centres the glyph's box on
+ * `(x, y)`, this one puts its baseline there, so a row of these line up the way
+ * written text does.
+ */
+export function addGlyphBaseline(scene, x, y, key, glyph, options) {
+  const { em } = options;
+  const metrics = glyphMetrics(glyph, em, options.padding ?? 0.06);
+  glyphTexture(scene, key, glyph, options);
+  return scene.add
+    .image(x, y, key)
+    .setDisplaySize(metrics.width, metrics.height)
+    // Origin expressed as a fraction, so `y` is the baseline whatever the
+    // glyph's ascenders and descenders happen to be.
+    .setOrigin(0.5, metrics.baseline / metrics.height);
+}
+
+/**
+ * How big each glyph in a set is, per em, in the three directions that bound it.
+ *
+ * The whole point of em sizing is that every glyph in a set comes out the same
+ * size, so the size has to be settled by the most demanding member of the set
+ * rather than by whichever one happens to be on screen. Everything below works
+ * from a set for that reason; called with one glyph it would just reintroduce
+ * the bug somewhere new.
+ *
+ * In Nastaliq the members are wildly far apart — across the alphabet the tallest
+ * letter's ink is three and a half times the shortest's, and گ reaches an em and
+ * a half above the baseline where most letters reach four fifths of one — so
+ * which extreme is measured really matters. Hence both `line` and `tallest`:
+ * see the two fitters below.
+ *
+ * @param {Glyph[]} glyphs
+ * @param {number} padding matching glyphTexture's
+ */
+function extremes(glyphs, padding) {
+  const upem = glyphUpem();
+  let width = 0;
+  let ascent = 0;
+  let descent = 0;
+  let tallest = 0;
+
+  for (const glyph of glyphs) {
+    if (!glyph?.bbox) continue;
+    const [, by, bw, bh] = glyph.bbox;
+    // Paths are y-down with the baseline at y = 0, so `by` — the top of the ink
+    // — is negative for anything reaching above the baseline.
+    const above = padding - by / upem;
+    const below = (bh + by) / upem + padding;
+    width = Math.max(width, bw / upem + padding * 2);
+    ascent = Math.max(ascent, above);
+    descent = Math.max(descent, below);
+    tallest = Math.max(tallest, above + below);
+  }
+
+  return { width, ascent, descent, line: ascent + descent, tallest };
+}
+
+/**
+ * The largest em at which a set of glyphs fits a box **sharing one baseline**,
+ * and where that baseline sits.
+ *
+ * For glyphs read together as a line: a menu label under its icon, the row of
+ * form names, the letters along the caterpillar. They have to line up the way
+ * written text does, so the box has to be deep enough for the highest ascender
+ * in the set and the deepest descender in the set *at the same time* — even
+ * though no single glyph has both. That reservation costs about a third of the
+ * available size, which is the price of the alignment. Where a glyph is alone in
+ * its own card there is nothing to line up with and nothing to pay, so use
+ * fitEmAlone instead.
+ *
+ * The baseline is returned measured from the top of the box, so a caller writes
+ * `boxTop + fit.baseline` and every glyph in the set lands on the same line
+ * whether or not it happens to have an ascender or a descender.
+ *
+ * @param {Glyph[]} glyphs every glyph that will be drawn in this box
+ * @param {number} boxWidth
+ * @param {number} boxHeight
+ * @param {number} [padding=0.06] matching glyphTexture's
+ * @returns {{em: number, baseline: number, lineHeight: number}}
+ */
+export function fitEmLine(glyphs, boxWidth, boxHeight, padding = 0.06) {
+  const { width, ascent, line } = extremes(glyphs, padding);
+  if (width <= 0 || line <= 0) {
+    return { em: boxHeight, baseline: boxHeight / 2, lineHeight: 0 };
+  }
+
+  const em = Math.min(boxWidth / width, boxHeight / line);
+  const lineHeight = em * line;
+  return { em, baseline: (boxHeight - lineHeight) / 2 + em * ascent, lineHeight };
+}
+
+/**
+ * The largest em at which any glyph in a set fits a box **on its own**.
+ *
+ * For a glyph that is the only thing in its card: a letter on a tile, on a
+ * balloon, on a memory card, in a strip cell, the big letter on a flashcard.
+ * Each is centred in its own box, so there is no shared baseline to hold and the
+ * limit is simply the tallest single glyph rather than the tallest ascender
+ * stacked on the deepest descender. That is worth about a third more size, which
+ * on a tile a three-year-old is squinting at is the difference between a letter
+ * and a mark.
+ *
+ * Still measured across the set, and that is the part that matters: it is what
+ * stops ہ being drawn three times the size of ل, and in a game where the child
+ * picks between four cards it is what stops size being a way to guess.
+ *
+ * @param {Glyph[]} glyphs every glyph that will be drawn in this box
+ * @param {number} boxWidth
+ * @param {number} boxHeight
+ * @param {number} [padding=0.06] matching glyphTexture's
+ * @returns {{em: number}} pass it to addGlyph, which centres what it draws
+ */
+export function fitEmAlone(glyphs, boxWidth, boxHeight, padding = 0.06) {
+  const { width, tallest } = extremes(glyphs, padding);
+  if (width <= 0 || tallest <= 0) return { em: boxHeight };
+  return { em: Math.min(boxWidth / width, boxHeight / tallest) };
 }
