@@ -62,12 +62,26 @@ the name and then the word — "bay ... bakri". Nothing outside that module
 should be assembling a sequence of clip keys by hand: what the app says when a
 letter appears is a teaching decision, and it belongs in one place.
 
+Every take is trimmed and levelled after it is recorded — see
+`src/lib/take-polish.js`. That is not cosmetic: the app plays a letter's name
+and then its word back to back, and two clips with half a second of dead air
+each turn "bay ... bakri" into a pause a three-year-old will not sit through.
+It pads the cut generously rather than gating flush, because a softly-starting
+consonant shaved off the front is far worse than a clip that runs slightly long,
+and it only ever turns a take *up*.
+
+`npm run verify:polish` is the check that matters there, and the studio's own
+verification cannot replace it: that drives a synthetic microphone, which emits
+a continuous tone with no silence in it, so the trimming runs and asserts
+nothing. The polish check builds audio with known silence at both ends instead.
+
 Recording tips:
 
 - Speak the sound clips as bare phonemes. The instinct is to say the letter's
   name instead, which is the one thing that clip must not contain.
-- Leave a beat of silence at the start and end. The app plays a name and a
-  sound back to back, and clipped edges run them together.
+- Do not worry about the silence at the start and end; it is trimmed for you.
+  Leaving a moment before you speak is better than clipping your own first
+  syllable trying to be quick.
 - Watch the level meter. A recording that never leaves the left of the bar is
   too quiet to hear on a phone speaker; one that turns red is clipping.
 - A native or fluent speaker's voice, ideally the child's parent. Accent

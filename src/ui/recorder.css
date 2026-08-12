@@ -444,3 +444,10 @@
   color: #4a5170;
   white-space: nowrap;
 }
+
+.rec-tidy {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto 6px;
+  max-width: 420px;
+}

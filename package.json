@@ -16,6 +16,7 @@
     "audio:manifest": "node tools/build-audio-manifest.mjs",
     "record": "node tools/record-studio/server.mjs",
     "verify:studio": "node tools/verify-studio.mjs",
+    "verify:polish": "node tools/verify-take-polish.mjs",
     "verify:audio": "node tools/verify-audio.mjs",
     "verify:offline": "node tools/verify-offline.mjs",
     "verify:recording": "node tools/verify-recording.mjs",

@@ -35,6 +35,17 @@
           <button id="btn-redo">Redo <kbd>R</kbd></button>
           <button id="btn-next" title="Next (→)">→</button>
         </div>
+        <div id="mic-row">
+          <label>
+            Microphone
+            <select id="mic-profile"></select>
+          </label>
+          <label>
+            <input id="tidy" type="checkbox" checked />
+            Trim silence and even the level
+          </label>
+          <div id="mic-hint"></div>
+        </div>
         <div id="hint">
           Recordings are written straight into
           <code>public/audio/recorded/</code>. Run

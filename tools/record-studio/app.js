@@ -10,7 +10,8 @@
  *   ← →    move between clips
  */
 
-import { createRecorder } from '/lib/recorder.js';
+import { DEFAULT_PROFILE, MIC_PROFILES, createRecorder } from '/lib/recorder.js';
+import { polishTake } from '/lib/take-polish.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -112,15 +113,40 @@ async function startRecording() {
   $('btn-record').firstChild.textContent = 'Stop ';
 }
 
+/**
+ * A context purely for tidying takes.
+ *
+ * Made here rather than borrowed: the studio is a desktop page with no game on
+ * it, so the one-context rule that the app lives under does not apply, and the
+ * recorder keeps its own for the meter anyway.
+ */
+let polishCtx = null;
+function tidyContext() {
+  if (!polishCtx) polishCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return polishCtx;
+}
+
 async function stopRecording() {
   const take = await recorder.stop();
   $('btn-record').classList.remove('recording');
   $('btn-record').firstChild.textContent = 'Record ';
   if (!take) return;
 
+  let blob = take.blob;
+  let note = '';
+  if ($('tidy').checked) {
+    setStatus('Tidying…');
+    const polished = await polishTake(tidyContext(), take.blob, take.mime);
+    if (polished) {
+      blob = polished.blob;
+      note = ` · trimmed ${(polished.removedMs / 1000).toFixed(1)}s`;
+      if (polished.gain > 1.15) note += `, level +${polished.gain.toFixed(1)}×`;
+    }
+  }
+
   if (state.take?.url) URL.revokeObjectURL(state.take.url);
-  state.take = { ...take, url: URL.createObjectURL(take.blob) };
-  setStatus(`${(take.blob.size / 1024).toFixed(1)} KB — P to check, Enter to save`);
+  state.take = { ...take, blob, url: URL.createObjectURL(blob) };
+  setStatus(`${(blob.size / 1024).toFixed(1)} KB${note} — P to check, Enter to save`);
   renderStage();
   playTake();
 }
@@ -259,6 +285,36 @@ $('import-file').onchange = (e) => {
 
 // Exposed so the Playwright check can drive a full record -> save cycle
 // without depending on button positions.
+// --------------------------------------------------------- microphone setup
+
+const MIC_KEY = 'urdu:mic-profile';
+const TIDY_KEY = 'urdu:tidy-takes';
+
+function setupMicControls() {
+  const select = $('mic-profile');
+  let chosen = localStorage.getItem(MIC_KEY) ?? DEFAULT_PROFILE;
+  if (!MIC_PROFILES[chosen]) chosen = DEFAULT_PROFILE;
+
+  select.innerHTML = Object.entries(MIC_PROFILES)
+    .map(([name, p]) => `<option value="${name}">${p.label}</option>`)
+    .join('');
+  select.value = chosen;
+  $('mic-hint').textContent = MIC_PROFILES[chosen].hint;
+  recorder.setProfile(chosen);
+
+  select.onchange = () => {
+    localStorage.setItem(MIC_KEY, select.value);
+    $('mic-hint').textContent = MIC_PROFILES[select.value].hint;
+    recorder.setProfile(select.value);
+  };
+
+  $('tidy').checked = localStorage.getItem(TIDY_KEY) !== '0';
+  $('tidy').onchange = () =>
+    localStorage.setItem(TIDY_KEY, $('tidy').checked ? '1' : '0');
+}
+
+setupMicControls();
+
 window.__studio = { state, toggleRecording, saveTake, go, importArchive };
 
 (async function init() {

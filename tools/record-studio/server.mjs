@@ -42,7 +42,12 @@ const STATIC = {
  * Allow-listed by name: this serves files from src/, so a path from the URL must
  * never reach the filesystem.
  */
-const SHARED_LIB = new Set(['recorder.js', 'clip-list.js', 'clip-archive.js']);
+const SHARED_LIB = new Set([
+  'recorder.js',
+  'clip-list.js',
+  'clip-archive.js',
+  'take-polish.js',
+]);
 
 const AUDIO_MIME = {
   webm: 'audio/webm',

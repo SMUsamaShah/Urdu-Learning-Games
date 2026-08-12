@@ -24,6 +24,7 @@ import {
   isRecordingSupported,
 } from '../lib/recorder.js';
 import { setShowFps, showFps } from '../lib/fps.js';
+import { polishTake } from '../lib/take-polish.js';
 import { buildSoundCheck } from './audio-check.js';
 import { buildArchive, readArchive } from '../lib/clip-archive.js';
 import * as store from '../lib/clip-store.js';
@@ -70,6 +71,8 @@ const formatDate = (ms) =>
 export function openRecorder({ onClose } = {}) {
   const clips = expectedClips({ letters, numbers, words });
   const bySlug = new Map(clips.map((c) => [c.slug, c]));
+  /** What the tidy-up did to the last take, shown under the buttons. */
+  let lastNote = '';
   const byKey = new Map(clips.map((c) => [c.key, c]));
   /** @type {Map<string, {bytes:number, recordedAt:number}>} */
   let device = new Map();
@@ -80,6 +83,9 @@ export function openRecorder({ onClose } = {}) {
   // reset every time you come back would make comparing two takes impossible.
   let micProfile = localStorage.getItem('urdu:mic-profile') ?? DEFAULT_PROFILE;
   if (!MIC_PROFILES[micProfile]) micProfile = DEFAULT_PROFILE;
+  // On unless explicitly turned off. Trimming is what makes a name and a word
+  // recorded minutes apart play back as one phrase rather than two.
+  let tidy = localStorage.getItem('urdu:tidy-takes') !== '0';
 
   const recorder = isRecordingSupported()
     ? createRecorder({
@@ -204,6 +210,10 @@ export function openRecorder({ onClose } = {}) {
                    .join('')}
                </select>
                <em>${escapeHtml(MIC_PROFILES[micProfile].hint)}</em>
+             </label>
+             <label class="rec-toggle rec-tidy">
+               <input type="checkbox" data-act="tidy" ${tidy ? 'checked' : ''} />
+               Trim silence and even the level
              </label>`
           : ''
       }
@@ -214,6 +224,7 @@ export function openRecorder({ onClose } = {}) {
             : 'This browser will not record here. The microphone needs https:// or localhost.'
         }
       </p>
+      ${lastNote ? `<p class="rec-hint">${escapeHtml(lastNote)}</p>` : ''}
       ${
         mine
           ? `<p class="rec-hint">Yours: ${formatBytes(mine.bytes)}${
@@ -268,6 +279,7 @@ export function openRecorder({ onClose } = {}) {
   // -------------------------------------------------------------- actions
 
   function select(i) {
+    lastNote = '';
     index = Math.max(0, Math.min(clips.length - 1, i));
     for (const row of listEl.querySelectorAll('.rec-row')) {
       row.setAttribute('aria-selected', String(Number(row.dataset.i) === index));
@@ -284,14 +296,32 @@ export function openRecorder({ onClose } = {}) {
       if (!take || take.blob.size === 0) return;
 
       const clip = clips[index];
+
+      // Trim the silence and bring the level up. Returns null if it could not
+      // usefully do either, in which case the take is kept exactly as recorded:
+      // a slightly long clip is a small problem, a lost one is the parent's
+      // voice gone.
+      let blob = take.blob;
+      let note = '';
+      if (tidy) {
+        stageEl.querySelector('.rec-hint').textContent = 'Tidying…';
+        const polished = await polishTake(getAudioContext(), take.blob, take.mime);
+        if (polished) {
+          blob = polished.blob;
+          note = `trimmed ${(polished.removedMs / 1000).toFixed(1)}s`;
+          if (polished.gain > 1.15) note += `, level +${polished.gain.toFixed(1)}×`;
+        }
+      }
+
       await store.putClip({
         key: clip.key,
         slug: clip.slug,
         ext: take.ext,
         mime: take.mime,
-        blob: take.blob,
+        blob,
         profile: recorder.profile(),
       });
+      lastNote = note;
       // Tell playback the device now has this clip, and drop the decoded copy
       // of whatever it was playing before, or the old take keeps coming out.
       noteDeviceClip(clip.key, true);
@@ -431,6 +461,11 @@ export function openRecorder({ onClose } = {}) {
   // Changing microphone settings drops the open stream, so the next take
   // reopens with them. See setProfile() for why it is not reconfigured live.
   root.addEventListener('change', (event) => {
+    if (event.target.dataset?.act === 'tidy') {
+      tidy = event.target.checked;
+      localStorage.setItem('urdu:tidy-takes', tidy ? '1' : '0');
+      return;
+    }
     if (event.target.dataset?.act === 'fps') {
       setShowFps(event.target.checked);
       return;
