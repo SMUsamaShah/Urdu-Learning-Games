@@ -349,6 +349,38 @@ a Graphics object per piece is therefore a plain optimisation rather than a fix.
 It is still worth having: each Graphics is its own draw call, so a full-screen
 celebration used to break the batch sixty-odd times a frame.
 
+### Graphics objects are not sprites
+
+The single most important performance fact about this app, and the least
+obvious. A Phaser `Graphics` object re-tessellates its geometry into triangles
+on the CPU **every frame it renders**, and each one flushes the draw batch.
+Thirty-eight stroked rounded rectangles that never change are thirty-eight lots
+of that work, sixty times a second. Sprites and Images upload once and batch;
+Graphics do not, so the usual intuition that "a few dozen simple shapes is
+nothing" does not apply.
+
+Measured across the screens, render cost tracks the Graphics count almost
+linearly:
+
+| screen | Graphics | median render |
+|---|---|---|
+| Flashcards, before | 49 | 8.0 ms |
+| Flashcards, after | 11 | 2.7 ms |
+| Home | 26 | 5.9 ms |
+| Find the letter | 15 | 2.8 ms |
+
+8 ms is half a 60fps budget on a desktop GPU, which is a dropped frame on a
+phone. The letter strip's 38 cells are now three shared canvas textures used as
+tinted Images instead of a Graphics each.
+
+**Baking `makeButton` the same way was tried and reverted.** Creating textures
+at runtime past a handful is not reliable in this Phaser build — faces came out
+with rectangular chunks missing, through both `textures.createCanvas` and
+Phaser's own `generateTexture`, which is consistent with the note below that
+`RenderTexture` and `DynamicTexture` render nothing here at all. A small, fixed
+number of small textures (as the strip uses) is fine; one per colour is not. If
+you try again, check the result on screen rather than trusting that it drew.
+
 ### The frame-rate readout
 
 `src/lib/fps.js`, switched on from the grown-ups screen. It exists because "it

@@ -38,6 +38,59 @@ const TAP_SLOP = 8;
 /** How fast a flick slows down. Per frame, so ~0.92 stops in about half a second. */
 const FLICK_DECAY = 0.92;
 
+/**
+ * The strip's card and its selection ring, baked once and shared by all 38
+ * cells.
+ *
+ * The strip used to draw a Graphics per cell, which is 38 rounded rectangles
+ * re-tessellated on the CPU every single frame — measured at 8ms a frame on a
+ * desktop GPU, which is a dropped frame on a phone. See the note above
+ * `shapeTextures` in theme.js. Nothing here changes between frames, so it has
+ * no business being redrawn at all.
+ *
+ * The ring is drawn white so a tint can give it the letter's family colour, and
+ * there are two of them rather than one scaled: a 2px line stretched to 6px is
+ * blurry, and the ring is the only thing marking the selection.
+ */
+const CARD_TEX = 'strip:card';
+const RING_TEX = { thin: 'strip:ring:thin', thick: 'strip:ring:thick' };
+const CARD_SUPERSAMPLE = 2;
+
+function ensureStripTextures(scene, size) {
+  const make = (key, draw) => {
+    if (scene.textures.exists(key)) return;
+    const canvas = scene.textures.createCanvas(
+      key,
+      size * CARD_SUPERSAMPLE,
+      size * CARD_SUPERSAMPLE
+    );
+    const ctx = canvas.context;
+    ctx.scale(CARD_SUPERSAMPLE, CARD_SUPERSAMPLE);
+    draw(ctx);
+    canvas.refresh();
+  };
+
+  make(CARD_TEX, (ctx) => {
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(0, 0, size, size, 16);
+    ctx.fill();
+  });
+
+  for (const [name, width] of [
+    ['thin', 2],
+    ['thick', 6],
+  ]) {
+    make(RING_TEX[name], (ctx) => {
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.roundRect(width / 2, width / 2, size - width, size - width, 16);
+      ctx.stroke();
+    });
+  }
+}
+
 const FORM_LABELS = {
   isolated: 'isolated',
   initial: 'initial',
@@ -131,6 +184,8 @@ export default class Flashcards extends Phaser.Scene {
       .fillStyle(COLORS.shadow, 0.12)
       .fillRect(0, stripY - size / 2 - 14, DESIGN.width, size + 28);
 
+    ensureStripTextures(this, size);
+
     const strip = this.add.container(0, stripY);
     this.strip = strip;
     // Kept as a plain array rather than read back off the container:
@@ -147,10 +202,9 @@ export default class Flashcards extends Phaser.Scene {
       const x = -index * step;
 
       const cell = this.add.container(x, 0);
-      const bg = this.add.graphics();
-      bg.fillStyle(COLORS.card, 1);
-      bg.fillRoundedRect(-size / 2, -size / 2, size, size, 16);
-      cell.add(bg);
+      const card = this.add.image(0, 0, CARD_TEX).setDisplaySize(size, size);
+      const ring = this.add.image(0, 0, RING_TEX.thin).setDisplaySize(size, size);
+      cell.add([card, ring]);
 
       cell.add(
         addGlyph(this, 0, 0, `letter:${letterId}:isolated:52`, glyph, {
@@ -170,7 +224,7 @@ export default class Flashcards extends Phaser.Scene {
         this.select(index);
       });
 
-      cell.bgGraphic = bg;
+      cell.ring = ring;
       cell.letter = letter;
       strip.add(cell);
       this.stripCells.push(cell);
@@ -266,22 +320,16 @@ export default class Flashcards extends Phaser.Scene {
   }
 
   highlightStrip() {
-    const size = this.stripCellSize;
-    const half = size / 2;
-
     this.stripCells.forEach((cell, index) => {
       const selected = index === this.selectedIndex;
-      const color = familyColor(cell.letter.shapeFamily);
-
-      cell.bgGraphic.clear();
       // Every cell stays a white card. Selection is a thick family-coloured
       // ring and a bump in size, not a coloured fill: the glyph on top is dark,
       // so filling the selected cell with a saturated colour would make the one
       // letter the child is looking at the hardest one in the strip to see.
-      cell.bgGraphic.fillStyle(COLORS.card, 1);
-      cell.bgGraphic.fillRoundedRect(-half, -half, size, size, 16);
-      cell.bgGraphic.lineStyle(selected ? 6 : 2, color, selected ? 1 : 0.5);
-      cell.bgGraphic.strokeRoundedRect(-half, -half, size, size, 16);
+      cell.ring.setTexture(selected ? RING_TEX.thick : RING_TEX.thin);
+      cell.ring.setDisplaySize(this.stripCellSize, this.stripCellSize);
+      cell.ring.setTint(familyColor(cell.letter.shapeFamily));
+      cell.ring.setAlpha(selected ? 1 : 0.5);
       cell.setScale(selected ? 1.12 : 1);
     });
   }
