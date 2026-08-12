@@ -14,10 +14,28 @@
  * a three-year-old will not wait through. Trimming is what makes a sequence of
  * separately recorded clips sound like one sentence.
  *
- * It does not trim flush. A consonant that starts quietly gets clipped by an
- * aggressive gate, and Urdu has plenty of those, so the bounds are found with a
- * threshold well below the peak and then padded outwards, with a short fade so
- * the cut edges do not click.
+ * ## Everything here is measured against the room, not against the peak
+ *
+ * This is the assumption the first version of this file got wrong, and it is
+ * worth stating plainly: **a recording made on a phone contains no silence.**
+ * It contains a room — a fridge, a street, the mic's own hiss — typically
+ * somewhere around -40 dBFS, and the job is to find the voice in that, not to
+ * find the gaps between digital zeroes.
+ *
+ * So the noise floor is measured from the take itself and every threshold is
+ * set relative to it. A gate set relative to the loudest sample instead lands
+ * *underneath* the room on any realistic recording, marks the whole take as
+ * speech, and trims nothing — which is exactly what it did.
+ *
+ * The same assumption governs the levelling. Turning a quiet voice up turns the
+ * room up with it, so the gain is capped by how loud that leaves the room, and
+ * the voice is measured at a percentile rather than at its peak because the
+ * loudest sample in a phone recording is usually a knock rather than a word.
+ *
+ * It does not trim flush, either. A consonant that starts quietly would be cut
+ * by a single gate, and Urdu has plenty of those, so the speech is found with
+ * one threshold and its edges are followed out with a lower one, then padded,
+ * with a short fade so the cut edges do not click.
  *
  * ## Re-encoding
  *
@@ -32,60 +50,181 @@
  * tidying threw is the parent's voice gone.
  */
 
-/** Anything this far below the loudest moment counts as silence. */
-const FLOOR_DB = -38;
-/** RMS window for finding the edges. Long enough to ignore a single click. */
-const WINDOW_MS = 10;
+/**
+ * Frame length for the level envelope. Long enough that one glottal pulse does
+ * not read as silence, short enough to find the edge of a word.
+ */
+const WINDOW_MS = 20;
+
+/**
+ * Where the noise floor and the speech are read off the frame levels.
+ *
+ * Percentiles rather than min and max, because both extremes of a real
+ * recording are accidents: the quietest frame is whatever the mic did between
+ * samples, the loudest is a table knock.
+ */
+const NOISE_PERCENTILE = 0.15;
+const SPEECH_PERCENTILE = 0.95;
+
+/**
+ * How far speech has to sit above the room before the two can be told apart.
+ *
+ * Below this the take is either all speech or all room, and there is no edge to
+ * find. Guessing one anyway is how a gate eats the first syllable, so the take
+ * is kept exactly as recorded instead.
+ */
+const MIN_SNR_DB = 9;
+
+/**
+ * The gate, as a position between the noise floor and the speech level, and a
+ * floor under that in case the two are far apart.
+ */
+const ONSET_FRACTION = 0.35;
+const MIN_ONSET_ABOVE_NOISE_DB = 8;
+
+/**
+ * The second, lower gate the edges are extended out to.
+ *
+ * A single threshold either cuts the soft start of a consonant or lets the room
+ * through — Urdu has plenty of consonants that begin quietly. So the speech is
+ * *found* with the high gate and its *edges* are found with this one, which is
+ * the same hysteresis a noise gate uses.
+ */
+const RELEASE_ABOVE_NOISE_DB = 3.5;
+/** How far the release gate may run outwards from the speech it found. */
+const MAX_RELEASE_MS = 350;
+
 /** Kept either side of the speech. Generous: a clipped consonant is worse. */
 const PAD_START_MS = 60;
 const PAD_END_MS = 130;
 /** Fade across the cut, so the edges do not click. */
 const FADE_MS = 12;
-/** Loudest sample after levelling. Short of 1.0, leaving room for the encoder. */
-const TARGET_PEAK = 0.89;
+
+/**
+ * What the speech is levelled to, measured at this percentile of the samples.
+ *
+ * Not the true peak. A phone recording usually has one sample far above the
+ * rest — a lip smack, the finger leaving the button — and normalising to that
+ * leaves the actual voice as quiet as it started. The 99th percentile is the
+ * voice; the true peak is only used afterwards, to make sure nothing clips.
+ */
+const TARGET_LEVEL = 0.82;
+const LEVEL_PERCENTILE = 0.99;
+/** Never louder than this after gain, so the encoder has somewhere to go. */
+const CEILING = 0.99;
+
 /** A take shorter than this is assumed to be a misfire, and is left alone. */
 const MIN_SPEECH_MS = 120;
+
 /**
- * The most a take may be turned up. Past about this the room comes up with the
- * voice, and a hissy clip is worse than a quiet one.
+ * The most a take may be turned up, and how loud the room is allowed to get.
+ *
+ * Two separate limits. The first stops a near-silent take being amplified into
+ * a wall of hiss. The second is the one that matters on a phone: turning a
+ * quiet voice up turns the room up with it, so the gain is also capped at
+ * whatever leaves the room below NOISE_CEILING_DB.
+ *
+ * Where that ceiling sits is a real trade-off and it is set deliberately loose.
+ * Recording in a quiet room is not something this app can ask of anybody — it
+ * is a parent with a phone, probably with the child in the room — so a ceiling
+ * tight enough to guarantee a clean clip refuses to raise the level of an
+ * ordinary recording at all, and a clip too quiet to hear over a playground is
+ * useless in a way that a faint hiss is not. -32 dBFS under a voice at -2
+ * leaves about 30 dB of headroom, which is inaudible on a phone speaker and
+ * only just noticeable on headphones in a silent room.
  */
 const MAX_GAIN = 6;
+const NOISE_CEILING_DB = -32;
+
+const dB = (amplitude) => 20 * Math.log10(Math.max(amplitude, 1e-9));
+
+/** The value at a percentile of a list, which this sorts in place. */
+function percentile(values, fraction) {
+  values.sort((a, b) => a - b);
+  const at = Math.min(values.length - 1, Math.max(0, Math.round(fraction * (values.length - 1))));
+  return values[at];
+}
+
+/**
+ * The RMS level of each frame of the take, in dBFS.
+ *
+ * Everything downstream works on this rather than on samples: the question is
+ * always "is there a voice here", and that is a question about energy over a
+ * few milliseconds, not about any one sample.
+ */
+function envelope(data, window) {
+  const frames = new Float32Array(Math.max(1, Math.floor(data.length / window)));
+  for (let f = 0; f < frames.length; f++) {
+    let sum = 0;
+    const from = f * window;
+    const to = Math.min(data.length, from + window);
+    for (let i = from; i < to; i++) sum += data[i] * data[i];
+    frames[f] = dB(Math.sqrt(sum / Math.max(1, to - from)));
+  }
+  return frames;
+}
 
 /**
  * Finds where the speech starts and ends, in samples.
  *
- * Works on a short RMS rather than on individual samples: a single stray click
- * in an otherwise silent lead-in would otherwise anchor the start to the click.
+ * The gate is set from the recording's own noise floor, and that is the whole
+ * point. Setting it relative to the loudest moment instead — "anything 38 dB
+ * below the peak is silence" — works only on a take that contains true digital
+ * silence, which no microphone in a room ever produces. On a phone, speech
+ * peaking at 0.3 puts that threshold at 0.004, well underneath a room floor of
+ * about 0.01, so every frame reads as loud and nothing is trimmed at all. It
+ * looked like the trimming was too timid; it was measuring the wrong thing.
+ *
+ * @returns {{start:number, end:number, level:number, noise:number}|null} null
+ *   when the take has no findable edge, in which case it must be kept as is.
  */
 function findSpeech(buffer) {
   const data = buffer.getChannelData(0);
   const rate = buffer.sampleRate;
   const window = Math.max(1, Math.round((WINDOW_MS / 1000) * rate));
 
-  let peak = 0;
-  for (let i = 0; i < data.length; i++) {
-    const v = Math.abs(data[i]);
-    if (v > peak) peak = v;
-  }
-  if (peak <= 0) return null;
+  const frames = envelope(data, window);
+  if (frames.length < 4) return null;
 
-  const threshold = peak * 10 ** (FLOOR_DB / 20);
-  const loud = (from) => {
-    let sum = 0;
-    const to = Math.min(data.length, from + window);
-    for (let i = from; i < to; i++) sum += data[i] * data[i];
-    return Math.sqrt(sum / Math.max(1, to - from)) > threshold;
+  const sorted = Array.from(frames);
+  const noiseDb = percentile(sorted, NOISE_PERCENTILE);
+  const speechDb = percentile(sorted, SPEECH_PERCENTILE);
+
+  // Nothing to separate: either the take is all room, or it is speech from the
+  // first sample to the last. Both are takes to leave alone.
+  if (speechDb - noiseDb < MIN_SNR_DB) return null;
+
+  const onsetDb =
+    noiseDb + Math.max(MIN_ONSET_ABOVE_NOISE_DB, (speechDb - noiseDb) * ONSET_FRACTION);
+  const releaseDb = noiseDb + RELEASE_ABOVE_NOISE_DB;
+
+  let first = frames.findIndex((level) => level >= onsetDb);
+  if (first < 0) return null;
+  let last = frames.length - 1;
+  while (last > first && frames[last] < onsetDb) last--;
+
+  // Out to the release gate, so a consonant that starts under the onset gate is
+  // not cut off at the point it became loud enough to notice.
+  const slack = Math.max(1, Math.round(MAX_RELEASE_MS / WINDOW_MS));
+  const floor = Math.max(0, first - slack);
+  while (first > floor && frames[first - 1] >= releaseDb) first--;
+  const ceiling = Math.min(frames.length - 1, last + slack);
+  while (last < ceiling && frames[last + 1] >= releaseDb) last++;
+
+  // The level the voice is actually at, read over the speech only. Silence
+  // either side would drag a whole-take measurement down.
+  const speech = [];
+  const from = first * window;
+  const to = Math.min(data.length, (last + 1) * window);
+  for (let i = from; i < to; i++) speech.push(Math.abs(data[i]));
+  if (!speech.length) return null;
+
+  return {
+    start: from,
+    end: to,
+    level: percentile(speech, LEVEL_PERCENTILE),
+    noise: noiseDb,
   };
-
-  let start = 0;
-  while (start < data.length && !loud(start)) start += window;
-  if (start >= data.length) return null;
-
-  let end = data.length - window;
-  while (end > start && !loud(end)) end -= window;
-  end = Math.min(data.length, end + window);
-
-  return { start, end, peak };
 }
 
 /** A new buffer holding just the speech, padded, faded and levelled. */
@@ -97,9 +236,27 @@ function trimAndLevel(ctx, buffer, bounds) {
   const length = end - start;
   if (length < pad(MIN_SPEECH_MS)) return null;
 
-  // Never turn a take down, only up, and never past MAX_GAIN. Unbounded gain on
-  // a near-silent take just amplifies the room.
-  const gain = Math.min(TARGET_PEAK / bounds.peak, MAX_GAIN);
+  // The loudest sample in what is being kept, which is what the ceiling has to
+  // be worked out against — not the level the voice sits at.
+  let peak = 0;
+  for (let c = 0; c < buffer.numberOfChannels; c++) {
+    const data = buffer.getChannelData(c);
+    for (let i = start; i < end; i++) peak = Math.max(peak, Math.abs(data[i]));
+  }
+
+  // Four limits, and the take gets the smallest. Bringing the voice up to the
+  // target is the intent; the other three are all about not making things
+  // worse — never so far that the room becomes audible, never so far that the
+  // hiss on a near-silent take is amplified, and never into the ceiling.
+  const gain = Math.max(
+    1,
+    Math.min(
+      TARGET_LEVEL / Math.max(bounds.level, 1e-6),
+      MAX_GAIN,
+      10 ** ((NOISE_CEILING_DB - bounds.noise) / 20),
+      CEILING / Math.max(peak, 1e-6)
+    )
+  );
   const fade = Math.min(pad(FADE_MS), Math.floor(length / 4));
 
   const out = ctx.createBuffer(buffer.numberOfChannels, length, rate);
