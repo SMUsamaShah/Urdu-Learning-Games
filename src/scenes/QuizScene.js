@@ -43,9 +43,9 @@ export default class QuizScene extends Phaser.Scene {
     this.choicesY = 500;
     this.promptY = 216;
     /**
-     * Answers and prompt sit right of centre, because the cub stands at the
+     * Answers and prompt sit right of centre, because the spider sits at the
      * left of every screen and a four-wide line-up centred on the canvas would
-     * put its last tile through the cub's ear.
+     * put its last tile through the spider's face.
      */
     this.stageX = DESIGN.width / 2 + 48;
     /** Shape of a choice: 'card', or 'star' for the games whose answers float. */
@@ -128,8 +128,8 @@ export default class QuizScene extends Phaser.Scene {
       });
     }
 
-    // The cub. It goes in before the answers so a tile overlapping it draws on
-    // top, which is the right way round: the answers are what matters.
+    // The spider. It goes in before the answers so a tile overlapping it draws
+    // on top, which is the right way round: the answers are what matters.
     this.mascot = addStageMascot(this);
 
     this.promptLayer = this.add.container(this.stageX, this.promptY);
@@ -169,8 +169,8 @@ export default class QuizScene extends Phaser.Scene {
     this.buildChoices(ids);
     this.updateStreak();
     this.speak();
-    // The cub points at the answers once they are all on screen, which is the
-    // whole of its job during a question: "look over there".
+    // The spider points at the answers once they are all on screen, which is
+    // the whole of its job during a question: "look over there".
     this.mascot?.point();
   }
 
@@ -250,8 +250,8 @@ export default class QuizScene extends Phaser.Scene {
       sfx.nudge();
       this.streak = 0;
       this.updateStreak();
-      // A puzzled tilt of the head, never a frown. There is no fail state here
-      // and the cub must not look like there is one.
+      // A puzzled wobble, never a frown. There is no fail state here and the
+      // spider must not look like there is one.
       this.mascot?.wonder();
       this.tweens.add({
         targets: tile,

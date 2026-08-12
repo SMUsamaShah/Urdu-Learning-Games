@@ -6,6 +6,7 @@ import {
   loadAudioManifest,
   loadDeviceClips,
 } from '../lib/audio.js';
+import { queueMascot } from '../lib/mascot.js';
 import { initSfx } from '../lib/sfx.js';
 import { COLORS, DESIGN, label } from '../lib/theme.js';
 
@@ -18,6 +19,13 @@ import { COLORS, DESIGN, label } from '../lib/theme.js';
 export default class Preload extends Phaser.Scene {
   constructor() {
     super('Preload');
+  }
+
+  preload() {
+    // The mascot is on every screen, so there is nothing to gain by deferring
+    // it, and a character that pops in a frame late on each scene change looks
+    // broken. 200 KB, precached with the rest.
+    queueMascot(this);
   }
 
   async create() {

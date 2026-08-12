@@ -91,9 +91,9 @@ export default class Trace extends Phaser.Scene {
     this.banner = addBanner(this, { ui: 'fill-letter', roman: 'Fill the letter' });
 
     // Smaller and lower than on the quiz screens: a traced letter is 400px tall
-    // and some of them are very wide, so the cub has to keep out of the way of
-    // the thing being drawn.
-    this.mascot = addMascot(this, 86, 694, { scale: 0.6 });
+    // and some of them are very wide, so the spider has to keep out of the way
+    // of the thing being drawn.
+    this.mascot = addMascot(this, 92, 700, { height: 176 });
 
     makeButton(this, {
       x: DESIGN.width - 250,

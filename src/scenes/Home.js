@@ -195,12 +195,12 @@ export default class Home extends Phaser.Scene {
       { size: 16, color: COLORS.inkDim }
     );
 
-    // The cub, standing to the left of the grid and pointing at it. Same
+    // The spider, sitting to the left of the grid and pointing at it. Same
     // character, same corner, on the menu as in every game — that consistency
     // is most of what makes it read as somebody rather than as a drawing.
-    // Higher up than on the game screens so it stands clear of the Grown-ups
+    // Higher up than on the game screens so it stays clear of the Grown-ups
     // button in the corner beneath it.
-    addMascot(this, 112, 610, { scale: 0.78 }).point();
+    addMascot(this, 116, 618, { height: 214 }).point();
 
     this.buildInstallHint();
     this.buildGrownUpsButton();

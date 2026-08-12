@@ -41,9 +41,9 @@ const CROSS_MS = [11000, 10000, 9000, 8000];
 const MAX_BALLOONS = 6;
 const RADIUS = 74;
 /**
- * Where balloons are allowed to be. The left margin is wide because the cub
- * stands there: a balloon rising through its face is not charming, it just
- * looks like two things drawn on top of each other.
+ * Where balloons are allowed to be. The left margin is wide because the spider
+ * sits there: a balloon rising through its face is not charming, it just looks
+ * like two things drawn on top of each other.
  */
 const LANE = { left: 268, right: DESIGN.width - 150 };
 
@@ -101,8 +101,8 @@ export default class Balloons extends Phaser.Scene {
     // not be somewhere the answers drift over.
     this.promptLayer = this.add.container(212, 66).setDepth(21);
 
-    // The cub watches the balloons go by, above them so one drifting past does
-    // not cross its face.
+    // The spider watches the balloons go by, above them so one drifting past
+    // does not cross its face.
     this.mascot = addStageMascot(this, { depth: 12 });
 
     this.events.once('shutdown', stopAll);
