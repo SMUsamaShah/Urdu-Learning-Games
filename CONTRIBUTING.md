@@ -214,12 +214,41 @@ is a command that hands you a file to listen to:
 
 ```sh
 npm run dev & npm run music:preview -- 40 tune.wav
+npm run music:preview -- 24 celesta.wav --instrument celesta   # audition a voice
 ```
 
-It records the real thing — same instruments, same reverb, same transport, in a
-browser — and normalises it, because in the app the music sits at about -19 dB
-so it stays under the voice, which is far too quiet to judge on laptop speakers.
-The level it actually plays at is printed alongside.
+It asks `music.js` to render itself through an OfflineAudioContext — same
+instruments, same reverb, same transport — then checks the result for clicks and
+clipping before writing it, and normalises it for listening, because in the app
+the music sits at about -19 dB to stay under the voice and an honest render is
+far too quiet to judge on laptop speakers. The level it actually plays at is
+printed alongside.
+
+It renders rather than records, and that distinction is load-bearing. The first
+version tapped the live output through a `ScriptProcessorNode`, whose callback
+runs on the main thread — the same thread running a WebGL game at single-figure
+frame rates under software rendering. The callback was starved, and the file
+came back with jumps of half of full scale in it, which sound like a speaker
+tearing. The music was fine. It cost a round trip of rewriting a tune that was
+never the problem, which is why the click check now runs on every render.
+
+The melody is played on **recorded samples**, not a synth, and that is the third
+attempt at making it sound decent — hand-rolled Web Audio and Tone.js synth
+voices both came out correct and unpleasant. Five notes of one instrument live
+in `public/audio/instruments/`, fetched by `node tools/fetch-instruments.mjs`
+from gleitz/midi-js-soundfonts (MIT, from FluidR3_GM, also MIT). Only the
+instrument in use is committed and precached; the alternates are gitignored and
+exist for auditioning.
+
+If you change which instrument that is, change it in **both** `src/lib/music.js`
+and `vite.config.js` — one picks what is fetched, the other what is precached,
+and a mismatch gives you a tune that works everywhere except offline.
+`tests/music-instrument.test.mjs` fails if they drift apart.
+
+Strudel was considered and rejected: it is AGPL-3.0-or-later, as is
+`webaudiofont`, and either would pull this MIT project into copyleft. Its
+strength is pattern composition rather than sound quality anyway — the quality
+came from using samples, which needs no library at all.
 
 If you touched the music, the particles or the animation helpers:
 

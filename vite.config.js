@@ -1,6 +1,16 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/**
+ * The instrument the background tune is played on.
+ *
+ * Kept in step with INSTRUMENT in src/lib/music.js by
+ * tests/music-instrument.test.mjs — the failure otherwise is that the app asks
+ * for samples the service worker never cached, so the tune works in development
+ * and is silent offline.
+ */
+const MUSIC_INSTRUMENT = 'music_box';
+
 export default defineConfig({
   // Relative base so the built app works from a GitHub Pages project subpath
   // (user.github.io/Urdu-Learning-Games/) as well as from a domain root.
@@ -63,6 +73,17 @@ export default defineConfig({
           '**/*.{json,woff2}',
           '**/*.{webp,avif,jpg,jpeg}',
           '**/*.{webm,m4a,mp4,mp3,ogg,opus,wav}',
+        ],
+
+        // The tune is played on one instrument; the rest of public/audio/
+        // instruments/ exists only so it can be auditioned on another voice
+        // during development (npm run music:preview -- --instrument celesta).
+        // They are gitignored, so a clean clone never has them — but a machine
+        // that has fetched them would otherwise quietly ship 300 KB of audio
+        // nobody ever hears, and a build that differs from CI's by what happens
+        // to be lying around is worth ruling out at the source.
+        globIgnores: [
+          `audio/instruments/!(${MUSIC_INSTRUMENT})/**`,
         ],
 
         // The Phaser bundle alone is ~1.4 MB, over Workbox's 2 MiB default once

@@ -1,5 +1,5 @@
 /**
- * Records the background tune to a WAV file so a person can listen to it.
+ * Renders the background tune to a WAV file so a person can listen to it.
  *
  * "Does the music sound nice" is not a question any automated check can answer,
  * and it is the only question that matters about a background loop. Nor should
@@ -7,12 +7,25 @@
  * unlock, and sitting through the fade-in — that friction is why a tune stays
  * bad. This makes it one command and a file.
  *
- * It records the real thing rather than re-rendering it: the same Tone.js
- * instruments, the same reverb, the same transport, in the same browser, tapped
- * at the node everything passes through. What comes out is what a child hears.
+ * ## It renders rather than records, and that distinction cost a round trip
  *
- * WAV rather than the browser's own encoder, because the point is a file that
- * opens anywhere without thinking about it.
+ * The first version tapped the live output through a ScriptProcessorNode. That
+ * node runs its callback on the main thread, and the main thread is also
+ * running a WebGL game — under software rendering, at single-figure frame
+ * rates. The callback was starved, the capture came back full of
+ * discontinuities, and the file sounded like a speaker tearing. The music was
+ * fine; the recording of it was not, which is an expensive thing to be
+ * confused about, because it sends you rewriting a tune that was never the
+ * problem.
+ *
+ * So this asks music.js to render itself through an OfflineAudioContext, which
+ * has no main thread to be starved by and runs faster than real time. Same
+ * instruments, same reverb, same transport, same everything — it is the module
+ * doing the rendering, not a copy of it here.
+ *
+ * The output is then checked for clicks and clipping before it is written, so
+ * that class of problem announces itself instead of being mistaken for
+ * songwriting.
  *
  * Usage: npm run dev &  then  node tools/preview-music.mjs [seconds] [outfile]
  */
@@ -21,8 +34,12 @@ import fs from 'node:fs';
 import { chromium } from 'playwright';
 import { hasBrowser, launchOptions } from './browser.mjs';
 
-const SECONDS = Number(process.argv[2] || 40);
-const OUT = process.argv[3] || 'music-preview.wav';
+const args = process.argv.slice(2);
+const at = args.indexOf('--instrument');
+const INSTRUMENT = at >= 0 ? args[at + 1] : undefined;
+const rest = at >= 0 ? args.filter((_, i) => i !== at && i !== at + 1) : args;
+const SECONDS = Number(rest[0] || 40);
+const OUT = rest[1] || 'music-preview.wav';
 const APP = process.env.APP_URL || 'http://localhost:5173';
 
 if (!hasBrowser()) {
@@ -33,7 +50,6 @@ if (!hasBrowser()) {
 const options = launchOptions();
 const browser = await chromium.launch({
   ...options,
-  // Otherwise the context never leaves 'suspended' and this records silence.
   args: [...options.args, '--autoplay-policy=no-user-gesture-required'],
 });
 const page = await browser.newPage();
@@ -44,81 +60,26 @@ await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
   timeout: 30000,
 });
 
-process.stderr.write(`· recording ${SECONDS}s of the tune\n`);
+process.stderr.write(`· rendering ${SECONDS}s of the tune${INSTRUMENT ? ` on ${INSTRUMENT}` : ''}\n`);
 
-const recorded = await page.evaluate(async (seconds) => {
-  const { startMusic, musicOutput, setMusicOn } = window.__music;
-  const ctx = window.__game.sound.context;
-  if (ctx.state === 'suspended') await ctx.resume();
+const rendered = await page.evaluate(async ([seconds, instrument]) => {
+  const { renderMusic, stopMusic } = window.__music;
+  // Tone.Offline swaps the global context while it runs, so the live tune has
+  // to be out of the way.
+  stopMusic();
+  await new Promise((r) => setTimeout(r, 600));
 
-  setMusicOn(true);
-  startMusic();
+  const { sampleRate, channels } = await renderMusic(seconds, instrument || undefined);
 
-  // Building the band loads Tone.js and renders a reverb impulse offline.
-  const output = await new Promise((resolve) => {
-    const until = performance.now() + 20000;
-    const look = () => {
-      const node = musicOutput();
-      if (node || performance.now() > until) return resolve(node);
-      setTimeout(look, 100);
-    };
-    look();
-  });
-  if (!output) return { error: 'the tune never built' };
-
-  // Past the fade-in, so the recording starts on the music rather than on a
-  // second and a half of it arriving.
-  await new Promise((r) => setTimeout(r, 2500));
-
-  // A ScriptProcessor, deprecated and perfect for this: it hands over the
-  // samples on the main thread with no worklet module to load, and this is a
-  // developer tool that runs for half a minute.
-  const capture = ctx.createScriptProcessor(4096, 2, 2);
-  const chunks = [];
-  let frames = 0;
-  const wanted = Math.ceil(seconds * ctx.sampleRate);
-
-  const done = new Promise((resolve) => {
-    capture.onaudioprocess = (event) => {
-      if (frames >= wanted) return;
-      const left = event.inputBuffer.getChannelData(0);
-      const right =
-        event.inputBuffer.numberOfChannels > 1
-          ? event.inputBuffer.getChannelData(1)
-          : left;
-      // Mixed to mono and quantised here rather than in Node, because moving
-      // forty seconds of stereo float across the bridge is thirty megabytes.
-      const block = new Int16Array(left.length);
-      for (let i = 0; i < left.length; i++) {
-        const v = Math.max(-1, Math.min(1, (left[i] + right[i]) / 2));
-        block[i] = Math.round(v * 32767);
-      }
-      chunks.push(block);
-      frames += left.length;
-      if (frames >= wanted) resolve();
-    };
-  });
-
-  output.connect(capture);
-  // A ScriptProcessor only runs when it is connected to something downstream,
-  // even though nothing needs to hear it — so it goes to a silenced gain.
-  const sink = ctx.createGain();
-  sink.gain.value = 0;
-  capture.connect(sink);
-  sink.connect(ctx.destination);
-
-  await done;
-
-  output.disconnect(capture);
-  capture.disconnect();
-  sink.disconnect();
-
-  const total = chunks.reduce((n, c) => n + c.length, 0);
-  const samples = new Int16Array(total);
-  let at = 0;
-  for (const chunk of chunks) {
-    samples.set(chunk, at);
-    at += chunk.length;
+  // Mixed to mono and quantised in the page, because moving forty seconds of
+  // stereo float across the bridge is thirty megabytes.
+  const length = channels[0].length;
+  const samples = new Int16Array(length);
+  for (let i = 0; i < length; i++) {
+    let sum = 0;
+    for (const channel of channels) sum += channel[i];
+    const v = Math.max(-1, Math.min(1, sum / channels.length));
+    samples[i] = Math.round(v * 32767);
   }
 
   // Base64 in slices: String.fromCharCode.apply on a megabyte-long array blows
@@ -128,57 +89,94 @@ const recorded = await page.evaluate(async (seconds) => {
   for (let i = 0; i < bytes.length; i += 8192) {
     binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
   }
-
-  return { sampleRate: ctx.sampleRate, base64: btoa(binary) };
-}, SECONDS);
+  return { sampleRate, base64: btoa(binary) };
+}, [SECONDS, INSTRUMENT]);
 
 await browser.close();
 
-if (recorded.error) {
-  console.error('FAIL: ' + recorded.error);
-  process.exit(1);
-}
+const raw = Buffer.from(rendered.base64, 'base64');
+const count = raw.length / 2;
+const pcm = new Int16Array(count);
+for (let i = 0; i < count; i++) pcm[i] = raw.readInt16LE(i * 2);
 
-const pcm = Buffer.from(recorded.base64, 'base64');
+// --- Is it clean? -----------------------------------------------------------
 
-// Normalised, and that is not cheating. In the app the tune sits at about -19
-// dB so it stays under the voice and the sound effects, which makes a raw
-// capture of it too quiet to judge on laptop speakers — and what is being
-// judged here is the music, not the mix level. The number printed at the end
-// is the level it actually plays at.
 let rawPeak = 0;
-for (let i = 0; i < pcm.length; i += 2) {
-  rawPeak = Math.max(rawPeak, Math.abs(pcm.readInt16LE(i)));
+let clipped = 0;
+for (let i = 0; i < count; i++) {
+  const v = Math.abs(pcm[i]);
+  if (v > rawPeak) rawPeak = v;
+  if (v >= 32700) clipped++;
 }
+
+/**
+ * Clicks, found as jumps between neighbouring samples.
+ *
+ * Audio is continuous; a jump of a large fraction of full scale in one sample
+ * period is not something an instrument does, it is a seam. Measured against
+ * the signal's own peak so it means the same thing however loud the render is.
+ */
+let clicks = 0;
+let worstJump = 0;
+const jumpLimit = Math.max(600, rawPeak * 0.45);
+for (let i = 1; i < count; i++) {
+  const jump = Math.abs(pcm[i] - pcm[i - 1]);
+  if (jump > worstJump) worstJump = jump;
+  if (jump > jumpLimit) clicks++;
+}
+
+// --- Normalise for listening ------------------------------------------------
+
+// Not cheating. In the app the tune sits at about -19 dB so it stays under the
+// voice and the sound effects, which makes an honest render too quiet to judge
+// on laptop speakers — and what is being judged here is the music, not the mix
+// level. The level it actually plays at is printed below.
 const boost = rawPeak > 0 ? Math.min(24, 30000 / rawPeak) : 1;
-for (let i = 0; i < pcm.length; i += 2) {
-  pcm.writeInt16LE(Math.round(pcm.readInt16LE(i) * boost), i);
+const out = Buffer.alloc(count * 2);
+for (let i = 0; i < count; i++) {
+  out.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(pcm[i] * boost))), i * 2);
 }
 
 const header = Buffer.alloc(44);
 header.write('RIFF', 0);
-header.writeUInt32LE(36 + pcm.length, 4);
+header.writeUInt32LE(36 + out.length, 4);
 header.write('WAVE', 8);
 header.write('fmt ', 12);
-header.writeUInt32LE(16, 16); // PCM chunk size
+header.writeUInt32LE(16, 16);
 header.writeUInt16LE(1, 20); // PCM
 header.writeUInt16LE(1, 22); // mono
-header.writeUInt32LE(recorded.sampleRate, 24);
-header.writeUInt32LE(recorded.sampleRate * 2, 28); // byte rate
-header.writeUInt16LE(2, 32); // block align
-header.writeUInt16LE(16, 34); // bits per sample
+header.writeUInt32LE(rendered.sampleRate, 24);
+header.writeUInt32LE(rendered.sampleRate * 2, 28);
+header.writeUInt16LE(2, 32);
+header.writeUInt16LE(16, 34);
 header.write('data', 36);
-header.writeUInt32LE(pcm.length, 40);
+header.writeUInt32LE(out.length, 40);
 
-fs.writeFileSync(OUT, Buffer.concat([header, pcm]));
+fs.writeFileSync(OUT, Buffer.concat([header, out]));
 
-const seconds = pcm.length / 2 / recorded.sampleRate;
-const inApp = rawPeak / 32768;
+const seconds = count / rendered.sampleRate;
 console.log(
-  `wrote ${OUT} — ${seconds.toFixed(1)}s, ${(pcm.length / 1024).toFixed(0)} KB, ` +
-    `turned up ${boost.toFixed(1)}x for listening (it plays at peak ${inApp.toFixed(3)})`
+  `wrote ${OUT} — ${seconds.toFixed(1)}s, ${(out.length / 1024).toFixed(0)} KB, ` +
+    `turned up ${boost.toFixed(1)}x for listening (it plays at peak ${(rawPeak / 32768).toFixed(3)})`
 );
-if (inApp < 0.005) {
-  console.error('WARNING: that is very quiet. Did the tune actually start?');
-  process.exit(1);
+
+let bad = false;
+if (rawPeak / 32768 < 0.005) {
+  console.error('WARNING: that is very quiet. Did the tune actually render?');
+  bad = true;
 }
+if (clipped > count / 5000) {
+  console.error(`WARNING: ${clipped} samples at full scale — the mix is clipping.`);
+  bad = true;
+}
+if (clicks > 0) {
+  console.error(
+    `WARNING: ${clicks} discontinuit${clicks === 1 ? 'y' : 'ies'} ` +
+      `(worst jump ${(worstJump / 32768).toFixed(2)} of full scale). ` +
+      'Those are clicks, and they are a rendering fault rather than a musical one.'
+  );
+  bad = true;
+} else {
+  console.log(`clean: no discontinuities, worst step ${(worstJump / 32768).toFixed(3)}`);
+}
+process.exit(bad ? 1 : 0);

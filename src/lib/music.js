@@ -52,6 +52,16 @@ const UNDUCK_FADE = 0.6;
 const BPM = 104;
 
 /**
+ * The sampled voice the melody is played on.
+ *
+ * One of the folders under public/audio/instruments. Only this one is fetched
+ * at runtime; the others are kept so the tune can be auditioned on a different
+ * voice with `npm run music:preview -- --instrument celesta` rather than by
+ * editing this line and reloading.
+ */
+const INSTRUMENT = 'music_box';
+
+/**
  * The tune: eight bars, as [note, length] with lengths in beats.
  *
  * Written out rather than generated. A melody assembled from random notes in a
@@ -179,60 +189,65 @@ export function initMusic(game) {
 }
 
 /**
- * Builds the band, once.
+ * Builds the whole band into a destination, and returns the handles.
  *
- * The instruments are chosen for a screen a small child looks at for half an
- * hour: everything soft-edged, nothing bright, the top end rolled off. The
- * reverb is doing more work than any of the synth settings — it is the
- * difference between notes and music — but a long tail turns a repeating loop
- * to mush, so it is short and only lightly mixed in.
+ * Takes its destination rather than reaching for one, so the identical band can
+ * be built live and inside an OfflineAudioContext for `renderMusic`. One
+ * definition of what the tune sounds like: a preview that re-declares the
+ * instruments is a preview of something else.
+ *
+ * They are chosen for a screen a small child looks at for half an hour:
+ * everything soft-edged, nothing bright, the top end rolled off. The reverb is
+ * doing more work than any of the synth settings — it is the difference between
+ * notes and music — but a long tail turns a repeating loop to mush, so it is
+ * short and only lightly mixed in.
+ *
+ * @param {*} T the Tone module
+ * @param {*} destination what the mix connects to
+ * @param {string} [instrument] which sampled voice the lead plays
  */
-async function build() {
-  Tone = await import('tone');
-  // Before any Tone object exists, or it builds a second AudioContext.
-  Tone.setContext(ctx);
-
-  tap = ctx.createGain();
-  tap.connect(ctx.destination);
-
-  const master = new Tone.Gain(0);
+async function createBand(T, destination, instrument = INSTRUMENT) {
+  const master = new T.Gain(0);
   // A limiter rather than trust: three instruments and a reverb tail can
   // coincide, and a clipped background tune is unpleasant in a way a quiet one
   // is not.
-  const limiter = new Tone.Limiter(-2);
+  const limiter = new T.Limiter(-2);
   // The top taken off, because bright is fatiguing at the volume a child holds
   // a phone, and this plays continuously.
-  const softener = new Tone.Filter({ type: 'lowpass', frequency: 4200, rolloff: -12 });
+  const softener = new T.Filter({ type: 'lowpass', frequency: 4200, rolloff: -12 });
   master.chain(softener, limiter);
-  limiter.connect(tap);
+  limiter.connect(destination);
 
-  const reverb = new Tone.Reverb({ decay: 2.6, preDelay: 0.02, wet: 0.3 });
+  const reverb = new T.Reverb({ decay: 2.6, preDelay: 0.02, wet: 0.3 });
   reverb.connect(master);
-  // The impulse response is rendered offline and the reverb passes nothing
-  // until it is done. Waiting here is why the tune starts a beat after the
+  // The impulse response is rendered offline and the reverb passes nothing at
+  // all until it is done. Waiting here is why the tune starts a beat after the
   // first tap rather than not at all.
   await reverb.ready;
 
-  // A struck bell — music box, celesta, toy piano. The obvious voice for a
-  // nursery tune and, unlike a sustained lead, it cannot drone.
-  const lead = new Tone.PolySynth(Tone.FMSynth, {
-    harmonicity: 3.01,
-    modulationIndex: 4,
-    oscillator: { type: 'sine' },
-    envelope: { attack: 0.002, decay: 0.5, sustain: 0.02, release: 1.4 },
-    modulation: { type: 'sine' },
-    modulationEnvelope: { attack: 0.002, decay: 0.18, sustain: 0, release: 0.4 },
-    volume: -9,
+  // A recorded instrument, not a synthesised one, and that is the whole point.
+  // This tune was synthesised twice — by hand in Web Audio, then with Tone's
+  // own voices — and came out correct and unpleasant both times. A struck note
+  // carries detail no envelope over an oscillator reproduces: the knock of the
+  // mallet, the partials drifting out of tune as it dies, the body ringing.
+  //
+  // Five notes, pitched to fill the gaps. See tools/fetch-instruments.mjs.
+  const lead = new T.Sampler({
+    urls: { C4: 'C4.mp3', 'F#4': 'Gb4.mp3', C5: 'C5.mp3', 'F#5': 'Gb5.mp3', C6: 'C6.mp3' },
+    baseUrl: `${import.meta.env.BASE_URL}audio/instruments/${instrument}/`,
+    release: 1.4,
+    volume: -7,
   });
+  await T.loaded();
   // A short echo an eighth behind. It costs nothing and it is most of what
   // makes a simple line sound arranged rather than typed in.
-  const echo = new Tone.FeedbackDelay({ delayTime: '8n', feedback: 0.22, wet: 0.18 });
+  const echo = new T.FeedbackDelay({ delayTime: '8n', feedback: 0.22, wet: 0.18 });
   lead.chain(echo, reverb);
   lead.connect(master);
 
   // Round, short, no edge — felt rather than heard, which is all a phone
   // speaker can do with a bass line anyway.
-  const bass = new Tone.MonoSynth({
+  const bass = new T.MonoSynth({
     oscillator: { type: 'triangle' },
     filter: { type: 'lowpass', Q: 1 },
     filterEnvelope: {
@@ -250,7 +265,7 @@ async function build() {
   // The chord underneath: slow to arrive, and almost entirely reverb. It should
   // never be identifiable as an instrument. Taking it away is the only way to
   // notice it was there.
-  const pad = new Tone.PolySynth(Tone.AMSynth, {
+  const pad = new T.PolySynth(T.AMSynth, {
     harmonicity: 2,
     oscillator: { type: 'sine' },
     envelope: { attack: 0.8, decay: 0.4, sustain: 0.7, release: 1.6 },
@@ -261,28 +276,90 @@ async function build() {
 
   // A shaker, not a drum. Something has to mark the beat or the tune drifts,
   // but a kick under a nursery melody sounds like a ringtone.
-  const shaker = new Tone.NoiseSynth({
+  const shaker = new T.NoiseSynth({
     noise: { type: 'pink' },
     envelope: { attack: 0.001, decay: 0.045, sustain: 0 },
     volume: -30,
   });
-  const shakerTone = new Tone.Filter({ type: 'highpass', frequency: 5500 });
+  const shakerTone = new T.Filter({ type: 'highpass', frequency: 5500 });
   shaker.chain(shakerTone, master);
 
-  const transport = Tone.getTransport();
+  return { master, reverb, lead, bass, pad, shaker };
+}
+
+/** Sets the tempo and feel on a transport, live or offline. */
+function setFeel(transport) {
   transport.bpm.value = BPM;
   // A little behind the beat on the offbeats. Dead-straight eighths are the
   // other half of why the first version sounded mechanical.
   transport.swing = 0.12;
   transport.swingSubdivision = '8n';
+}
 
-  scheduleParts(transport, { lead, bass, pad, shaker });
+/** Builds the live band, once. */
+async function build() {
+  Tone = await import('tone');
+  // Before any Tone object exists, or it builds a second AudioContext.
+  Tone.setContext(ctx);
 
-  voices = { master, reverb, lead, bass, pad, shaker, transport };
+  tap = ctx.createGain();
+  tap.connect(ctx.destination);
+
+  const band = await createBand(Tone, tap);
+  const transport = Tone.getTransport();
+  setFeel(transport);
+  scheduleParts(Tone, transport, band);
+
+  voices = { ...band, transport };
+}
+
+/**
+ * Renders the tune to an AudioBuffer, faster than real time and without
+ * touching the speakers.
+ *
+ * This exists because capturing the live output does not work. A ScriptProcessor
+ * runs its callback on the main thread, and the main thread here is also running
+ * a WebGL game; under software rendering it drops to single-figure frame rates,
+ * the callback is starved, and the capture comes back full of discontinuities
+ * that sound like the speaker tearing. Those clicks are in the recording and not
+ * in the music, which is a very expensive thing to be confused about — it sends
+ * you rewriting a tune that was never the problem.
+ *
+ * An OfflineAudioContext has no main thread to be starved by. What comes out is
+ * exactly what the instruments produce.
+ *
+ * Note that Tone.Offline swaps the global context for the duration, so the live
+ * tune should be stopped around a call to this.
+ *
+ * @param {number} seconds
+ * @param {string} [instrument] a voice to audition instead of the usual one
+ * @returns {Promise<{sampleRate:number, channels:Float32Array[]}>}
+ */
+export async function renderMusic(seconds, instrument = INSTRUMENT) {
+  const T = Tone ?? (await import('tone'));
+  Tone = T;
+  const live = ctx ?? undefined;
+  if (live) T.setContext(live);
+
+  const buffer = await T.Offline(async ({ transport }) => {
+    const band = await createBand(T, T.getDestination(), instrument);
+    setFeel(transport);
+    scheduleParts(T, transport, band);
+    band.master.gain.value = T.dbToGain(VOLUME_DB);
+    transport.start(0);
+  }, seconds);
+
+  if (live) T.setContext(live);
+  return {
+    sampleRate: buffer.sampleRate,
+    channels: Array.from({ length: buffer.numberOfChannels }, (_, c) =>
+      buffer.getChannelData(c)
+    ),
+  };
 }
 
 /** Lays the tune out on the transport as one repeating block. */
-function scheduleParts(transport, { lead, bass, pad, shaker }) {
+function scheduleParts(T, transport, { lead, bass, pad, shaker }) {
   const beats = (n) => `0:${n}`;
   const seconds = (beatCount) => (beatCount * 60) / BPM;
 
@@ -294,7 +371,7 @@ function scheduleParts(transport, { lead, bass, pad, shaker }) {
     at += length;
   }
 
-  new Tone.Part((time, value) => {
+  new T.Part((time, value) => {
     // Velocity varies a little note to note. Identical strikes are the single
     // most machine-like thing a sequenced part can do.
     lead.triggerAttackRelease(value.note, value.hold, time, 0.55 + Math.random() * 0.2);
@@ -309,11 +386,11 @@ function scheduleParts(transport, { lead, bass, pad, shaker }) {
     padChords.push({ time: beats(base), notes: bar.pad });
   });
 
-  new Tone.Part((time, value) => {
+  new T.Part((time, value) => {
     bass.triggerAttackRelease(value.note, '4n', time, 0.8);
   }, bassNotes).start(0);
 
-  new Tone.Part((time, value) => {
+  new T.Part((time, value) => {
     pad.triggerAttackRelease(value.notes, '2n.', time, 0.5);
   }, padChords).start(0);
 
@@ -323,7 +400,7 @@ function scheduleParts(transport, { lead, bass, pad, shaker }) {
   for (let eighth = 0; eighth < LOOP_BEATS * 2; eighth++) {
     shakes.push({ time: beats(eighth / 2), accent: eighth % 4 === 0 });
   }
-  new Tone.Part((time, value) => {
+  new T.Part((time, value) => {
     shaker.triggerAttackRelease('32n', time, value.accent ? 0.9 : 0.45);
   }, shakes).start(0);
 

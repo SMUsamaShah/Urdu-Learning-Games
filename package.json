@@ -12,6 +12,7 @@
     "bake": "node tools/bake-glyphs.mjs",
     "icons": "node tools/make-icons.mjs",
     "images": "node tools/make-word-images.mjs",
+    "instruments": "node tools/fetch-instruments.mjs",
     "mascot": "node tools/make-mascot.mjs",
     "music:preview": "node tools/preview-music.mjs",
     "audio:manifest": "node tools/build-audio-manifest.mjs",
