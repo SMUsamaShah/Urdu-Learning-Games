@@ -36,7 +36,7 @@
  * chime instead. Nothing here is allowed to make a right answer silent.
  */
 
-import { loadTone } from './tone-setup.js';
+import { loadTone, renderedChannels } from './tone-setup.js';
 import * as sfx from './sfx.js';
 
 /**
@@ -244,12 +244,7 @@ export async function renderFlourishes() {
     at(FLOURISHES.finished(), 8.4);
   }, 12);
 
-  return {
-    sampleRate: buffer.sampleRate,
-    channels: Array.from({ length: buffer.numberOfChannels }, (_, c) =>
-      buffer.getChannelData(c)
-    ),
-  };
+  return renderedChannels(buffer);
 }
 
 /**

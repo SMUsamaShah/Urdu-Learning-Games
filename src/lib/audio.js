@@ -49,7 +49,7 @@ let playing = new Set();
  */
 let deviceKeys = new Set();
 
-export async function loadAudioManifest() {
+async function loadAudioManifest() {
   if (manifest) return manifest;
   try {
     const response = await fetch(MANIFEST_URL);
@@ -65,17 +65,22 @@ export async function loadAudioManifest() {
 }
 
 /**
+ * Gets audio ready: the manifest of bundled clips, the list of what this device
+ * has recorded, and the context to play them through.
+ *
+ * One call rather than three, because there was never a point at which doing
+ * one of these and not the others was a state worth having — Preload did all
+ * three in a row and nothing else called any of them. The two fetches run
+ * together; neither blocks the other, and both degrade to "no clips" rather
+ * than throwing, so a missing manifest cannot stop the app starting.
+ *
  * @param {Phaser.Game} game
  */
-export function initAudio(game) {
+export async function initAudio(game) {
   // NoAudioSoundManager (no Web Audio at all) has no context; stay silent.
   ctx = game?.sound?.context ?? null;
-}
-
-/** Notes which clips this device has recorded. Called once at startup. */
-export async function loadDeviceClips() {
-  deviceKeys = new Set(await allKeys());
-  return deviceKeys;
+  const [, keys] = await Promise.all([loadAudioManifest(), allKeys()]);
+  deviceKeys = new Set(keys);
 }
 
 /**

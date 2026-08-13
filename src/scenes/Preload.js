@@ -1,11 +1,6 @@
 import Phaser from 'phaser';
 import { loadGlyphs } from '../lib/content.js';
-import {
-  audioStats,
-  initAudio,
-  loadAudioManifest,
-  loadDeviceClips,
-} from '../lib/audio.js';
+import { audioStats, initAudio } from '../lib/audio.js';
 import { queueMascot } from '../lib/mascot.js';
 import { initSfx } from '../lib/sfx.js';
 import { initMusic, startMusic } from '../lib/music.js';
@@ -51,10 +46,9 @@ export default class Preload extends Phaser.Scene {
     });
 
     try {
-      // Both are small and independent. Audio is only a manifest at this point;
+      // Both are small and independent. Audio only fetches its manifest here;
       // the clips themselves load lazily on first use.
-      await Promise.all([loadGlyphs(), loadAudioManifest(), loadDeviceClips()]);
-      initAudio(this.game);
+      await Promise.all([loadGlyphs(), initAudio(this.game)]);
       initSfx(this.game);
       initMusic(this.game);
       // The context is almost certainly still locked here — nothing has been

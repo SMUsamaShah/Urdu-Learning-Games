@@ -41,7 +41,7 @@
  */
 
 import { DEFAULT_TUNE, TUNES } from './tunes.js';
-import { loadTone } from './tone-setup.js';
+import { loadTone, renderedChannels } from './tone-setup.js';
 
 const KEY = 'urdu:music';
 
@@ -338,12 +338,7 @@ export async function renderMusic(seconds, options = {}) {
   }, seconds);
 
   if (live) T.setContext(live);
-  return {
-    sampleRate: buffer.sampleRate,
-    channels: Array.from({ length: buffer.numberOfChannels }, (_, c) =>
-      buffer.getChannelData(c)
-    ),
-  };
+  return renderedChannels(buffer);
 }
 
 /**

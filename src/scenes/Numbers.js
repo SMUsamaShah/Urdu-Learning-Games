@@ -144,14 +144,7 @@ export default class Numbers extends QuizScene {
       }
     }
 
-    if (hasClip(clipKeys.number(target))) {
-      const speaker = this.add
-        .text(410, 0, '🔊', { fontSize: '46px' })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true });
-      speaker.on('pointerup', () => this.speak());
-      layer.add(speaker);
-    }
+    if (hasClip(clipKeys.number(target))) layer.add(this.speakerIcon(410));
   }
 
   /** One hue per digit, so a star is a colour before it is a number. */

@@ -230,6 +230,25 @@ export default class QuizScene extends Phaser.Scene {
     return button;
   }
 
+  /**
+   * A small tappable speaker, for the prompts that already show something.
+   *
+   * The other shape a "hear it again" takes. `speakerButton` above is the whole
+   * prompt, for when there is nothing to look at; this sits beside a picture or
+   * a row of counters that is already the prompt.
+   *
+   * Only worth drawing where a recording exists — promising sound and playing
+   * silence is worse than not offering.
+   */
+  speakerIcon(x, size = 46) {
+    const speaker = this.add
+      .text(x, 0, '🔊', { fontSize: `${size}px` })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    speaker.on('pointerup', () => this.speak());
+    return speaker;
+  }
+
   updateStreak() {
     this.best = Math.max(this.best, this.streak);
     this.streakText.set(this.streak);

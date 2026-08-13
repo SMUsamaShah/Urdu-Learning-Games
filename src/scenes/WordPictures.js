@@ -92,14 +92,7 @@ export default class WordPictures extends QuizScene {
     }
     layer.add(label(this, 0, 92, word.roman, { size: 20 }));
 
-    if (spoken) {
-      const speaker = this.add
-        .text(232, 0, '🔊', { fontSize: '52px' })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true });
-      speaker.on('pointerup', () => this.speak());
-      layer.add(speaker);
-    }
+    if (spoken) layer.add(this.speakerIcon(232, 52));
   }
 
   /**

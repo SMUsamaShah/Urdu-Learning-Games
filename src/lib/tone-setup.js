@@ -56,3 +56,22 @@ export function loadTone() {
 export function audioContext() {
   return sharedContext;
 }
+
+/**
+ * A rendered Tone buffer, as plain arrays a preview tool can write to a file.
+ *
+ * Both renderers — the tune and the reward flourishes — hand back the same
+ * shape, so tools/preview-music.mjs can write either without knowing which it
+ * asked for. It lives here rather than in one of them because the moment it
+ * lived in one, the other grew its own copy.
+ *
+ * @returns {{sampleRate:number, channels:Float32Array[]}}
+ */
+export function renderedChannels(buffer) {
+  return {
+    sampleRate: buffer.sampleRate,
+    channels: Array.from({ length: buffer.numberOfChannels }, (_, c) =>
+      buffer.getChannelData(c)
+    ),
+  };
+}
