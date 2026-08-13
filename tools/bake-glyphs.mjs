@@ -36,9 +36,25 @@ const CONTENT = path.join(ROOT, 'content');
  */
 const OUT_FILE = path.join(CONTENT, 'glyphs.json');
 
+/**
+ * The typeface, and the only thing in the app that names one.
+ *
+ * Nothing under src/ loads a font: every Urdu shape in the game comes out of
+ * content/glyphs.json, and all the sizing derives from the `upem` and the
+ * per-glyph bounding boxes recorded in there. So changing the typeface is
+ * changing this path and running `npm run bake` — the whole app follows,
+ * tracing included, because the tracing paths are these same outlines.
+ *
+ * AlQalam Taj Nastaleeq, chosen over Noto Nastaliq for its heavier, rounder
+ * pen: Noto is a text face and thins out at the sizes a three-year-old reads
+ * at, where this holds its stroke. Both shape every one of the 272 runs the
+ * bake asks for with a real outline. This one is 2048 units per em against
+ * Noto's 1000, which changes nothing downstream — every fitter in glyph.js
+ * works in ems and reads `upem` out of the file rather than assuming one.
+ */
 const FONT_WOFF2 = path.join(
   ROOT,
-  'node_modules/@fontsource/noto-nastaliq-urdu/files/noto-nastaliq-urdu-arabic-400-normal.woff2'
+  'node_modules/alqalam-taj-nastaliq/fonts/alqalam-taj-nastaliq.woff2'
 );
 
 /** Zero-width joiner. Forces a letter into a joined positional form. */
@@ -96,9 +112,14 @@ async function loadFont() {
  *    xOffset/yOffset drops every dot onto the origin, which turns the entire
  *    be-family into the same letter.
  *
- * 2. Nastaliq has a sloped baseline. Glyphs inside a word carry large yOffsets
- *    that stack each letter above the previous one. yAdvance and yOffset have to
- *    be honoured or words come out flat and wrong.
+ * 2. Nastaliq has a sloped baseline, and fonts get it two different ways.
+ *    Noto Nastaliq builds a word out of one glyph per letter and stacks them
+ *    with large GPOS yOffsets — مچھلی is seven glyphs there, and ignoring
+ *    yOffset/yAdvance would lay it out flat and wrong. AlQalam Taj, which is
+ *    what this app ships, is a ligature face in the InPage tradition: the same
+ *    word is a *single* glyph with the whole slope drawn into its outline, and
+ *    every yOffset is zero. Both are handled by the same code below, which is
+ *    the point of doing this through HarfBuzz rather than by hand.
  *
  * HarfBuzz emits outlines y-up in font units; SVG and canvas are y-down, so the
  * sign of every y is flipped on the way out.

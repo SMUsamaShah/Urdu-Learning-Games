@@ -212,16 +212,48 @@ describe('baked glyphs', () => {
     }
   });
 
-  test('words shape to more than the sum of their letters', () => {
-    // Nastaliq stacks letters diagonally, so a real word is always taller than
-    // a single letter. A flat word means positions were dropped during baking.
+  test('words are shaped, not letters set side by side', () => {
+    // The failure this guards against is a word baked as its letters in a row:
+    // isolated forms, no joins, no ligatures, no slope. That is what an Urdu
+    // word looks like when the shaper has been bypassed, and it is wrong in a
+    // way a child would learn from.
+    //
+    // Measured on the advance rather than the height. Height was the obvious
+    // test and it is a fact about one typeface, not about Nastaliq: it read
+    // "taller than 0.6 em", which Noto's proportions passed and AlQalam Taj's
+    // fail while stacking perfectly well — درخت is 0.59 em tall in it.
+    //
+    // Advance is the honest measure because joining always draws a word in
+    // narrower than its letters standing apart, whichever way the font gets
+    // its slope. Noto stacks single glyphs with GPOS offsets and AlQalam Taj
+    // substitutes one ligature for the whole word; both come out far under
+    // this bound, and letters in a row could not.
+    // Only where a join is actually required. Half the alphabet joins to the
+    // right only, so وردی — و ر د ی, none of which connects forwards — really
+    // is four separate shapes in a row, and asserting otherwise would be
+    // asserting something false about Urdu.
+    const byChar = new Map(letters.map((l) => [l.char, l.id]));
+    const byId = new Map(letters.map((l) => [l.id, l]));
+    let checked = 0;
     for (const word of words) {
-      const glyph = glyphs.words[word.id];
+      const ids = [...word.word].map((c) => byChar.get(c)).filter(Boolean);
+      const joins = ids.slice(0, -1).filter((id) => byId.get(id).joins === 'both').length;
+      if (!joins) continue;
+
+      // Per join rather than as a fraction of the word: ظروف is four letters
+      // with only one join in it (ظ→ر; ر and و do not connect forwards), so it
+      // legitimately compresses by 8% where مچھلی compresses by 60%. Every
+      // join in the set buys at least a sixth of an em; a tenth is the bound,
+      // and letters simply concatenated would buy nothing at all.
+      const apart = ids.reduce((total, id) => total + glyphs.letters[id].isolated.advance, 0);
+      const joined = glyphs.words[word.id].advance;
       assert.ok(
-        glyph.bbox[3] > glyphs.upem * 0.6,
-        `${word.id} is only ${glyph.bbox[3]} units tall; ` +
-          `Nastaliq words should stack well above one em`
+        apart - joined > joins * glyphs.upem * 0.1,
+        `${word.id} (${word.word}) has ${joins} join(s) but shapes to ${joined} units ` +
+          `against ${apart} for its letters set apart — it does not look joined`
       );
+      checked++;
     }
+    assert.ok(checked > 20, `only ${checked} words had a join to check`);
   });
 });
