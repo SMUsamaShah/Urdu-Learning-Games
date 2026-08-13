@@ -15,6 +15,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fail, homeIsUp, openApp, step } from './harness.mjs';
+import { TUNES } from '../src/lib/tunes.js';
 import { ROOT } from './audio-keys.mjs';
 
 const PORT = 4177;
@@ -105,6 +106,20 @@ if (!cached) {
     const p = audioManifest.clips[clip];
     if (!cached.some((u) => u.includes(p))) fail(`${clip} (${p}) never reached the cache`);
   }
+
+  // Every tune can be picked from the grown-ups screen, and each is played on
+  // its own sampled instrument. A tune whose samples were not precached plays
+  // in development, plays on the first online load, and is silent on the
+  // aeroplane — so this is checked here, against a real service worker, rather
+  // than by reading the build config and hoping.
+  for (const [id, piece] of Object.entries(TUNES)) {
+    const folder = `audio/instruments/${piece.instrument}/`;
+    if (!cached.some((u) => u.includes(folder))) {
+      fail(`tune "${id}" plays ${piece.instrument}, which never reached the cache`);
+    }
+  }
+  const voices = new Set(Object.values(TUNES).map((t) => t.instrument));
+  step(`${voices.size} tune instruments cached`);
 }
 
 // -------------------------------------------------------------- offline

@@ -44,6 +44,7 @@ import { DEFAULT_TUNE, TUNES } from './tunes.js';
 import { loadTone, renderedChannels } from './tone-setup.js';
 
 const KEY = 'urdu:music';
+const TUNE_KEY = 'urdu:tune';
 
 /** How loud the tune sits under everything else, in decibels. */
 const VOLUME_DB = -19;
@@ -59,8 +60,76 @@ const UNDUCK_FADE = 0.6;
  * feel and voice together — because they are the part a person has an opinion
  * about, and changing one should not mean reading a scheduler. Audition them
  * with `npm run music:preview -- --tune waltz`.
+ *
+ * Which one plays is a setting rather than a constant, chosen on the grown-ups
+ * screen. Read through a function every time rather than captured once: the
+ * band is rebuilt on a change, and a module-level `const TUNE` would have the
+ * new band playing the old piece.
  */
-const TUNE = TUNES[DEFAULT_TUNE];
+function tune() {
+  return TUNES[currentTune()];
+}
+
+/** The chosen piece, falling back to the default if the stored id is unknown. */
+export function currentTune() {
+  try {
+    const stored = localStorage.getItem(TUNE_KEY);
+    return TUNES[stored] ? stored : DEFAULT_TUNE;
+  } catch {
+    return DEFAULT_TUNE;
+  }
+}
+
+/**
+ * Changes the piece, and starts playing it.
+ *
+ * The band is instruments, not just notes — each tune has its own voice — so
+ * this cannot swap a melody and leave everything else standing. It tears the
+ * old band down and builds a new one, which takes a moment because the new
+ * instrument's samples have to be fetched and a reverb rendered.
+ *
+ * Resolves when the new tune is audible, so a picker can say so.
+ */
+export async function setTune(id) {
+  if (!TUNES[id] || id === currentTune()) return;
+  try {
+    localStorage.setItem(TUNE_KEY, id);
+  } catch {
+    /* private browsing; it just will not be remembered */
+  }
+
+  const wasPlaying = running;
+  pause();
+  await teardown();
+  if (wasPlaying) startMusic();
+  await loading;
+}
+
+/**
+ * Throws the band away so the next start builds a new one.
+ *
+ * Every node has to go, not just the ones the band hands back: a Sampler
+ * holding five decoded buffers and a Reverb holding a rendered impulse are the
+ * expensive ones, and leaking a set of those per tune change turns idly trying
+ * all five into several megabytes that never come back. Tone will not collect
+ * them — a node stays alive as long as it is connected to anything.
+ */
+async function teardown() {
+  const built = loading;
+  loading = null;
+  if (!built) return;
+  try {
+    await built;
+    voices?.transport.stop();
+    voices?.transport.cancel();
+    voices?.dispose();
+  } catch {
+    // A band that failed to build has nothing to dispose.
+  }
+  voices = null;
+  tap?.disconnect();
+  tap = null;
+}
 
 /** @type {AudioContext|null} */
 let ctx = null;
@@ -156,21 +225,28 @@ export function initMusic(game) {
  *
  * @param {*} T the Tone module
  * @param {*} destination what the mix connects to
- * @param {import('./tunes.js').Tune} [tune] which piece is being built
+ * @param {import('./tunes.js').Tune} piece which tune is being built
  */
-async function createBand(T, destination, tune = TUNE) {
-  const master = new T.Gain(0);
+async function createBand(T, destination, piece) {
+  const nodes = [];
+  /** Every node built here, so teardown() can reach the ones nobody returns. */
+  const keep = (node) => {
+    nodes.push(node);
+    return node;
+  };
+
+  const master = keep(new T.Gain(0));
   // A limiter rather than trust: three instruments and a reverb tail can
   // coincide, and a clipped background tune is unpleasant in a way a quiet one
   // is not.
-  const limiter = new T.Limiter(-2);
+  const limiter = keep(new T.Limiter(-2));
   // The top taken off, because bright is fatiguing at the volume a child holds
   // a phone, and this plays continuously.
-  const softener = new T.Filter({ type: 'lowpass', frequency: 4200, rolloff: -12 });
+  const softener = keep(new T.Filter({ type: 'lowpass', frequency: 4200, rolloff: -12 }));
   master.chain(softener, limiter);
   limiter.connect(destination);
 
-  const reverb = new T.Reverb({ decay: 2.6, preDelay: 0.02, wet: 0.3 });
+  const reverb = keep(new T.Reverb({ decay: 2.6, preDelay: 0.02, wet: 0.3 }));
   reverb.connect(master);
   // The impulse response is rendered offline and the reverb passes nothing at
   // all until it is done. Waiting here is why the tune starts a beat after the
@@ -184,22 +260,22 @@ async function createBand(T, destination, tune = TUNE) {
   // mallet, the partials drifting out of tune as it dies, the body ringing.
   //
   // Five notes, pitched to fill the gaps. See tools/fetch-instruments.mjs.
-  const lead = new T.Sampler({
+  const lead = keep(new T.Sampler({
     urls: { C4: 'C4.mp3', 'F#4': 'Gb4.mp3', C5: 'C5.mp3', 'F#5': 'Gb5.mp3', C6: 'C6.mp3' },
-    baseUrl: `${import.meta.env.BASE_URL}audio/instruments/${tune.instrument}/`,
+    baseUrl: `${import.meta.env.BASE_URL}audio/instruments/${piece.instrument}/`,
     release: 1.4,
     volume: -7,
-  });
+  }));
   await T.loaded();
   // A short echo an eighth behind. It costs nothing and it is most of what
   // makes a simple line sound arranged rather than typed in.
-  const echo = new T.FeedbackDelay({ delayTime: '8n', feedback: 0.22, wet: 0.18 });
+  const echo = keep(new T.FeedbackDelay({ delayTime: '8n', feedback: 0.22, wet: 0.18 }));
   lead.chain(echo, reverb);
   lead.connect(master);
 
   // Round, short, no edge — felt rather than heard, which is all a phone
   // speaker can do with a bass line anyway.
-  const bass = new T.MonoSynth({
+  const bass = keep(new T.MonoSynth({
     oscillator: { type: 'triangle' },
     filter: { type: 'lowpass', Q: 1 },
     filterEnvelope: {
@@ -211,29 +287,29 @@ async function createBand(T, destination, tune = TUNE) {
     },
     envelope: { attack: 0.01, decay: 0.35, sustain: 0.25, release: 0.5 },
     volume: -14,
-  });
+  }));
   bass.connect(master);
 
   // The chord underneath: slow to arrive, and almost entirely reverb. It should
   // never be identifiable as an instrument. Taking it away is the only way to
   // notice it was there.
-  const pad = new T.PolySynth(T.AMSynth, {
+  const pad = keep(new T.PolySynth(T.AMSynth, {
     harmonicity: 2,
     oscillator: { type: 'sine' },
     envelope: { attack: 0.8, decay: 0.4, sustain: 0.7, release: 1.6 },
     modulation: { type: 'sine' },
     volume: -26,
-  });
+  }));
   pad.connect(reverb);
 
   // A shaker, not a drum. Something has to mark the beat or the tune drifts,
   // but a kick under a nursery melody sounds like a ringtone.
-  const shaker = new T.NoiseSynth({
+  const shaker = keep(new T.NoiseSynth({
     noise: { type: 'pink' },
     envelope: { attack: 0.001, decay: 0.045, sustain: 0 },
     volume: -30,
-  });
-  const shakerTone = new T.Filter({ type: 'highpass', frequency: 5500 });
+  }));
+  const shakerTone = keep(new T.Filter({ type: 'highpass', frequency: 5500 }));
   shaker.chain(shakerTone, master);
 
   // A tanpura, near enough: two notes a fifth apart, held for ever, slightly
@@ -241,20 +317,42 @@ async function createBand(T, destination, tune = TUNE) {
   // that asks for one, because a drone underneath a chord progression fights
   // every chord that is not the tonic.
   let drone = null;
-  if (tune.drone) {
-    drone = new T.PolySynth(T.AMSynth, {
+  if (piece.drone) {
+    drone = keep(new T.PolySynth(T.AMSynth, {
       harmonicity: 1.005,
       oscillator: { type: 'sawtooth' },
       envelope: { attack: 2.5, decay: 1, sustain: 0.85, release: 3 },
       modulation: { type: 'sine' },
       volume: -30,
-    });
-    const droneTone = new T.Filter({ type: 'lowpass', frequency: 900 });
+    }));
+    const droneTone = keep(new T.Filter({ type: 'lowpass', frequency: 900 }));
     drone.chain(droneTone, reverb);
     drone.connect(master);
   }
 
-  return { master, reverb, lead, bass, pad, shaker, drone };
+  return {
+    master,
+    reverb,
+    lead,
+    bass,
+    pad,
+    shaker,
+    drone,
+    /**
+     * Releases everything above. Called when the tune is changed — see
+     * teardown(). A Sampler's decoded buffers and a Reverb's rendered impulse
+     * are the two that matter; the rest is tidiness.
+     */
+    dispose: () => {
+      for (const node of nodes) {
+        try {
+          node.dispose();
+        } catch {
+          // Already gone, or never finished building. Either way, nothing owed.
+        }
+      }
+    },
+  };
 }
 
 /** Sets the tempo and feel on a transport, live or offline. */
@@ -282,10 +380,13 @@ async function build() {
   tap = ctx.createGain();
   tap.connect(ctx.destination);
 
-  const band = await createBand(Tone, tap, TUNE);
+  // Read once here, so a change part-way through building cannot leave the
+  // band half one tune and half another.
+  const piece = tune();
+  const band = await createBand(Tone, tap, piece);
   const transport = Tone.getTransport();
-  setFeel(transport, TUNE);
-  scheduleParts(Tone, transport, band, TUNE);
+  setFeel(transport, piece);
+  scheduleParts(Tone, transport, band, piece);
 
   voices = { ...band, transport };
 }
@@ -317,8 +418,8 @@ async function build() {
 export async function renderMusic(seconds, options = {}) {
   const T0 = await loadTone();
   Tone = T0;
-  const tune = {
-    ...(TUNES[options.tune] ?? TUNE),
+  const piece = {
+    ...(TUNES[options.tune] ?? tune()),
     ...(options.instrument ? { instrument: options.instrument } : {}),
   };
   const T = Tone;
@@ -326,13 +427,13 @@ export async function renderMusic(seconds, options = {}) {
   if (live) T.setContext(live);
 
   const buffer = await T.Offline(async ({ transport }) => {
-    const band = await createBand(T, T.getDestination(), tune);
-    setFeel(transport, tune);
+    const band = await createBand(T, T.getDestination(), piece);
+    setFeel(transport, piece);
     // Unguarded. `safely` exists for a stalling main thread, which an offline
     // render does not have — and swallowing errors here would let a bad tune
     // write a silent file and report success, which is exactly the sort of
     // thing the preview exists to catch.
-    scheduleParts(T, transport, band, tune, (callback) => callback);
+    scheduleParts(T, transport, band, piece, (callback) => callback);
     band.master.gain.value = T.dbToGain(VOLUME_DB);
     transport.start(0);
   }, seconds);

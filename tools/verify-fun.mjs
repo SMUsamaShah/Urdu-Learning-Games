@@ -399,4 +399,95 @@ if (!toggled.found) {
   step('  switches off, on, and is remembered');
 }
 
+// --- 6. Changing the tune ---------------------------------------------------
+
+// The picker is the only way to hear four of the five pieces, and each one is
+// played on a different sampled instrument — so a change is a fetch, a decode
+// and a reverb render, not a swap of notes. Two things can go wrong and both
+// are silent: the new band never builds, or the old one is torn down and
+// nothing replaces it. Neither throws. So this listens.
+
+step('switching the background tune');
+const switched = await page.evaluate(async () => {
+  const { currentTune, musicOutput, setMusicOn, setTune, startMusic, stopMusic, tuneNames } =
+    window.__music;
+  const ctx = window.__game.sound.context;
+  if (ctx.state === 'suspended') await ctx.resume();
+
+  const rmsOf = async (node, ms) => {
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    node.connect(analyser);
+    const buffer = new Float32Array(analyser.fftSize);
+    let peak = 0;
+    const until = performance.now() + ms;
+    while (performance.now() < until) {
+      analyser.getFloatTimeDomainData(buffer);
+      let sum = 0;
+      for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
+      peak = Math.max(peak, Math.sqrt(sum / buffer.length));
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    node.disconnect(analyser);
+    return peak;
+  };
+
+  setMusicOn(true);
+  stopMusic();
+  startMusic();
+  await new Promise((r) => setTimeout(r, 3000));
+
+  const names = tuneNames().map((t) => t.id);
+  const before = currentTune();
+  const target = names.find((id) => id !== before);
+
+  // No startMusic() here on purpose. Restarting is setTune's job — it took the
+  // old band down — and calling it from the check would rebuild the band even
+  // if setTune had not, which makes the silence assertion below untestable.
+  // Confirmed by disabling setTune's own restart and watching this fail.
+  await setTune(target);
+  // Past the fade-in of the newly built band.
+  await new Promise((r) => setTimeout(r, 3000));
+
+  // Two distinct failures, and they want telling apart: no output node at all
+  // means the old band was torn down and nothing replaced it, while a node
+  // carrying silence means a band was built but is not playing.
+  const output = musicOutput();
+  const after = output ? await rmsOf(output, 3000) : null;
+
+  return {
+    names,
+    before,
+    target,
+    chosen: currentTune(),
+    stored: localStorage.getItem('urdu:tune'),
+    after,
+  };
+});
+
+if (switched.names.length < 2) {
+  fail(`only ${switched.names.length} tune(s) to choose from`);
+} else if (switched.chosen !== switched.target) {
+  fail(`asked for "${switched.target}" and got "${switched.chosen}"`);
+} else if (switched.stored !== switched.target) {
+  fail('the chosen tune is not being remembered');
+} else if (switched.after === null) {
+  // The failure this is really here for: the old band is disposed, the new one
+  // never builds, and the app goes quietly silent with nothing thrown.
+  fail(
+    `switching to "${switched.target}" left no music output at all — ` +
+      'the old band was torn down and nothing replaced it'
+  );
+} else if (switched.after < 0.0005) {
+  fail(
+    `after switching to "${switched.target}" the output was silent ` +
+      `(${switched.after.toFixed(5)})`
+  );
+} else {
+  step(
+    `  ${switched.before} -> ${switched.target}, playing at ` +
+      `${switched.after.toFixed(4)}, and remembered`
+  );
+}
+
 await finish();

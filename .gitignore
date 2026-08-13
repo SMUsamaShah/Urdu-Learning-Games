@@ -12,11 +12,16 @@ trace-check.png
 *.tmp.mjs
 .image-cache/
 
-# Instrument samples for the background tune. Only the voice actually used is
-# committed and shipped; the alternates exist so the tune can be auditioned on a
-# different instrument (npm run music:preview -- --instrument celesta) and would
-# otherwise be 300 KB of precached audio nobody ever hears.
+# Instrument samples. Every tune's voice ships, because all five tunes can be
+# chosen from the grown-ups screen and one whose samples were never committed
+# would be silent. The rest exist only so a tune can be auditioned on another
+# voice (npm run music:preview -- --instrument koto) and would otherwise be a
+# few hundred KB of precached audio nobody ever hears.
 # Re-fetch them with: node tools/fetch-instruments.mjs
 public/audio/instruments/*/
+!public/audio/instruments/acoustic_guitar_nylon/
+!public/audio/instruments/celesta/
+!public/audio/instruments/marimba/
 !public/audio/instruments/music_box/
+!public/audio/instruments/sitar/
 !public/audio/instruments/glockenspiel/

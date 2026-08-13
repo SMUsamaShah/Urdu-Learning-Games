@@ -25,6 +25,7 @@ import {
 } from '../lib/recorder.js';
 import { setShowFps, showFps } from '../lib/fps.js';
 import { checkForUpdate } from '../lib/updates.js';
+import { currentTune, musicOn, setTune, tuneNames } from '../lib/music.js';
 import { polishTake } from '../lib/take-polish.js';
 import { buildSoundCheck } from './audio-check.js';
 import { buildArchive, readArchive } from '../lib/clip-archive.js';
@@ -100,11 +101,23 @@ export function openRecorder({ onClose } = {}) {
   // ------------------------------------------------------------- structure
 
   const root = el(`
-    <div class="rec-root" role="dialog" aria-modal="true" aria-label="Recordings">
+    <div class="rec-root" role="dialog" aria-modal="true" aria-label="Grown-ups">
       <div class="rec-head">
-        <h2 class="rec-title">Recordings</h2>
+        <h2 class="rec-title">Grown-ups</h2>
         <span class="rec-progress"></span>
         <span class="rec-head-spacer"></span>
+        <label class="rec-toggle">
+          Music
+          <select data-act="tune">
+            ${tuneNames()
+              .map(
+                ({ id, name }) =>
+                  `<option value="${id}"${id === currentTune() ? ' selected' : ''}>` +
+                  `${escapeHtml(name)}</option>`
+              )
+              .join('')}
+          </select>
+        </label>
         <label class="rec-toggle">
           <input type="checkbox" data-act="fps" ${showFps() ? 'checked' : ''} />
           Frame rate
@@ -474,12 +487,48 @@ export function openRecorder({ onClose } = {}) {
       setShowFps(event.target.checked);
       return;
     }
+    if (event.target.dataset?.act === 'tune') {
+      chooseTune(event.target);
+      return;
+    }
     if (event.target.dataset?.act !== 'profile') return;
     micProfile = event.target.value;
     localStorage.setItem('urdu:mic-profile', micProfile);
     recorder?.setProfile(micProfile);
     renderStage();
   });
+
+  /**
+   * Switches the background tune, and says what happened.
+   *
+   * Each tune is played on its own instrument, so this is not a change of notes
+   * — the samples have to be fetched and a reverb rendered before anything is
+   * audible. That takes a visible moment on a cold cache, and a picker that
+   * looks like it did nothing for two seconds is a picker people press twice.
+   * So: disabled while it works, and a line saying which piece is now playing.
+   *
+   * Worth saying plainly when the music is switched off, too. Choosing a tune
+   * and hearing silence is otherwise indistinguishable from a broken setting,
+   * and the switch that did it is on a different screen.
+   */
+  async function chooseTune(select) {
+    const name = select.options[select.selectedIndex].text;
+    select.disabled = true;
+    statusEl.innerHTML = `<span>Loading ${escapeHtml(name)}…</span>`;
+    try {
+      await setTune(select.value);
+      statusEl.innerHTML = musicOn()
+        ? `<span>Music: <strong>${escapeHtml(name)}</strong>.</span>`
+        : `<span>Music: <strong>${escapeHtml(name)}</strong>, ` +
+          'once the music is switched back on from the home screen.</span>';
+    } catch {
+      statusEl.innerHTML =
+        '<span class="rec-warn">That tune could not be loaded. ' +
+        'Its instrument may not have been downloaded yet.</span>';
+    } finally {
+      select.disabled = false;
+    }
+  }
 
   /** @type {HTMLElement|null} */
   let checkEl = null;

@@ -1,24 +1,41 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { TUNES } from './src/lib/tunes.js';
 
 /**
- * The instrument the background tune is played on.
+ * Every instrument the app can ask for, read from the tunes themselves.
  *
- * Must match the instrument of DEFAULT_TUNE in src/lib/tunes.js. Kept in step
- * by tests/music-instrument.test.mjs — the failure otherwise is that the app
- * asks for samples the service worker never cached, so the tune works in
- * development and is silent offline.
+ * This used to be one name written out by hand, with a test to keep it in step
+ * with src/lib/tunes.js. That was the right shape when there was one tune and
+ * no way to change it. Now that all five are choosable from the grown-ups
+ * screen, every one of their instruments has to be precached, and a
+ * hand-maintained list of five would be five chances to make the mistake the
+ * test existed to catch.
+ *
+ * So the list is derived. tunes.js is plain data with no imports, which is what
+ * makes it importable from a build config at all — worth keeping that way.
+ *
+ * The failure this prevents: the app asks for samples the service worker never
+ * cached, so the tune plays in development, plays on the first online load, and
+ * is silent offline. That is the worst shape a bug can have here, because
+ * offline is the case this app exists for.
  */
-const MUSIC_INSTRUMENT = 'music_box';
+const TUNE_INSTRUMENTS = [...new Set(Object.values(TUNES).map((t) => t.instrument))];
 
 /**
  * The instrument the reward flourishes are played on, from src/lib/flourish.js.
  *
- * A second one, and worth the extra 75 KB: it has to cut through the tune
- * without the tune ducking for it, which a bright metal strike does and a soft
- * wooden one does not.
+ * Still written out, because flourish.js is not data — importing it from here
+ * would pull in Tone and the whole audio layer at config time.
+ *
+ * Worth its extra 100 KB: it has to cut through the tune without the tune
+ * ducking for it, which a bright metal strike does and a soft wooden one does
+ * not.
  */
 const FLOURISH_INSTRUMENT = 'glockenspiel';
+
+/** Everything under audio/instruments/ that must survive into the build. */
+const KEPT_INSTRUMENTS = [...TUNE_INSTRUMENTS, FLOURISH_INSTRUMENT];
 
 export default defineConfig({
   // Relative base so the built app works from a GitHub Pages project subpath
@@ -84,16 +101,15 @@ export default defineConfig({
           '**/*.{webm,m4a,mp4,mp3,ogg,opus,wav}',
         ],
 
-        // The tune is played on one instrument; the rest of public/audio/
-        // instruments/ exists only so it can be auditioned on another voice
-        // during development (npm run music:preview -- --instrument celesta).
-        // They are gitignored, so a clean clone never has them — but a machine
-        // that has fetched them would otherwise quietly ship 300 KB of audio
-        // nobody ever hears, and a build that differs from CI's by what happens
-        // to be lying around is worth ruling out at the source.
-        globIgnores: [
-          `audio/instruments/!(${MUSIC_INSTRUMENT}|${FLOURISH_INSTRUMENT})/**`,
-        ],
+        // Only the instruments something actually plays. The rest of
+        // public/audio/instruments/ exists so a tune can be auditioned on
+        // another voice during development (npm run music:preview --
+        // --instrument koto). They are gitignored, so a clean clone never has
+        // them — but a machine that has fetched them would otherwise quietly
+        // ship a few hundred KB of audio nobody ever hears, and a build that
+        // differs from CI's by what happens to be lying around is worth ruling
+        // out at the source.
+        globIgnores: [`audio/instruments/!(${KEPT_INSTRUMENTS.join('|')})/**`],
 
         // The Phaser bundle alone is ~1.4 MB, over Workbox's 2 MiB default once
         // the glyph payload is counted. Everything here must be precached for

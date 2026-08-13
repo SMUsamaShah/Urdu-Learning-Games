@@ -237,4 +237,4 @@ export const TUNES = {
 };
 
 /** The one that plays. Change this to change the app's music. */
-export const DEFAULT_TUNE = 'music-box';
+export const DEFAULT_TUNE = 'qaida';

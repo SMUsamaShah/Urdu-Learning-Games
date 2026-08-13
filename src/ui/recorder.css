@@ -34,7 +34,10 @@
 .rec-head {
   display: flex;
   align-items: center;
-  gap: 16px;
+  /* Wraps rather than overflows. This row carries a title, a tune picker and
+     five buttons, which does not fit across a phone held upright. */
+  flex-wrap: wrap;
+  gap: 10px 16px;
   padding: 14px 18px;
   background: var(--panel);
   border-bottom: 1px solid rgba(0, 0, 0, 0.10);
@@ -44,6 +47,7 @@
   font-size: 17px;
   font-weight: 600;
   margin: 0;
+  white-space: nowrap;
 }
 
 .rec-progress {
@@ -381,6 +385,22 @@
   font-size: 14px;
   color: #4a5170;
   white-space: nowrap;
+}
+
+.rec-toggle select {
+  font: inherit;
+  font-size: 14px;
+  padding: 4px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+}
+
+.rec-toggle select:disabled {
+  /* Held while the new instrument's samples are fetched. */
+  opacity: 0.55;
+  cursor: progress;
 }
 
 .rec-tidy {
