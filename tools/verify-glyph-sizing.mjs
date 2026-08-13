@@ -34,6 +34,12 @@ const SCENES = [
   'Numbers',
   'Memory',
   'Sequence',
+  'Doors',
+  'TapAll',
+  'Caterpillar',
+  'LetterPuzzle',
+  'Fishing',
+  'Baskets',
   'JoinForms',
   'StartsWith',
   'Trace',
@@ -202,24 +208,36 @@ for (const scene of SCENES) {
         // the same letter on the flashcard are two roles, fitted to two boxes,
         // and only glyphs sharing a role have to share a size. Anything still
         // sized by its bounding box has no em in its key and is skipped.
-        const match = typeof key === 'string' && key.match(/^([\w-]+):em(\d+):/);
-        if (match) found.push({ role: match[1], em: Number(match[2]) });
+        // `em(\d+)` deliberately will not match `emNaN`. A scene that used
+        // fitEmAlone's return object as a number instead of destructuring
+        // `.em` off it drew every letter at one wrong size — consistently, so
+        // the one-size-per-role check below was perfectly happy. Broken keys
+        // are collected separately and failed on.
+        const match = typeof key === 'string' && key.match(/^([\w-]+):em([\w.]+):/);
+        if (match) found.push({ role: match[1], em: Number(match[2]), raw: match[2] });
       }
     };
     walk(scene.children.list);
 
     const byRole = {};
     for (const { role, em } of found) (byRole[role] ??= new Set()).add(em);
-    return Object.entries(byRole).map(([role, ems]) => ({ role, ems: [...ems] }));
+    return {
+      roles: Object.entries(byRole).map(([role, ems]) => ({ role, ems: [...ems] })),
+      broken: [...new Set(found.filter((f) => !Number.isFinite(f.em)).map((f) => `${f.role}:em${f.raw}`))],
+    };
   }, scene);
 
-  if (!drawn.length) fail(`${scene}: no em-sized writing found at all`);
-  const mixed = drawn.filter((d) => d.ems.length > 1);
+  for (const key of drawn.broken) {
+    fail(`${scene}: "${key}" — that em is not a number, so the letter is drawn at whatever size Phaser fell back to`);
+  }
+
+  if (!drawn.roles.length) fail(`${scene}: no em-sized writing found at all`);
+  const mixed = drawn.roles.filter((d) => d.ems.length > 1);
   for (const { role, ems } of mixed) {
     fail(`${scene}: "${role}" is drawn at ${ems.length} different sizes (${ems.join(', ')})`);
   }
   step(
-    `${scene}: ${drawn.length} role(s) of writing, ` +
+    `${scene}: ${drawn.roles.length} role(s) of writing, ` +
       (mixed.length ? `${mixed.length} at mixed sizes` : 'each at one size')
   );
 }

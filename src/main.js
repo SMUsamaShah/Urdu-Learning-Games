@@ -14,6 +14,8 @@ import Doors from './scenes/Doors.js';
 import TapAll from './scenes/TapAll.js';
 import Caterpillar from './scenes/Caterpillar.js';
 import LetterPuzzle from './scenes/LetterPuzzle.js';
+import Fishing from './scenes/Fishing.js';
+import Baskets from './scenes/Baskets.js';
 import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
 import { createAppAudioContext } from './lib/audio-context.js';
@@ -72,6 +74,8 @@ const game = new Phaser.Game({
     TapAll,
     Caterpillar,
     LetterPuzzle,
+    Fishing,
+    Baskets,
     Trace,
   ],
 });

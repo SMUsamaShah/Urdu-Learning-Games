@@ -280,6 +280,99 @@ if (!process.exitCode) {
   if (!process.exitCode) step('every run was consecutive and every line-up was answerable');
 }
 
+// ---------------------------------------------------------------- baskets
+
+if (!process.exitCode) {
+  await start('Baskets');
+  step('Baskets: checking the pile can be sorted');
+
+  const geo = await page.evaluate(() => {
+    const rect = window.__game.canvas.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, scale: rect.width / window.__game.scale.width };
+  });
+  const toPage = (x, y) => [geo.left + x * geo.scale, geo.top + y * geo.scale];
+
+  const state = () =>
+    page.evaluate(() => {
+      const scene = window.__game.scene.getScene('Baskets');
+      return {
+        kinds: scene.kinds,
+        round: scene.round,
+        sorted: scene.sorted,
+        tiles: scene.tiles.map((t) => ({ letterId: t.letterId, x: t.x, y: t.y, sorted: t.sorted })),
+        baskets: scene.baskets.list.map((b) => ({ letterId: b.letterId, x: b.x, y: b.y })),
+      };
+    });
+
+  const first = await state();
+
+  // Both baskets must have something to receive. An empty basket at the end
+  // reads as a mistake rather than as a finished job.
+  for (const kind of first.kinds) {
+    if (!first.tiles.some((t) => t.letterId === kind)) {
+      fail(`nothing in the pile belongs in the "${kind}" basket`);
+    }
+  }
+  // And every tile must belong somewhere, or the pile can never be cleared.
+  for (const tile of first.tiles) {
+    if (!first.kinds.includes(tile.letterId)) {
+      fail(`"${tile.letterId}" is in the pile but neither basket takes it`);
+    }
+  }
+  if (!process.exitCode) {
+    step(`${first.tiles.length} letters, two baskets (${first.kinds.join(' and ')})`);
+  }
+
+  const dragTo = async (from, tx, ty) => {
+    const [sx, sy] = toPage(from.x, from.y);
+    const [ex, ey] = toPage(tx, ty);
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    for (let i = 1; i <= 6; i++) {
+      await page.mouse.move(sx + ((ex - sx) * i) / 6, sy + ((ey - sy) * i) / 6);
+      await page.waitForTimeout(16);
+    }
+    await page.mouse.up();
+    await page.waitForTimeout(350);
+  };
+
+  // The wrong basket must refuse it. Dropping ب into the ت basket and having it
+  // stick would make the whole game unwinnable-by-accident rather than a sort.
+  const tile = first.tiles[0];
+  const wrongBasket = first.baskets.find((b) => b.letterId !== tile.letterId);
+  if (wrongBasket) {
+    await dragTo(tile, wrongBasket.x, wrongBasket.y);
+    const after = await state();
+    if (after.sorted !== 0) fail('the wrong basket accepted a letter');
+    else step('the wrong basket refuses it');
+  }
+
+  step('Baskets: sorting the whole pile');
+  for (let i = 0; i < first.tiles.length; i++) {
+    const now = await state();
+    const next = now.tiles[i];
+    if (next.sorted) continue;
+    const home = now.baskets.find((b) => b.letterId === next.letterId);
+    await dragTo(next, home.x, home.y);
+  }
+  const done = await state();
+  if (done.sorted !== first.tiles.length) {
+    fail(`sorted ${done.sorted} of ${first.tiles.length} letters into their baskets`);
+  } else {
+    step('every letter sorted');
+    const moved = await page
+      .waitForFunction(
+        (before) => window.__game.scene.getScene('Baskets').round > before,
+        first.round,
+        { timeout: 30000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (!moved) fail('clearing the pile did not deal a new one');
+    else step('pile cleared and a new one dealt');
+  }
+}
+
 // ------------------------------------------------------------ letter puzzle
 
 if (!process.exitCode) {

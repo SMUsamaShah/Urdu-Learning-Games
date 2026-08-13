@@ -41,7 +41,11 @@ export default class Doors extends QuizScene {
     // hand-placed, which is what the tilt is for everywhere else.
     this.tileTilt = 0;
     this.tileGap = 46;
-    this.choicesY = 470;
+    this.choicesY = 500;
+    // Higher and shorter than the usual prompt: the barn's roof comes to a
+    // point above the doors, and a full-size card at the standard height sits
+    // straight through it.
+    this.promptY = 212;
     /** @type {string[]} */
     this.pool = [];
   }
@@ -59,7 +63,58 @@ export default class Doors extends QuizScene {
     // One em for every letter in the app, so a door cannot be picked by which
     // letter happens to be drawn biggest.
     this.doorFit = fitEmAlone(allLetterGlyphs('isolated'), DOOR.width - 70, DOOR.height - 130);
-    this.promptFit = fitEmAlone(allLetterGlyphs('isolated'), 150, 130);
+    this.promptFit = fitEmAlone(allLetterGlyphs('isolated'), 132, 96);
+
+    // Behind the doors and in front of the scenery. Doors have to be set into
+    // something: three of them hanging in mid-air is not a building a child can
+    // knock on, it is three coloured rectangles.
+    this.barn = this.add.graphics().setDepth(-1);
+  }
+
+  /**
+   * The barn the doors are set into, drawn to fit the line-up.
+   *
+   * Redrawn each round rather than laid out once, because the number of doors
+   * grows with the streak — a wall sized for four with two doors in it has a
+   * blank half, and one sized for two cannot hold four.
+   */
+  buildChoices(ids) {
+    this.drawBarn(ids.length);
+    super.buildChoices(ids);
+  }
+
+  drawBarn(count) {
+    const step = this.tileSize + this.tileGap;
+    const startX = this.stageX + ((count - 1) * step) / 2;
+    const left = startX - (count - 1) * step - DOOR.width / 2 - 46;
+    const right = startX + DOOR.width / 2 + 46;
+    const width = right - left;
+    const top = this.choicesY - DOOR.height / 2 - 40;
+    const bottom = this.choicesY + DOOR.height / 2 + 26;
+
+    const g = this.barn;
+    g.clear();
+
+    // The roof, as a gable overhanging both ends.
+    const eaves = 26;
+    const ridge = 60;
+    g.fillStyle(0x9c4a3c, 1);
+    g.fillTriangle(left - eaves, top, right + eaves, top, (left + right) / 2, top - ridge);
+    g.fillStyle(0x7f3a2f, 1);
+    g.fillRect(left - eaves, top, width + eaves * 2, 16);
+
+    // The wall.
+    g.fillStyle(COLORS.shadow, 0.16);
+    g.fillRect(left + 6, top + 22, width, bottom - top);
+    g.fillStyle(0xf6e7c8, 1);
+    g.fillRect(left, top + 16, width, bottom - top - 16);
+    g.lineStyle(3, 0xd9c39c, 1);
+    g.strokeRect(left, top + 16, width, bottom - top - 16);
+
+    // A course of bricks along the bottom, so the wall meets the ground rather
+    // than stopping in mid-air the way the doors used to.
+    g.fillStyle(0xc98d63, 1);
+    g.fillRect(left, bottom - 18, width, 18);
   }
 
   pickTarget(previous) {
@@ -76,11 +131,11 @@ export default class Doors extends QuizScene {
     const card = this.add.container(0, 0);
     const plate = this.add.graphics();
     plate.fillStyle(COLORS.shadow, 0.18);
-    plate.fillRoundedRect(-95, -74, 190, 156, 22);
+    plate.fillRoundedRect(-85, -54, 170, 120, 20);
     plate.fillStyle(COLORS.card, 1);
-    plate.fillRoundedRect(-95, -80, 190, 156, 22);
+    plate.fillRoundedRect(-85, -60, 170, 120, 20);
     plate.lineStyle(5, COLORS.accent, 1);
-    plate.strokeRoundedRect(-95, -80, 190, 156, 22);
+    plate.strokeRoundedRect(-85, -60, 170, 120, 20);
     card.add(plate);
     card.add(
       addGlyph(
@@ -93,7 +148,7 @@ export default class Doors extends QuizScene {
       )
     );
     layer.add(card);
-    if (hasClip(clipKeys.letterName(target))) layer.add(this.speakerIcon(158));
+    if (hasClip(clipKeys.letterName(target))) layer.add(this.speakerIcon(142));
   }
 
   /**

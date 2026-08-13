@@ -121,6 +121,20 @@ const GAMES = [
     icon: { letter: 'sad', form: 'isolated' },
   },
   {
+    scene: 'Fishing',
+    ui: 'fishing',
+    roman: 'Fishing',
+    color: 0x2f7fa8,
+    picture: 'machhli',
+  },
+  {
+    scene: 'Baskets',
+    ui: 'baskets',
+    roman: 'Sorting',
+    color: 0x7d6a3f,
+    icon: { letter: 'te', form: 'initial' },
+  },
+  {
     scene: 'Trace',
     ui: 'trace',
     roman: 'Write',

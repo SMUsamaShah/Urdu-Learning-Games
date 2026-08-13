@@ -41,6 +41,8 @@ export const INSTRUCTIONS = [
   'tap-all',
   'fill-gaps',
   'build-letter',
+  'catch-letter',
+  'sort-letters',
 ];
 
 /**

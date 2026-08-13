@@ -107,8 +107,10 @@ const BACKDROPS = {
     'A tidy farm field: a low wooden fence along the bottom edge, a red barn ' +
     'small and far off at the left edge, green field and wide open sky.',
   Doors:
-    'A quiet village lane: a low garden wall and a hedge along the bottom ' +
-    'edge, one small cottage roof far away at the left edge, wide open sky.',
+    'A farmyard: flat pale dirt ground across the bottom third, a low wooden ' +
+    'fence and a few tufts of grass along the very bottom edge, one leafy ' +
+    'tree at the far left edge, wide open sky above. Nothing in the middle — ' +
+    'a barn is drawn over the middle of this screen.',
   TapAll:
     'A tidy park lawn: a neat hedge and a row of small round bushes along the ' +
     'bottom edge, one lamp post at the far right edge, wide pale sky.',
@@ -120,6 +122,16 @@ const BACKDROPS = {
     'the picture, a pale wooden floor strip along the bottom edge, one potted ' +
     'plant at the far left edge. Very quiet — a large letter is built over ' +
     'the middle of this screen.',
+  Fishing:
+    'Underwater, seen from inside a calm pond. Flat pale turquoise water ' +
+    'fills the whole picture from top to bottom. A pale sandy bed with two or ' +
+    'three small rounded stones runs along the very bottom edge, and a few ' +
+    'green water reeds stand at the far left and far right edges only. No ' +
+    'sky, no horizon line, no fish, nothing at all in the middle.',
+  Baskets:
+    'A sunny market yard: a plain sandy floor across the bottom third, a low ' +
+    'stone wall behind it, one striped awning at the far left edge, wide pale ' +
+    'sky above.',
   Trace:
     'An almost empty pale blue sky with the faintest suggestion of two soft ' +
     'clouds at the top corners and a thin strip of green grass along the very ' +

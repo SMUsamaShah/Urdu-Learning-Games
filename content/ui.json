@@ -195,6 +195,26 @@
       "id": "puzzle",
       "text": "جوڑ توڑ",
       "roman": "jor tor"
+    },
+    {
+      "id": "catch-letter",
+      "text": "حرف پکڑو",
+      "roman": "harf pakro"
+    },
+    {
+      "id": "fishing",
+      "text": "مچھلی",
+      "roman": "machhli"
+    },
+    {
+      "id": "sort-letters",
+      "text": "حروف چھانٹو",
+      "roman": "huroof chhaanto"
+    },
+    {
+      "id": "baskets",
+      "text": "ٹوکریاں",
+      "roman": "tokriyan"
     }
   ]
 }
