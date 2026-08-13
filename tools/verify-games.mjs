@@ -27,6 +27,7 @@ const QUIZZES = [
   { key: 'Numbers', rounds: 8 },
   { key: 'Sequence', rounds: 10 },
   { key: 'StartsWith', rounds: 8 },
+  { key: 'Doors', rounds: 8 },
 ];
 
 const { page, finish } = await openApp({
@@ -277,6 +278,84 @@ if (!process.exitCode) {
     if (process.exitCode) break;
   }
   if (!process.exitCode) step('every run was consecutive and every line-up was answerable');
+}
+
+// ----------------------------------------------------------------- tap all
+
+if (!process.exitCode) {
+  await start('TapAll');
+  step('TapAll: checking the board can be cleared');
+
+  const board = () =>
+    page.evaluate(() => {
+      const scene = window.__game.scene.getScene('TapAll');
+      return {
+        target: scene.target,
+        wanted: scene.wanted,
+        round: scene.round,
+        found: scene.found,
+        tiles: scene.tiles.map((t) => ({ letterId: t.letterId, done: t.done })),
+      };
+    });
+
+  const first = await board();
+
+  // The invariant this game turns on: the number of targets actually on the
+  // board must equal the number it is waiting for. One short and the round can
+  // never be finished, and a child has no way to tell the board is unwinnable
+  // rather than that they have missed one.
+  const present = first.tiles.filter((t) => t.letterId === first.target).length;
+  if (present !== first.wanted) {
+    fail(`waiting for ${first.wanted} of "${first.target}" but ${present} are on the board`);
+  } else if (present < 2) {
+    fail('a "find them all" round with fewer than two to find is just find-the-letter');
+  } else {
+    step(`${first.tiles.length} tiles, ${present} of them "${first.target}"`);
+  }
+
+  const tapIndex = (index) =>
+    page.evaluate((i) => {
+      window.__game.scene.getScene('TapAll').tiles[i]?.emit('pointerup');
+    }, index);
+
+  // A wrong tap must cost nothing: no progress, and the round stays open.
+  const wrongAt = first.tiles.findIndex((t) => t.letterId !== first.target);
+  if (wrongAt > -1) {
+    await tapIndex(wrongAt);
+    await page.waitForTimeout(350);
+    const after = await board();
+    if (after.found !== 0) fail('a wrong tap counted towards finding them all');
+    else if (after.round !== first.round) fail('a wrong tap ended the round');
+    else step('a wrong tap costs nothing');
+  }
+
+  // Tapping the same target twice must not count twice, or the round can be
+  // finished without finding the rest.
+  const rightIndexes = first.tiles
+    .map((t, i) => (t.letterId === first.target ? i : -1))
+    .filter((i) => i > -1);
+  await tapIndex(rightIndexes[0]);
+  await page.waitForTimeout(300);
+  await tapIndex(rightIndexes[0]);
+  await page.waitForTimeout(300);
+  const twice = await board();
+  if (twice.found !== 1) fail(`tapping one tile twice counted ${twice.found} times`);
+  else step('tapping the same one twice counts once');
+
+  for (const index of rightIndexes.slice(1)) {
+    await tapIndex(index);
+    await page.waitForTimeout(250);
+  }
+  const moved = await page
+    .waitForFunction(
+      (before) => window.__game.scene.getScene('TapAll').round > before,
+      first.round,
+      { timeout: 30000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!moved) fail('finding every one did not start a new round');
+  else step('board cleared and a new one dealt');
 }
 
 // -------------------------------------------------------------- join forms

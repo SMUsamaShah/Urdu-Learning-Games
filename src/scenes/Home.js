@@ -93,6 +93,20 @@ const GAMES = [
     picture: 'bakri',
   },
   {
+    scene: 'Doors',
+    ui: 'doors',
+    roman: 'Doors',
+    color: 0x3f8f7a,
+    icon: { letter: 'dal', form: 'isolated' },
+  },
+  {
+    scene: 'TapAll',
+    ui: 'find-all',
+    roman: 'Find them all',
+    color: 0xb05fa8,
+    icon: { letter: 'sin', form: 'initial' },
+  },
+  {
     scene: 'Trace',
     ui: 'trace',
     roman: 'Write',

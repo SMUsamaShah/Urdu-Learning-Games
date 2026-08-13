@@ -37,6 +37,8 @@ export const INSTRUCTIONS = [
   'find-picture',
   'join-forms',
   'starts-with',
+  'knock-door',
+  'tap-all',
 ];
 
 /**

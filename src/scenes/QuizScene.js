@@ -40,6 +40,15 @@ export default class QuizScene extends Phaser.Scene {
     /** Tiles on screen, by streak. */
     this.choicesByStreak = [2, 2, 2, 3, 3, 3, 4];
     this.tileSize = 190;
+    /** Tiles are square unless a subclass says otherwise — a door is not. */
+    this.tileHeight = null;
+    /**
+     * Degrees of alternating tilt on the line-up. A row of perfectly square
+     * tiles reads as a form; a slightly scattered row reads as something laid
+     * out by hand. Zero for the screens where the choice is a thing that has an
+     * upright of its own, like a door.
+     */
+    this.tileTilt = 2.5;
     this.tileGap = 34;
     this.choicesY = 500;
     /**
@@ -86,7 +95,7 @@ export default class QuizScene extends Phaser.Scene {
   buildPrompt(layer, target) {}
 
   /** Draws one choice into its tile. */
-  decorateTile(tile, id, size) {}
+  decorateTile(tile, id, size, height) {}
 
   /** Colour for a choice tile. */
   tileColor(id) {
@@ -174,6 +183,7 @@ export default class QuizScene extends Phaser.Scene {
   buildChoices(ids) {
     this.choicesLayer.removeAll(true);
     const size = this.tileSize;
+    const height = this.tileHeight ?? size;
     const step = size + this.tileGap;
     // Right to left, matching how the script is read.
     const startX = this.stageX + ((ids.length - 1) * step) / 2;
@@ -183,18 +193,15 @@ export default class QuizScene extends Phaser.Scene {
         x: startX - index * step,
         y: this.choicesY,
         width: size,
-        height: size,
+        height,
         color: this.tileColor(id),
         shape: this.tileShape,
         onTap: () => this.choose(id, tile),
       });
-      // A couple of degrees of tilt, alternating. A row of perfectly square
-      // tiles reads as a form; a row of slightly scattered cards reads as
-      // something somebody laid out by hand.
-      tile.setAngle(index % 2 ? 2.5 : -2.5);
+      tile.setAngle(index % 2 ? this.tileTilt : -this.tileTilt);
       // Named so a verification run can pick a tile without hunting by pixel.
       tile.choiceId = id;
-      this.decorateTile(tile, id, size);
+      this.decorateTile(tile, id, size, height);
       this.choicesLayer.add(tile);
 
       // Squashes under the finger. This happens on the pointer event itself

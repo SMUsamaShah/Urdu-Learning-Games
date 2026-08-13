@@ -155,6 +155,26 @@
       "id": "first-letter",
       "text": "پہلا حرف",
       "roman": "pehla harf"
+    },
+    {
+      "id": "knock-door",
+      "text": "کون سا دروازہ؟",
+      "roman": "kaun sa darwaza?"
+    },
+    {
+      "id": "doors",
+      "text": "دروازے",
+      "roman": "darwaze"
+    },
+    {
+      "id": "tap-all",
+      "text": "سب ڈھونڈو",
+      "roman": "sab dhoondo"
+    },
+    {
+      "id": "find-all",
+      "text": "سارے",
+      "roman": "saare"
     }
   ]
 }

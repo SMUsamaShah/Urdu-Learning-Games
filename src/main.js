@@ -10,6 +10,8 @@ import Memory from './scenes/Memory.js';
 import Sequence from './scenes/Sequence.js';
 import JoinForms from './scenes/JoinForms.js';
 import StartsWith from './scenes/StartsWith.js';
+import Doors from './scenes/Doors.js';
+import TapAll from './scenes/TapAll.js';
 import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
 import { createAppAudioContext } from './lib/audio-context.js';
@@ -64,6 +66,8 @@ const game = new Phaser.Game({
     Sequence,
     JoinForms,
     StartsWith,
+    Doors,
+    TapAll,
     Trace,
   ],
 });
