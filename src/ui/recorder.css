@@ -1,10 +1,15 @@
 /*
- * The grown-ups screen: recording, export, import.
+ * The recording page: record, export, import.
  *
  * Plain DOM above the canvas rather than drawn in Phaser. It needs a scrolling
  * list of 120 rows, a number input and a file picker, all of which are free here
  * and laborious on a canvas. It is adult-facing, so it does not have to match the
  * game's visual language, only its palette.
+ *
+ * A page inside the settings screen, not an overlay of its own. It used to be
+ * `position: fixed; inset: 0`, which once it became a page meant it covered the
+ * title bar above it — including the arrow back out, so the only way to leave
+ * was to reload.
  */
 
 .rec-root {
@@ -16,16 +21,13 @@
   --accent: #e98a1f;
   --good: #2fae74;
   --bad: #d94f4f;
-  position: fixed;
-  inset: 0;
-  z-index: 50;
   font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--ink);
-}
-
-.rec-root {
   display: flex;
   flex-direction: column;
+  /* Fills the settings body, and scrolls its list inside itself rather than
+     making the whole screen scroll. */
+  min-height: 100%;
   background: var(--bg);
 }
 

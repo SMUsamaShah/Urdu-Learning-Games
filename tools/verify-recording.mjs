@@ -123,12 +123,18 @@ const openHome = async () => {
   await homeIsUp(page);
 };
 
+/** Settings -> Your recordings. Waits for the page rather than for a timer. */
+const openRecordings = async () => {
+  await page.click('.set-root [data-page="recordings"]');
+  await page.waitForSelector('.rec-root', { timeout: 20000 });
+};
+
 // ------------------------------------------------------ the parental gate
 
 await openHome();
 step('holding the grown-ups button');
 await page.evaluate(() => {
-  window.__game.scene.getScene('Home').grownUpsButton.emit('pointerdown');
+  window.__game.scene.getScene('Home').settingsButton.emit('pointerdown');
 });
 // The hold is 900ms of real game time; the gate appears once it completes.
 await page.waitForSelector('.gate', { timeout: 10000 });
@@ -172,8 +178,38 @@ if (!a) fail(`could not read the gate question: "${question}"`);
 await page.fill('.gate-input', String(Number(a) * Number(b)));
 await page.click('.gate-ok');
 
-await page.waitForSelector('.rec-root', { timeout: 10000 });
+await page.waitForSelector('.set-root', { timeout: 10000 });
+step('settings open');
+
+// The recorder lives behind its own row now rather than being the whole
+// screen. Opening it is part of what this checks: a recorder nobody can reach
+// is as broken as one that does not record.
+await openRecordings();
 step('recorder open');
+
+// And a way back out. The recorder was still styled as a full-screen overlay
+// when it became a page, so it covered the title bar it now sits under —
+// including the only arrow off the page. Nothing threw; the screen was simply
+// a dead end until the tab was reloaded.
+step('checking the way back out of the recorder');
+const backIsReachable = await page.evaluate(() => {
+  const back = document.querySelector('.set-back');
+  if (!back) return { found: false };
+  const box = back.getBoundingClientRect();
+  const onTop = document.elementFromPoint(
+    box.left + box.width / 2,
+    box.top + box.height / 2
+  );
+  return { found: true, clickable: back.contains(onTop) || onTop === back };
+});
+if (!backIsReachable.found) fail('no back arrow while the recorder is open');
+else if (!backIsReachable.clickable) fail('the recorder is covering the back arrow');
+else {
+  await page.click('.set-back');
+  await page.waitForSelector('[data-page="recordings"]', { timeout: 10000 });
+  step('back returns to the settings list');
+  await openRecordings();
+}
 
 // A wrong answer must not open it. Checked after, so a failure here does not
 // block the rest of the run.
@@ -293,14 +329,15 @@ else step('device is empty, clip is silent');
 
 step('importing the export back');
 await page.evaluate(() => {
-  window.__game.scene.getScene('Home').grownUpsButton.emit('pointerdown');
+  window.__game.scene.getScene('Home').settingsButton.emit('pointerdown');
 });
 await page.waitForSelector('.gate', { timeout: 10000 });
 const q2 = await page.textContent('#gate-q');
 const [, c, d] = q2.match(/What is (\d+) × (\d+)\?/);
 await page.fill('.gate-input', String(Number(c) * Number(d)));
 await page.click('.gate-ok');
-await page.waitForSelector('.rec-root');
+await page.waitForSelector('.set-root');
+await openRecordings();
 
 await page.setInputFiles('.rec-root input[type=file]', zipPath);
 await page.waitForFunction(
@@ -339,18 +376,18 @@ if (!response.ok) {
 step('checking a wrong answer does not open the recorder');
 await openHome();
 await page.evaluate(() => {
-  window.__game.scene.getScene('Home').grownUpsButton.emit('pointerdown');
+  window.__game.scene.getScene('Home').settingsButton.emit('pointerdown');
 });
 await page.waitForSelector('.gate');
 await page.fill('.gate-input', '1');
 await page.click('.gate-ok');
 await page.waitForTimeout(400);
-if (await page.$('.rec-root')) fail('a wrong answer opened the recorder');
+if (await page.$('.set-root')) fail('a wrong answer opened settings');
 else step('wrong answer refused');
 
 step('checking a tap alone does not open the gate');
 await page.evaluate(() => {
-  const button = window.__game.scene.getScene('Home').grownUpsButton;
+  const button = window.__game.scene.getScene('Home').settingsButton;
   button.emit('pointerdown');
   button.emit('pointerup');
 });

@@ -1,9 +1,21 @@
 /**
- * The grown-ups screen: record the app's voice, and move recordings around.
+ * The recording studio: record the app's voice, and move recordings around.
  *
  * Recordings live on this device (see clip-store.js) and override whatever the
  * app shipped with, so a child hears their own parent. They leave the device
  * only as an explicit export.
+ *
+ * ## A page, not a screen
+ *
+ * This builds a detached element and hands it back. It used to mount its own
+ * full-screen overlay and carry the app's settings along the top of it, which
+ * is how a tune picker and a frame-rate checkbox ended up sitting above a list
+ * of a hundred and twenty clips. The settings screen owns the chrome now — see
+ * src/ui/settings.js — and this owns recording and nothing else.
+ *
+ * Its own toolbar keeps only what is about recordings: export and import. They
+ * are not general settings; they are what you do with the clips in the list
+ * below them.
  *
  * Deliberately plain DOM over the Phaser canvas: a scrolling list of 120 rows, a
  * file picker and a download are all free here and laborious on a canvas, and
@@ -23,11 +35,7 @@ import {
   createRecorder,
   isRecordingSupported,
 } from '../lib/recorder.js';
-import { setShowFps, showFps } from '../lib/fps.js';
-import { checkForUpdate } from '../lib/updates.js';
-import { currentTune, musicOn, setTune, tuneNames } from '../lib/music.js';
 import { polishTake } from '../lib/take-polish.js';
-import { buildSoundCheck } from './audio-check.js';
 import { buildArchive, readArchive } from '../lib/clip-archive.js';
 import * as store from '../lib/clip-store.js';
 import {
@@ -67,15 +75,17 @@ const formatDate = (ms) =>
   ms ? new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null;
 
 /**
- * Opens the recorder. Returns a function that closes it.
- * @param {{onClose?: () => void}} [options]
+ * Builds the recording page.
+ *
+ * @returns {{el: HTMLElement, dispose: () => void}} the page, and what to call
+ *   when it is taken off screen — which must happen, because this holds a
+ *   microphone and a keyboard listener.
  */
-export function openRecorder({ onClose } = {}) {
+export function buildRecorderPage() {
   const clips = expectedClips({ letters, numbers, words });
   const bySlug = new Map(clips.map((c) => [c.slug, c]));
   /** What the tidy-up did to the last take, shown under the buttons. */
   let lastNote = '';
-  const byKey = new Map(clips.map((c) => [c.key, c]));
   /** @type {Map<string, {bytes:number, recordedAt:number}>} */
   let device = new Map();
   let index = 0;
@@ -101,32 +111,12 @@ export function openRecorder({ onClose } = {}) {
   // ------------------------------------------------------------- structure
 
   const root = el(`
-    <div class="rec-root" role="dialog" aria-modal="true" aria-label="Grown-ups">
+    <div class="rec-root">
       <div class="rec-head">
-        <h2 class="rec-title">Grown-ups</h2>
         <span class="rec-progress"></span>
         <span class="rec-head-spacer"></span>
-        <label class="rec-toggle">
-          Music
-          <select data-act="tune">
-            ${tuneNames()
-              .map(
-                ({ id, name }) =>
-                  `<option value="${id}"${id === currentTune() ? ' selected' : ''}>` +
-                  `${escapeHtml(name)}</option>`
-              )
-              .join('')}
-          </select>
-        </label>
-        <label class="rec-toggle">
-          <input type="checkbox" data-act="fps" ${showFps() ? 'checked' : ''} />
-          Frame rate
-        </label>
-        <button type="button" class="rec-btn" data-act="check">Sound check</button>
-        <button type="button" class="rec-btn" data-act="update">Check for update</button>
         <button type="button" class="rec-btn" data-act="export">Export…</button>
         <button type="button" class="rec-btn" data-act="import">Import…</button>
-        <button type="button" class="rec-btn" data-act="close">Done</button>
       </div>
       <div class="rec-status"></div>
       <div class="rec-body">
@@ -452,8 +442,6 @@ export function openRecorder({ onClose } = {}) {
     }
 
     switch (target.dataset.act) {
-      case 'close':
-        return close();
       case 'record':
         return void toggleRecord();
       case 'play':
@@ -466,10 +454,6 @@ export function openRecorder({ onClose } = {}) {
         return void exportAll();
       case 'import':
         return fileInput.click();
-      case 'check':
-        return toggleCheck();
-      case 'update':
-        return checkUpdate();
       default:
         if (target.classList.contains('rec-row')) select(Number(target.dataset.i));
     }
@@ -483,91 +467,12 @@ export function openRecorder({ onClose } = {}) {
       localStorage.setItem('urdu:tidy-takes', tidy ? '1' : '0');
       return;
     }
-    if (event.target.dataset?.act === 'fps') {
-      setShowFps(event.target.checked);
-      return;
-    }
-    if (event.target.dataset?.act === 'tune') {
-      chooseTune(event.target);
-      return;
-    }
     if (event.target.dataset?.act !== 'profile') return;
     micProfile = event.target.value;
     localStorage.setItem('urdu:mic-profile', micProfile);
     recorder?.setProfile(micProfile);
     renderStage();
   });
-
-  /**
-   * Switches the background tune, and says what happened.
-   *
-   * Each tune is played on its own instrument, so this is not a change of notes
-   * — the samples have to be fetched and a reverb rendered before anything is
-   * audible. That takes a visible moment on a cold cache, and a picker that
-   * looks like it did nothing for two seconds is a picker people press twice.
-   * So: disabled while it works, and a line saying which piece is now playing.
-   *
-   * Worth saying plainly when the music is switched off, too. Choosing a tune
-   * and hearing silence is otherwise indistinguishable from a broken setting,
-   * and the switch that did it is on a different screen.
-   */
-  async function chooseTune(select) {
-    const name = select.options[select.selectedIndex].text;
-    select.disabled = true;
-    statusEl.innerHTML = `<span>Loading ${escapeHtml(name)}…</span>`;
-    try {
-      await setTune(select.value);
-      statusEl.innerHTML = musicOn()
-        ? `<span>Music: <strong>${escapeHtml(name)}</strong>.</span>`
-        : `<span>Music: <strong>${escapeHtml(name)}</strong>, ` +
-          'once the music is switched back on from the home screen.</span>';
-    } catch {
-      statusEl.innerHTML =
-        '<span class="rec-warn">That tune could not be loaded. ' +
-        'Its instrument may not have been downloaded yet.</span>';
-    } finally {
-      select.disabled = false;
-    }
-  }
-
-  /** @type {HTMLElement|null} */
-  let checkEl = null;
-  /**
-   * The deliberate version of "is this the latest build?".
-   *
-   * The app updates itself silently, which is right for the child using it and
-   * useless for the person trying to work out whether the bug they are looking
-   * at is already fixed. The badge in the corner shows the answer; this is the
-   * button that asks the question.
-   */
-  function checkUpdate() {
-    statusEl.innerHTML = '<span>Checking for an update…</span>';
-    const said = {
-      checked: '<span>Checked — the badge in the corner shows the result.</span>',
-      offline:
-        '<span class="rec-warn">Offline, so nothing could be checked. ' +
-        'This is not the same as being up to date.</span>',
-      failed: '<span class="rec-warn">The check failed. Try again in a moment.</span>',
-      unsupported:
-        '<span class="rec-warn">No service worker. Updates only apply to the ' +
-        'installed app, not to a dev server.</span>',
-    };
-    checkForUpdate().then((outcome) => {
-      statusEl.innerHTML = said[outcome] ?? said.failed;
-    });
-  }
-
-  function toggleCheck() {
-    if (checkEl) {
-      checkEl.remove();
-      checkEl = null;
-      return;
-    }
-    checkEl = buildSoundCheck((key) => byKey.get(key)?.say ?? key);
-    // Next to the status line, not inside the stage: renderStage() rewrites its
-    // own innerHTML on every selection change and would throw the panel away.
-    statusEl.after(checkEl);
-  }
 
   fileInput.addEventListener('change', () => {
     importFrom(fileInput.files?.[0]);
@@ -585,7 +490,6 @@ export function openRecorder({ onClose } = {}) {
       ArrowUp: () => select(index - 1),
       ArrowRight: () => select(index + 1),
       ArrowLeft: () => select(index - 1),
-      Escape: () => close(),
     };
     const handler = keys[event.key];
     if (handler) {
@@ -594,10 +498,18 @@ export function openRecorder({ onClose } = {}) {
     }
   }
 
-  let closed = false;
-  function close() {
-    if (closed) return;
-    closed = true;
+  let disposed = false;
+  /**
+   * Hands the microphone back and stops listening for keys.
+   *
+   * Must be called when this page leaves the screen — which is the whole reason
+   * the page is returned with a teardown rather than just an element. A
+   * microphone left open moves a phone's audio path into its communications
+   * profile, and everything played afterwards stutters.
+   */
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
     document.removeEventListener('keydown', onKey);
     recorder?.dispose();
     stopAll();
@@ -605,18 +517,13 @@ export function openRecorder({ onClose } = {}) {
     // have been decoded against a different device profile, so start the game
     // again from clean buffers rather than from whatever the recorder left.
     refreshAudio();
-    root.remove();
-    onClose?.();
   }
 
   document.addEventListener('keydown', onKey);
-  document.body.appendChild(root);
-  listEl.focus();
   refresh();
   // Deliberately no warm-up here. The mic opens when a take starts and is
   // handed back shortly after, so it is never held open while the parent is
   // listening back — which is exactly when an open mic makes playback stutter.
-  
 
-  return close;
+  return { el: root, dispose };
 }

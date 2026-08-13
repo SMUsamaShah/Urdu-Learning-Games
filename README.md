@@ -103,9 +103,9 @@ on first load.
 
 ## Recording in your own voice
 
-Tap **Grown-ups** on the home screen (hold it, then answer the sum — that is
-there to stop a three-year-old finding it) and you can record every clip in the
-app, on whatever device you are holding.
+Hold **Settings** on the home screen and answer the sum (that is there to stop a
+three-year-old finding it), then open **Your recordings**. You can record every
+clip in the app, on whatever device you are holding.
 
 Those recordings stay on that device. They are stored in the browser, never
 uploaded, and they override whatever the app shipped with — so your child hears

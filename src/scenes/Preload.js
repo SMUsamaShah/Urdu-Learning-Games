@@ -62,7 +62,7 @@ export default class Preload extends Phaser.Scene {
       if (have === 0) {
         console.info(
           'No voice recordings yet — the app runs silent. ' +
-            'Record them from Grown-ups on the home screen, or with `npm run record`.'
+            'Record them from Settings on the home screen, or with `npm run record`.'
         );
       } else if (have < expected) {
         console.info(

@@ -283,12 +283,12 @@ export default class Home extends Phaser.Scene {
     // The spider, sitting to the left of the grid and pointing at it. Same
     // character, same corner, on the menu as in every game — that consistency
     // is most of what makes it read as somebody rather than as a drawing.
-    // Higher up than on the game screens so it stays clear of the Grown-ups
+    // Higher up than on the game screens so it stays clear of the Settings
     // button in the corner beneath it.
     addMascot(this, 116, 618, { height: 214 }).point();
 
     this.buildInstallHint();
-    this.buildGrownUpsButton();
+    this.buildSettingsButton();
     this.buildMusicToggle();
 
     // The browser only lets audio play after the page has been touched, so the
@@ -348,7 +348,7 @@ export default class Home extends Phaser.Scene {
    * exploring the menu. Holding rules out a stray tap; the arithmetic rules out
    * a child who worked out that holding does something.
    */
-  buildGrownUpsButton() {
+  buildSettingsButton() {
     const button = makeButton(this, {
       x: 96,
       y: DESIGN.height - 74,
@@ -360,11 +360,11 @@ export default class Home extends Phaser.Scene {
       onTap: () => {},
     });
 
-    const text = label(this, 0, 0, 'Grown-ups', { size: 15, color: COLORS.inkDim });
+    const text = label(this, 0, 0, 'Settings', { size: 15, color: COLORS.inkDim });
     button.add(text);
     // Held so the verification run can press it without depending on where it
     // happens to sit on screen.
-    this.grownUpsButton = button;
+    this.settingsButton = button;
 
     // A ring that fills while held, so it is obvious that holding is the point
     // and the button is not simply broken.
@@ -383,23 +383,26 @@ export default class Home extends Phaser.Scene {
       onProgress: drawRing,
       onOpen: async () => {
         drawRing(0);
-        if (await askParentalQuestion()) this.openRecorder();
+        if (await askParentalQuestion()) this.openSettings();
       },
     });
   }
 
   /**
-   * Loaded on demand: the recorder pulls in its own CSS and archive code, none
-   * of which a child playing the games ever needs.
+   * Loaded on demand: settings pulls in its own CSS, and the recorder behind it
+   * pulls in a zip writer and the take-polishing code — none of which a child
+   * playing the games ever needs.
    */
-  async openRecorder() {
-    const { openRecorder } = await import('../ui/recorder.js');
+  async openSettings() {
+    const { openSettings } = await import('../ui/settings.js');
     // Phaser keeps handling keys underneath a DOM overlay, so a space bar meant
     // for the record button would also poke the game.
     this.input.keyboard.enabled = false;
-    openRecorder({
+    openSettings({
       onClose: () => {
         this.input.keyboard.enabled = true;
+        // Restarted rather than resumed: the music switch and the recordings
+        // both change what this screen should show.
         this.scene.restart();
       },
     });

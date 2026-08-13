@@ -1,0 +1,249 @@
+/*
+ * The settings screen.
+ *
+ * Rows are large and plain, the way a phone's own settings are: this is read
+ * once in a while by somebody holding a phone at arm's length, not scanned
+ * daily. 56px minimum row height is a comfortable thumb target and roughly what
+ * every mobile platform uses for the same thing.
+ *
+ * Deliberately not the game's visual language. The games are rounded, tilted
+ * and colourful because a three-year-old is looking at them; this is a form,
+ * and dressing a form up as a toy makes it harder to use without making it more
+ * fun. The only colour is the accent on a switch and a tick.
+ */
+
+/* No global reset reaches this overlay, and a row is `width: 100%` with 16px of
+   padding each side — under the default content-box that is 32px wider than the
+   card it sits in, which put every switch off the right-hand edge. */
+.set-root,
+.set-root *,
+.set-root *::before,
+.set-root *::after {
+  box-sizing: border-box;
+}
+
+.set-root {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: #f4f5f8;
+  color: #2b3047;
+  font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  overscroll-behavior: contain;
+}
+
+/* ------------------------------------------------------------------- head */
+
+.set-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.09);
+  /* Above the scrolling body, so the way out never scrolls away. */
+  flex: none;
+}
+
+.set-title {
+  flex: 1;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.set-back,
+.set-close {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: #4a5170;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.set-back:hover,
+.set-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ------------------------------------------------------------------- body */
+
+.set-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.set-list {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 8px 12px 40px;
+}
+
+/* A quiet heading over each group. Not a title — a label for a set of rows. */
+.set-group {
+  padding: 20px 8px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a90a8;
+}
+
+.set-card {
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* -------------------------------------------------------------------- row */
+
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+}
+
+/* Separators are drawn inside the row rather than as a border on it. A border
+   plus a left margin shifts the row right without narrowing it, which pushed
+   every switch and chevron 16px past the edge of the card. */
+
+.set-row + .set-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  /* Inset to where the labels start, so the separators read as dividing a list
+     rather than boxing each row. */
+  left: 16px;
+  right: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.set-row:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.set-row:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.set-row-label {
+  flex: 1;
+  font-size: 17px;
+}
+
+/* The second line on a tune row: what the piece is like. */
+.set-row-sub {
+  display: block;
+  font-size: 13px;
+  color: #8a90a8;
+}
+
+.set-row-value {
+  color: #8a90a8;
+  font-size: 15px;
+  text-align: right;
+}
+
+.set-row-chevron {
+  color: #b6bacb;
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* Shown only on the chosen row of a choice list. */
+.set-row-tick {
+  color: #e98a1f;
+  font-size: 20px;
+  font-weight: 700;
+  visibility: hidden;
+}
+
+.set-row[aria-checked='true'] .set-row-tick {
+  visibility: visible;
+}
+
+/* ----------------------------------------------------------------- switch */
+
+.set-switch {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 51px;
+  height: 31px;
+  margin: 0;
+  border-radius: 16px;
+  background: #d6d8e0;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.set-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.set-switch:checked {
+  background: #e98a1f;
+}
+
+.set-switch:checked::after {
+  transform: translateX(20px);
+}
+
+.set-switch:focus-visible {
+  outline: 2px solid #e98a1f;
+  outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------ pages */
+
+/* A page that is not a list of rows: the recorder, the sound check. */
+.set-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.set-loading {
+  align-items: center;
+  justify-content: center;
+  color: #8a90a8;
+}
+
+.set-note {
+  max-width: 680px;
+  margin: 10px auto;
+  padding: 0 16px;
+  color: #8a90a8;
+  font-size: 14px;
+}

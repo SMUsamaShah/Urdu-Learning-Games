@@ -555,7 +555,7 @@ and look at the screen.
 
 ### The frame-rate readout
 
-`src/lib/fps.js`, switched on from the grown-ups screen. It exists because "it
+`src/lib/fps.js`, switched on from Settings → App. It exists because "it
 feels jerky" has two causes that need opposite fixes — the app is dropping
 frames, or the app is running at sixty and mishandling the input — and by eye
 they are indistinguishable. Check the number before optimising anything.

@@ -221,7 +221,7 @@ recorded/  one file per clip, named exactly as the app expects.
 
 To use these on another device
 ------------------------------
-Open the app, go to Grown-ups, and choose Import. Pick this zip file.
+Open the app, go to Settings, then Your recordings, and choose Import.
 
 To make these the app's built-in voice for everyone
 ---------------------------------------------------
