@@ -255,6 +255,26 @@
       "id": "colours",
       "text": "رنگ",
       "roman": "rang"
+    },
+    {
+      "id": "join-picture",
+      "text": "تصویر سے ملاؤ",
+      "roman": "tasveer se milao"
+    },
+    {
+      "id": "joining",
+      "text": "ملاؤ",
+      "roman": "milao"
+    },
+    {
+      "id": "count-gaps",
+      "text": "گنتی بھرو",
+      "roman": "ginti bharo"
+    },
+    {
+      "id": "counting",
+      "text": "گنتی کی ترتیب",
+      "roman": "ginti ki tarteeb"
     }
   ]
 }

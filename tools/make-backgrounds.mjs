@@ -148,6 +148,14 @@ const BACKDROPS = {
     'An art room: a plain pale lilac wall filling most of the picture, a pale ' +
     'wooden desk edge along the very bottom, a jar of paintbrushes at the far ' +
     'left edge. Very quiet — a large letter is coloured in over the middle.',
+  ConnectPairs:
+    'A tidy noticeboard wall: a plain pale cork-coloured surface filling most ' +
+    'of the picture, a thin wooden frame edge at the far left and right, a ' +
+    'narrow shelf along the very bottom. Completely empty in the middle.',
+  NumberLine:
+    'A railway siding: flat pale gravel across the bottom third with two thin ' +
+    'rails, a low hedge behind it, one signal post at the far right edge, ' +
+    'wide pale sky above.',
   Trace:
     'An almost empty pale blue sky with the faintest suggestion of two soft ' +
     'clouds at the top corners and a thin strip of green grass along the very ' +

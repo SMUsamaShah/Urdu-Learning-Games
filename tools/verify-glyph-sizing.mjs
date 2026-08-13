@@ -43,6 +43,8 @@ const SCENES = [
   'Whack',
   'OddOne',
   'InOrder',
+  'ConnectPairs',
+  'NumberLine',
   'JoinForms',
   'StartsWith',
   'Trace',

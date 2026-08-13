@@ -281,6 +281,100 @@ if (!process.exitCode) {
   if (!process.exitCode) step('every run was consecutive and every line-up was answerable');
 }
 
+// ---------------------------------------------------------- connect pairs
+
+if (!process.exitCode) {
+  await start('ConnectPairs');
+  step('ConnectPairs: drawing a line from each letter to its picture');
+
+  const geo = await page.evaluate(() => {
+    const rect = window.__game.canvas.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, scale: rect.width / window.__game.scale.width };
+  });
+  const toPage = (x, y) => [geo.left + x * geo.scale, geo.top + y * geo.scale];
+
+  const state = () =>
+    page.evaluate(() => {
+      const scene = window.__game.scene.getScene('ConnectPairs');
+      const shot = (c) => ({ letterId: c.letterId, x: c.x, y: c.y, joined: c.joined });
+      return {
+        round: scene.round,
+        joined: scene.joined,
+        letters: scene.letters.map(shot),
+        pictures: scene.pictures.map(shot),
+      };
+    });
+
+  const first = await state();
+
+  // Every letter must have exactly one picture to go to, and vice versa. A
+  // letter with no partner cannot be joined and the board never finishes.
+  for (const letter of first.letters) {
+    const matches = first.pictures.filter((p) => p.letterId === letter.letterId);
+    if (matches.length !== 1) {
+      fail(`"${letter.letterId}" has ${matches.length} pictures, not one`);
+    }
+  }
+  // The two columns must not be in the same order, or every pair is simply the
+  // one opposite and the board can be cleared without looking at anything.
+  const sameOrder = first.letters.every(
+    (l, i) => first.pictures[i]?.letterId === l.letterId
+  );
+  if (sameOrder && first.letters.length > 1) {
+    fail('the letters and the pictures are in the same order — every pair is the one opposite');
+  }
+  if (!process.exitCode) step(`${first.letters.length} letters, each with one picture`);
+
+  const dragTo = async (from, tx, ty) => {
+    const [sx, sy] = toPage(from.x, from.y);
+    const [ex, ey] = toPage(tx, ty);
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    for (let i = 1; i <= 6; i++) {
+      await page.mouse.move(sx + ((ex - sx) * i) / 6, sy + ((ey - sy) * i) / 6);
+      await page.waitForTimeout(16);
+    }
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+  };
+
+  // A line onto the wrong picture must join nothing.
+  if (first.letters.length > 1) {
+    const letter = first.letters[0];
+    const wrong = first.pictures.find((p) => p.letterId !== letter.letterId);
+    await dragTo(letter, wrong.x, wrong.y);
+    const after = await state();
+    if (after.joined !== 0) fail('a line to the wrong picture joined anyway');
+    else step('a line to the wrong picture joins nothing');
+  }
+
+  step('ConnectPairs: joining every pair');
+  for (const letter of first.letters) {
+    const now = await state();
+    const live = now.letters.find((l) => l.letterId === letter.letterId);
+    if (live.joined) continue;
+    const home = now.pictures.find((p) => p.letterId === letter.letterId);
+    await dragTo(live, home.x, home.y);
+  }
+
+  const done = await state();
+  if (done.joined !== first.letters.length) {
+    fail(`joined ${done.joined} of ${first.letters.length} pairs by dragging`);
+  } else {
+    step('every pair joined');
+    const moved = await page
+      .waitForFunction(
+        (before) => window.__game.scene.getScene('ConnectPairs').round > before,
+        first.round,
+        { timeout: 30000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (!moved) fail('joining every pair did not deal a new board');
+    else step('board finished and a new one dealt');
+  }
+}
+
 // --------------------------------------------------------------- in order
 
 if (!process.exitCode) {
@@ -598,13 +692,14 @@ if (!process.exitCode) {
 
 // ------------------------------------------------------------- caterpillar
 
-if (!process.exitCode) {
-  await start('Caterpillar');
-  step('Caterpillar: checking the run and the tray agree');
+for (const KEY of ['Caterpillar', 'NumberLine']) {
+  if (process.exitCode) break;
+  await start(KEY);
+  step(`${KEY}: checking the run and the tray agree`);
 
   const board = () =>
-    page.evaluate(() => {
-      const scene = window.__game.scene.getScene('Caterpillar');
+    page.evaluate((k) => {
+      const scene = window.__game.scene.getScene(k);
       return {
         run: scene.run,
         holes: scene.holes,
@@ -613,7 +708,7 @@ if (!process.exitCode) {
         tray: scene.tray.list.map((t) => ({ letterId: t.letterId, used: t.used })),
         sequence: scene.sequence,
       };
-    });
+    }, KEY);
 
   const first = await board();
 
@@ -647,10 +742,10 @@ if (!process.exitCode) {
   }
 
   const tapTray = (letterId) =>
-    page.evaluate((id) => {
-      const scene = window.__game.scene.getScene('Caterpillar');
+    page.evaluate(([k, id]) => {
+      const scene = window.__game.scene.getScene(k);
       scene.tray.list.find((t) => t.letterId === id && !t.used)?.emit('pointerup');
-    }, letterId);
+    }, [KEY, letterId]);
 
   // A wrong tray letter must not fill the hole it was aimed at.
   const wrong = trayIds.find((id) => !first.holes.some((h) => first.run[h] === id));
@@ -663,15 +758,15 @@ if (!process.exitCode) {
   }
 
   // Holes fill in reading order, so the answers have to be given in that order.
-  step('Caterpillar: filling every hole');
+  step(`${KEY}: filling every hole`);
   for (const hole of first.holes) {
     await tapTray(first.run[hole]);
     await page.waitForTimeout(700);
   }
   const moved = await page
     .waitForFunction(
-      (before) => window.__game.scene.getScene('Caterpillar').round > before,
-      first.round,
+      ([k, before]) => window.__game.scene.getScene(k).round > before,
+      [KEY, first.round],
       { timeout: 30000 }
     )
     .then(() => true)

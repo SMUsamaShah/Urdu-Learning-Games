@@ -47,6 +47,8 @@ export const INSTRUCTIONS = [
   'odd-one',
   'in-order',
   'colour-in',
+  'join-picture',
+  'count-gaps',
 ];
 
 /**

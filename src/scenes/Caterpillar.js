@@ -54,8 +54,11 @@ const BODY = { top: 210, right: DESIGN.width - 60, left: 250 };
 const TRAY_Y = DESIGN.height - 110;
 
 export default class Caterpillar extends Phaser.Scene {
-  constructor() {
-    super('Caterpillar');
+  constructor(key = 'Caterpillar') {
+    // Takes its key so a subclass can be a different scene with the same
+    // machinery — see NumberLine. Phaser reads the key from the Scene
+    // constructor, so it cannot be set afterwards.
+    super(key);
     /** @type {string[]} */
     this.sequence = [];
     this.round = 0;
@@ -71,13 +74,39 @@ export default class Caterpillar extends Phaser.Scene {
     queueBackdrop(this);
   }
 
+  /**
+   * The run to draw from, the glyph for one of its items, and the whole set the
+   * em is measured against.
+   *
+   * Three hooks rather than one, because a subclass swapping the alphabet for
+   * the numerals has to change all three together and nothing else — see
+   * NumberLine, which is this game with ۰..۹ in it. Everything below is written
+   * against these and never against `letterGlyph` directly.
+   */
+  items() {
+    return sequenceFor('alphabetical').filter((id) => letterGlyph(id));
+  }
+
+  glyphFor(id) {
+    return letterGlyph(id, 'isolated');
+  }
+
+  allGlyphs() {
+    return allLetterGlyphs('isolated');
+  }
+
+  /** Texture keys are namespaced per scene, or two runs would share a size. */
+  get keyPrefix() {
+    return 'caterpillar';
+  }
+
   create() {
-    this.sequence = sequenceFor('alphabetical').filter((id) => letterGlyph(id));
+    this.sequence = this.items();
     this.round = 0;
 
     this.stage = addStage(this, {
-      instruction: 'fill-gaps',
-      roman: 'Fill the gaps',
+      instruction: this.instruction ?? 'fill-gaps',
+      roman: this.instructionRoman ?? 'Fill the gaps',
     });
     this.banner = this.stage.banner;
     this.mascot = this.stage.mascot;
@@ -95,9 +124,9 @@ export default class Caterpillar extends Phaser.Scene {
     this.tray.removeAll(true);
     this.filled = 0;
     this.locked = false;
-    this.banner.setInstruction('fill-gaps', 'Fill the gaps');
+    this.banner.setInstruction(this.instruction ?? 'fill-gaps', this.instructionRoman ?? 'Fill the gaps');
 
-    const plan = ROUNDS[Math.min(this.round, ROUNDS.length - 1)];
+    const plan = this.rounds[Math.min(this.round, this.rounds.length - 1)];
     const length = Math.min(plan.run, this.sequence.length);
     const start = Phaser.Math.Between(0, this.sequence.length - length);
     this.run = this.sequence.slice(start, start + length);
@@ -123,9 +152,14 @@ export default class Caterpillar extends Phaser.Scene {
     this.mascot?.point();
   }
 
+  /** How long the run is and how many holes it has, per round. */
+  get rounds() {
+    return ROUNDS;
+  }
+
   /** The em every letter on this screen is drawn at, tray and body alike. */
   letterEm(box) {
-    return fitEmAlone(allLetterGlyphs('isolated'), box, box).em;
+    return fitEmAlone(this.allGlyphs(), box, box).em;
   }
 
   buildBody() {
@@ -186,8 +220,8 @@ export default class Caterpillar extends Phaser.Scene {
         this,
         0,
         0,
-        `caterpillar:em${Math.round(em)}:${letterId}`,
-        letterGlyph(letterId, 'isolated'),
+        `${this.keyPrefix}:em${Math.round(em)}:${letterId}`,
+        this.glyphFor(letterId),
         { em, color: COLORS.ink }
       );
       segment.add(segment.glyph);
@@ -229,8 +263,8 @@ export default class Caterpillar extends Phaser.Scene {
           this,
           0,
           0,
-          `caterpillar-tray:em${Math.round(em)}:${id}`,
-          letterGlyph(id, 'isolated'),
+          `${this.keyPrefix}-tray:em${Math.round(em)}:${id}`,
+          this.glyphFor(id),
           { em, color: COLORS.ink }
         )
       );
@@ -305,7 +339,7 @@ export default class Caterpillar extends Phaser.Scene {
         });
         hop(this, segment, { height: 14 });
         dance(this, segment);
-        sayLetter(wanted, { word: false });
+        this.say(wanted);
 
         this.filled++;
         if (this.filled < this.holes.length) return this.markNext();
@@ -321,10 +355,19 @@ export default class Caterpillar extends Phaser.Scene {
    * the letters were always in order, and hearing them in order is what makes
    * that an alphabet rather than a row of shapes.
    */
+  /** How one item is named, and how the finished run is read out. */
+  say(id) {
+    sayLetter(id, { word: false });
+  }
+
+  sayRun(ids) {
+    sayLetters(ids);
+  }
+
   finish() {
     this.locked = true;
     finished();
-    sayLetters(this.run);
+    this.sayRun(this.run);
     this.time.delayedCall(700, () => {
       wellDone(this, this.stage, { duration: 2600 });
       this.round++;

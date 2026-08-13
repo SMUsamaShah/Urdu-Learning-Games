@@ -20,6 +20,8 @@ import Whack from './scenes/Whack.js';
 import OddOne from './scenes/OddOne.js';
 import InOrder from './scenes/InOrder.js';
 import Paint from './scenes/Paint.js';
+import ConnectPairs from './scenes/ConnectPairs.js';
+import NumberLine from './scenes/NumberLine.js';
 import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
 import { createAppAudioContext } from './lib/audio-context.js';
@@ -84,6 +86,8 @@ const game = new Phaser.Game({
     OddOne,
     InOrder,
     Paint,
+    ConnectPairs,
+    NumberLine,
     Trace,
   ],
 });

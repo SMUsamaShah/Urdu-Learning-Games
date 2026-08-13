@@ -163,6 +163,20 @@ const GAMES = [
     icon: { letter: 'ain', form: 'isolated' },
   },
   {
+    scene: 'ConnectPairs',
+    ui: 'joining',
+    roman: 'Join up',
+    color: 0x4f7f5f,
+    icon: { letter: 'wao', form: 'isolated' },
+  },
+  {
+    scene: 'NumberLine',
+    ui: 'counting',
+    roman: 'Counting order',
+    color: 0x2f7f9e,
+    number: 'n5',
+  },
+  {
     scene: 'Trace',
     ui: 'trace',
     roman: 'Write',
