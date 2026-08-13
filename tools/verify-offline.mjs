@@ -178,7 +178,11 @@ errors.length = 0;
 const badge = await page.evaluate(async () => {
   const el = document.querySelector('.update-badge');
   if (!el) return { missing: true };
-  const seen = { hiddenAtRest: el.hidden };
+  // Computed style, not the `hidden` property. The property was set correctly
+  // all along while an author `display: flex` overrode the user agent's
+  // `[hidden] { display: none }`, so the badge sat on screen for ever with a
+  // ring spinning — and a check that reads the property passes on exactly that.
+  const seen = { hiddenAtRest: getComputedStyle(el).display === 'none' };
 
   // Through the app's own module, not a fresh import: this runs against the
   // built preview, where /src/ does not exist at all.
@@ -191,11 +195,22 @@ const badge = await page.evaluate(async () => {
   });
   observer.observe(el, { attributes: true });
 
-  const ran = await checkForUpdate();
+  const outcome = await checkForUpdate();
   await new Promise((r) => setTimeout(r, 1500));
   observer.disconnect();
 
-  return { ...seen, ran, states: [...states], spinner: Boolean(el.querySelector('.update-spinner')) };
+  // And it has to go away again once it is done, which is the other half of
+  // the same bug.
+  await new Promise((r) => setTimeout(r, 3000));
+  const hiddenAfter = getComputedStyle(el).display === 'none';
+
+  return {
+    ...seen,
+    outcome,
+    hiddenAfter,
+    states: [...states],
+    spinner: Boolean(el.querySelector('.update-spinner')),
+  };
 });
 
 if (badge.missing) {
@@ -203,9 +218,12 @@ if (badge.missing) {
 } else {
   if (!badge.hiddenAtRest) fail('the update indicator is showing when nothing is happening');
   if (!badge.spinner) fail('the update indicator has no spinner element');
-  if (!badge.ran) fail('checkForUpdate() found no service worker registration');
+  if (badge.outcome !== 'checked') {
+    fail(`checkForUpdate() reported "${badge.outcome}", expected "checked"`);
+  }
   if (!badge.states.length) fail('the update indicator never became visible during a check');
   else step(`  indicator showed: ${badge.states.join(' -> ')}`);
+  if (!badge.hiddenAfter) fail('the update indicator never went away after finishing');
 }
 
 await page.screenshot({

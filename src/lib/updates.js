@@ -61,20 +61,22 @@ function show(state, text) {
  * `updatefound` fires as soon as the browser starts installing a new worker,
  * which is the moment worth showing — by the time it has installed, the reload
  * is imminent and a spinner would flash past unread.
+ *
+ * Whether this is the first install or an update is decided *when the watch is
+ * attached*, not when the worker finishes. By then `controller` is set either
+ * way, so asking later reports every first-ever visit as "Updated" — a build
+ * that has never run before, announced as a change to one that has.
  */
-function watch(registration) {
+function watch(registration, { firstInstall }) {
   registration.addEventListener('updatefound', () => {
     const worker = registration.installing;
     if (!worker) return;
-    show('downloading', 'Updating');
+    show('downloading', firstInstall ? 'Saving for offline' : 'Updating');
 
     worker.addEventListener('statechange', () => {
       if (worker.state === 'installed') {
-        // A worker installing with no controller is the very first visit: the
-        // app has just been made available offline, which is worth saying once
-        // and is not an update.
-        show(navigator.serviceWorker.controller ? 'updated' : 'current',
-          navigator.serviceWorker.controller ? 'Updated' : 'Ready offline');
+        show(firstInstall ? 'current' : 'updated',
+          firstInstall ? 'Ready offline' : 'Updated');
       } else if (worker.state === 'redundant') {
         // Installed and then discarded: the download failed, or it was
         // superseded. Either way nothing is coming, so stop spinning.
@@ -94,14 +96,23 @@ function watch(registration) {
  * wondering.
  */
 async function check(registration, { quiet = false } = {}) {
-  if (!navigator.onLine) return;
+  // Offline is this app's normal state, so "could not check" has to be
+  // distinguishable from "checked, nothing new" — reporting the second when the
+  // first happened is how somebody concludes they are on the latest build when
+  // nobody ever asked the server.
+  if (!navigator.onLine) {
+    if (!quiet) show('current', 'Offline — cannot check');
+    return 'offline';
+  }
   if (!quiet) show('checking', 'Checking');
   try {
     await registration.update();
     // If an update was found, `updatefound` has already taken over the display.
     if (!quiet && el?.dataset.state === 'checking') show('current', 'Up to date');
+    return 'checked';
   } catch {
     if (!quiet && el?.dataset.state === 'checking') show(null);
+    return 'failed';
   }
 }
 
@@ -121,8 +132,12 @@ export function mountUpdateIndicator() {
 
   if (!('serviceWorker' in navigator)) return;
 
+  // Read before awaiting anything: `ready` resolves only once a worker is
+  // active, by which point a first install looks identical to an update.
+  const firstInstall = !navigator.serviceWorker.controller;
+
   navigator.serviceWorker.ready.then((registration) => {
-    watch(registration);
+    watch(registration, { firstInstall });
 
     // Quiet on load: if a new build is waiting, `updatefound` will say so, and
     // announcing "up to date" every single launch is noise.
@@ -148,11 +163,18 @@ export function mountUpdateIndicator() {
  * Wired to the grown-ups screen: "is this the latest?" is a question a person
  * asks deliberately, and the answer should be a visible check rather than a
  * silent one.
+ *
+ * @returns {Promise<'checked'|'offline'|'failed'|'unsupported'>} what actually
+ *   happened, which is not the same as whether a registration was found — see
+ *   the offline case in check().
  */
 export async function checkForUpdate() {
-  if (!('serviceWorker' in navigator)) return false;
-  const registration = await navigator.serviceWorker.getRegistration();
-  if (!registration) return false;
-  await check(registration);
-  return true;
+  if (!('serviceWorker' in navigator)) return 'unsupported';
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) return 'unsupported';
+    return await check(registration);
+  } catch {
+    return 'failed';
+  }
 }

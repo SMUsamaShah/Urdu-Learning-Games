@@ -30,6 +30,7 @@
  * Usage: npm run dev &  then
  *   node tools/preview-music.mjs --list
  *   node tools/preview-music.mjs [seconds] [outfile] [--tune waltz] [--instrument koto]
+ *   node tools/preview-music.mjs rewards.wav --flourishes
  */
 
 import fs from 'node:fs';
@@ -48,9 +49,16 @@ function option(name) {
 const INSTRUMENT = option('instrument');
 const TUNE = option('tune');
 const LIST = args.includes('--list');
+const FLOURISHES = args.includes('--flourishes');
+
+// Positionals are told apart by shape rather than by position. `40 out.wav` and
+// `rewards.wav` and `out.wav 40` all mean what they look like, which matters
+// because the flourish render takes no duration — reading its filename as a
+// duration silently wrote to the default path and left the file the caller
+// asked for missing.
 const rest = args.filter((a) => !a.startsWith('--'));
-const SECONDS = Number(rest[0] || 40);
-const OUT = rest[1] || 'music-preview.wav';
+const SECONDS = Number(rest.find((a) => Number.isFinite(Number(a))) ?? 40);
+const OUT = rest.find((a) => !Number.isFinite(Number(a))) ?? 'music-preview.wav';
 const APP = process.env.APP_URL || 'http://localhost:5173';
 
 if (!hasBrowser()) {
@@ -79,20 +87,24 @@ if (LIST) {
 }
 
 process.stderr.write(
-  `· rendering ${SECONDS}s of ${TUNE ?? 'the tune'}${INSTRUMENT ? ` on ${INSTRUMENT}` : ''}\n`
+  FLOURISHES
+    ? '· rendering the reward flourishes\n'
+    : `· rendering ${SECONDS}s of ${TUNE ?? 'the tune'}${INSTRUMENT ? ` on ${INSTRUMENT}` : ''}\n`
 );
 
-const rendered = await page.evaluate(async ([seconds, tune, instrument]) => {
+const rendered = await page.evaluate(async ([seconds, tune, instrument, flourishes]) => {
   const { renderMusic, stopMusic } = window.__music;
   // Tone.Offline swaps the global context while it runs, so the live tune has
   // to be out of the way.
   stopMusic();
   await new Promise((r) => setTimeout(r, 600));
 
-  const { sampleRate, channels } = await renderMusic(seconds, {
-    tune: tune || undefined,
-    instrument: instrument || undefined,
-  });
+  const { sampleRate, channels } = flourishes
+    ? await window.__flourish.renderFlourishes()
+    : await renderMusic(seconds, {
+        tune: tune || undefined,
+        instrument: instrument || undefined,
+      });
 
   // Mixed to mono and quantised in the page, because moving forty seconds of
   // stereo float across the bridge is thirty megabytes.
@@ -113,7 +125,7 @@ const rendered = await page.evaluate(async ([seconds, tune, instrument]) => {
     binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
   }
   return { sampleRate, base64: btoa(binary) };
-}, [SECONDS, TUNE, INSTRUMENT]);
+}, [SECONDS, TUNE, INSTRUMENT, FLOURISHES]);
 
 await browser.close();
 
@@ -132,20 +144,37 @@ for (let i = 0; i < count; i++) {
   if (v >= 32700) clipped++;
 }
 
-/**
- * Clicks, found as jumps between neighbouring samples.
+/*
+ * There used to be a click detector here — sample-to-sample jumps above a
+ * fraction of the file's peak, on the theory that audio is continuous and a
+ * seam is not. It was wrong twice over, and both are worth recording so it does
+ * not get reinvented.
  *
- * Audio is continuous; a jump of a large fraction of full scale in one sample
- * period is not something an instrument does, it is a seam. Measured against
- * the signal's own peak so it means the same thing however loud the render is.
+ * It does not work. A band-limited signal near Nyquist legitimately moves a
+ * long way in one sample period: a sine of amplitude A at 16 kHz sampled at
+ * 44.1 kHz steps by up to A·2π·16/44.1 ≈ 2.3·A between neighbours. A struck
+ * glockenspiel is exactly that kind of signal, so its attacks slew harder than
+ * any threshold a real splice would have to clear. Rendering the reward
+ * flourishes flagged 646 "discontinuities", every one of them clustered on the
+ * seven loudest note onsets. Trying to rescue it by only counting isolated
+ * jumps did not separate the cases either (the bad capture: 7 flagged, 7
+ * isolated; the flourishes: 646 flagged, 471 isolated).
+ *
+ * It is also guarding a fault that this path can no longer have. The clicks it
+ * once caught came from tapping the live output through a ScriptProcessorNode,
+ * whose callback ran on a main thread busy with a WebGL game and got starved.
+ * Nothing here streams any more: the audio graph renders itself into an
+ * OfflineAudioContext and the whole buffer crosses the bridge in one piece.
+ * There is no longer a place for a block to go missing.
+ *
+ * What is left below is what can still go wrong and can be measured without a
+ * heuristic — a mix loud enough to clip, and a render that produced no sound.
  */
-let clicks = 0;
+
 let worstJump = 0;
-const jumpLimit = Math.max(600, rawPeak * 0.45);
 for (let i = 1; i < count; i++) {
   const jump = Math.abs(pcm[i] - pcm[i - 1]);
   if (jump > worstJump) worstJump = jump;
-  if (jump > jumpLimit) clicks++;
 }
 
 // --- Normalise for listening ------------------------------------------------
@@ -192,14 +221,5 @@ if (clipped > count / 5000) {
   console.error(`WARNING: ${clipped} samples at full scale — the mix is clipping.`);
   bad = true;
 }
-if (clicks > 0) {
-  console.error(
-    `WARNING: ${clicks} discontinuit${clicks === 1 ? 'y' : 'ies'} ` +
-      `(worst jump ${(worstJump / 32768).toFixed(2)} of full scale). ` +
-      'Those are clicks, and they are a rendering fault rather than a musical one.'
-  );
-  bad = true;
-} else {
-  console.log(`clean: no discontinuities, worst step ${(worstJump / 32768).toFixed(3)}`);
-}
+console.log(`steepest step between samples: ${(worstJump / 32768).toFixed(3)} of full scale`);
 process.exit(bad ? 1 : 0);

@@ -493,10 +493,18 @@ export function openRecorder({ onClose } = {}) {
    */
   function checkUpdate() {
     statusEl.innerHTML = '<span>Checking for an update…</span>';
-    checkForUpdate().then((found) => {
-      statusEl.innerHTML = found
-        ? '<span>Checked — the badge in the corner shows the result.</span>'
-        : '<span class="rec-warn">No service worker. Updates only apply to the installed app, not to a dev server.</span>';
+    const said = {
+      checked: '<span>Checked — the badge in the corner shows the result.</span>',
+      offline:
+        '<span class="rec-warn">Offline, so nothing could be checked. ' +
+        'This is not the same as being up to date.</span>',
+      failed: '<span class="rec-warn">The check failed. Try again in a moment.</span>',
+      unsupported:
+        '<span class="rec-warn">No service worker. Updates only apply to the ' +
+        'installed app, not to a dev server.</span>',
+    };
+    checkForUpdate().then((outcome) => {
+      statusEl.innerHTML = said[outcome] ?? said.failed;
     });
   }
 

@@ -274,6 +274,10 @@ async function build() {
   // the same context. Two setContext calls would leave one of them scheduling
   // into a context nobody is rendering, silently.
   Tone = await loadTone();
+  // Belt and braces: `ctx` came from Phaser and so did what loadTone was given,
+  // but a mismatch here is invisible until two nodes refuse to connect, and the
+  // symptom then is silence rather than an error anybody sees.
+  if (Tone.getContext().rawContext !== ctx) Tone.setContext(ctx);
 
   tap = ctx.createGain();
   tap.connect(ctx.destination);
@@ -324,7 +328,11 @@ export async function renderMusic(seconds, options = {}) {
   const buffer = await T.Offline(async ({ transport }) => {
     const band = await createBand(T, T.getDestination(), tune);
     setFeel(transport, tune);
-    scheduleParts(T, transport, band, tune);
+    // Unguarded. `safely` exists for a stalling main thread, which an offline
+    // render does not have — and swallowing errors here would let a bad tune
+    // write a silent file and report success, which is exactly the sort of
+    // thing the preview exists to catch.
+    scheduleParts(T, transport, band, tune, (callback) => callback);
     band.master.gain.value = T.dbToGain(VOLUME_DB);
     transport.start(0);
   }, seconds);
@@ -367,7 +375,7 @@ function safely(callback) {
 }
 
 /** Lays the tune out on the transport as one repeating block. */
-function scheduleParts(T, transport, { lead, bass, pad, drone, shaker }, tune) {
+function scheduleParts(T, transport, { lead, bass, pad, drone, shaker }, tune, guard = safely) {
   const loopBeats = tune.bars.length * tune.beats;
   const beats = (n) => `0:${n}`;
   const seconds = (beatCount) => (beatCount * 60) / tune.bpm;
@@ -389,7 +397,7 @@ function scheduleParts(T, transport, { lead, bass, pad, drone, shaker }, tune) {
     );
   }
 
-  new T.Part(safely((time, value) => {
+  new T.Part(guard((time, value) => {
     // Velocity varies a little note to note. Identical strikes are the single
     // most machine-like thing a sequenced part can do.
     lead.triggerAttackRelease(value.note, value.hold, time, 0.55 + Math.random() * 0.2);
@@ -406,13 +414,13 @@ function scheduleParts(T, transport, { lead, bass, pad, drone, shaker }, tune) {
   });
 
   new T.Part(
-    safely((time, value) => bass.triggerAttackRelease(value.note, '4n', time, 0.8)),
+    guard((time, value) => bass.triggerAttackRelease(value.note, '4n', time, 0.8)),
     bassNotes
   ).start(0);
 
   const padHold = seconds(tune.padLength ?? tune.beats * 0.75);
   new T.Part(
-    safely((time, value) => pad.triggerAttackRelease(value.notes, padHold, time, 0.5)),
+    guard((time, value) => pad.triggerAttackRelease(value.notes, padHold, time, 0.5)),
     padChords
   ).start(0);
 
@@ -426,7 +434,7 @@ function scheduleParts(T, transport, { lead, bass, pad, drone, shaker }, tune) {
     }
   }
   new T.Part(
-    safely((time, value) =>
+    guard((time, value) =>
       shaker.triggerAttackRelease('32n', time, value.accent ? 0.9 : 0.45)
     ),
     shakes
@@ -437,7 +445,7 @@ function scheduleParts(T, transport, { lead, bass, pad, drone, shaker }, tune) {
   // progression fights every chord that is not the tonic.
   if (drone) {
     new T.Part(
-      safely((time, value) =>
+      guard((time, value) =>
         drone.triggerAttackRelease(value.notes, seconds(loopBeats), time, 0.5)
       ),
       [{ time: beats(0), notes: tune.drone }]

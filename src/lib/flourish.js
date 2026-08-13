@@ -67,25 +67,7 @@ let voice = null;
 function prepare() {
   ready ??= (async () => {
     const T = await loadTone();
-
-    const out = new T.Gain(0.9).toDestination();
-    // Short and bright. A long tail on something that fires every few seconds
-    // turns into a wash; this is just enough room to stop it sounding dry.
-    const reverb = new T.Reverb({ decay: 1.6, wet: 0.26 });
-    reverb.connect(out);
-    await reverb.ready;
-
-    const sampler = new T.Sampler({
-      urls: { C4: 'C4.mp3', 'F#4': 'Gb4.mp3', C5: 'C5.mp3', 'F#5': 'Gb5.mp3', C6: 'C6.mp3' },
-      baseUrl: `${import.meta.env.BASE_URL}audio/instruments/${INSTRUMENT}/`,
-      release: 1.6,
-      volume: -6,
-    });
-    sampler.connect(reverb);
-    sampler.connect(out);
-    await T.loaded();
-
-    voice = { T, sampler };
+    voice = { T, ...(await buildVoice(T, T.getDestination())) };
     return voice;
   })().catch(() => {
     // Kept null, so every call falls through to the synthesised version rather
@@ -96,7 +78,41 @@ function prepare() {
   return ready;
 }
 
-/** Plays notes at offsets in seconds from now, if the voice is up. */
+/**
+ * The sampler and its reverb, built into a destination.
+ *
+ * Takes its destination so the identical voice serves the live path and the
+ * offline render — the same reason createBand does in music.js. A renderer that
+ * declares its own instrument is a preview of something else.
+ */
+async function buildVoice(T, destination) {
+  // Short and bright. A long tail on something that fires every few seconds
+  // turns into a wash; this is just enough room to stop it sounding dry.
+  const reverb = new T.Reverb({ decay: 1.6, wet: 0.26 });
+  reverb.connect(destination);
+  await reverb.ready;
+
+  const sampler = new T.Sampler({
+    urls: { C4: 'C4.mp3', 'F#4': 'Gb4.mp3', C5: 'C5.mp3', 'F#5': 'Gb5.mp3', C6: 'C6.mp3' },
+    baseUrl: `${import.meta.env.BASE_URL}audio/instruments/${INSTRUMENT}/`,
+    release: 1.6,
+    volume: -6,
+  });
+  sampler.connect(reverb);
+  sampler.connect(destination);
+  await T.loaded();
+
+  return { sampler, reverb };
+}
+
+/**
+ * Plays notes at offsets in seconds from now, if the voice is up.
+ *
+ * The fallback fires only when *nothing* was scheduled. Wrapping the whole loop
+ * and falling back on any failure means a throw on the fourth note plays the
+ * synthesised chime on top of three notes already committed to the audio clock
+ * — two rewards at once, which is worse than either.
+ */
 function play(notes, fallback) {
   prepare();
   if (!voice) {
@@ -105,90 +121,104 @@ function play(notes, fallback) {
   }
   const { T, sampler } = voice;
   const now = T.now();
-  try {
-    for (const [note, at, duration, velocity] of notes) {
+  let sounded = 0;
+  for (const [note, at, duration, velocity] of notes) {
+    try {
       sampler.triggerAttackRelease(note, duration, now + at, velocity);
+      sounded++;
+    } catch {
+      // A late or duplicated trigger; see the note on `safely` in music.js.
     }
-  } catch {
-    // A late or duplicated trigger; see the note on `safely` in music.js. The
-    // reward simply does not sound, rather than taking the game down.
-    fallback();
   }
+  if (!sounded) fallback();
 }
 
 /**
- * One right answer.
+ * The three flourishes, as [note, seconds from the start, length, velocity].
  *
- * Four notes up the scale with the last one held, which is the shape of every
- * "yes!" in every game ever made, and it works because it is a question
- * answered: three quick steps and somewhere to land.
+ * Written once and used by both the live path and the renderer below. They were
+ * two copies for a while, which is a guaranteed drift: the preview would go on
+ * sounding like whatever the app used to do.
  */
-export function rightAnswer() {
-  // Starts somewhere different each time, so a hundred right answers are not a
-  // hundred identical noises. Always upward, always in the same scale.
-  const start = Math.floor(Math.random() * 2);
-  play(
-    [
+const FLOURISHES = {
+  /**
+   * One right answer: four notes up the scale with the last one held, plus a
+   * fifth above it. That is the shape of every "yes!" in every game ever made,
+   * and it works because it is a question answered — three quick steps and
+   * somewhere to land.
+   *
+   * A function rather than a table, because it starts on a different step each
+   * time; a hundred right answers should not be a hundred identical noises.
+   */
+  rightAnswer() {
+    const start = Math.floor(Math.random() * 2);
+    return [
       [UP[start], 0, 0.18, 0.7],
       [UP[start + 1], 0.075, 0.18, 0.75],
       [UP[start + 2], 0.15, 0.18, 0.8],
       [UP[start + 3], 0.225, 0.9, 0.9],
-      // A fifth above the landing note, quietly, which is what makes it sound
-      // like a chord arriving rather than a scale stopping.
       [UP[start + 4], 0.235, 0.9, 0.45],
-    ],
-    () => sfx.correct()
-  );
+    ];
+  },
+
+  /**
+   * Five in a row: the same idea an octave wider, ending on a held triad rather
+   * than a single note. Audibly bigger than one answer without being the end of
+   * the world.
+   */
+  milestone: () => [
+    ['C5', 0, 0.14, 0.7],
+    ['E5', 0.07, 0.14, 0.75],
+    ['G5', 0.14, 0.14, 0.8],
+    ['C6', 0.21, 0.16, 0.85],
+    ['E6', 0.28, 1.4, 0.9],
+    ['C6', 0.29, 1.4, 0.6],
+    ['G5', 0.3, 1.4, 0.5],
+    ['C5', 0.31, 1.6, 0.45],
+  ],
+
+  /**
+   * A whole activity finished. The one with a run-up: the notes start after the
+   * drum roll rather than under it.
+   */
+  finished: () => [
+    ['G4', 0.42, 0.12, 0.6],
+    ['C5', 0.5, 0.12, 0.7],
+    ['E5', 0.58, 0.12, 0.8],
+    ['G5', 0.66, 0.12, 0.85],
+    ['C6', 0.74, 2, 0.95],
+    ['G5', 0.75, 2, 0.7],
+    ['E5', 0.76, 2, 0.6],
+    ['C5', 0.77, 2.2, 0.55],
+  ],
+};
+
+/** One right answer. */
+export function rightAnswer() {
+  play(FLOURISHES.rightAnswer(), () => sfx.correct());
 }
 
-/**
- * Five in a row.
- *
- * Same idea an octave wider, and it ends on a held triad rather than a single
- * note — audibly bigger than one answer without being the end of the world.
- */
+/** A run of five. */
 export function milestone() {
-  play(
-    [
-      ['C5', 0, 0.14, 0.7],
-      ['E5', 0.07, 0.14, 0.75],
-      ['G5', 0.14, 0.14, 0.8],
-      ['C6', 0.21, 0.16, 0.85],
-      ['E6', 0.28, 1.4, 0.9],
-      ['C6', 0.29, 1.4, 0.6],
-      ['G5', 0.3, 1.4, 0.5],
-      ['C5', 0.31, 1.6, 0.45],
-    ],
-    () => sfx.fanfare()
-  );
+  play(FLOURISHES.milestone(), () => sfx.fanfare());
 }
 
 /**
  * A whole activity finished — a board matched, a letter traced.
  *
- * The one with a run-up. The roll before it is still the synthesised one from
- * sfx.js, because a drum roll is noise rather than notes and that is exactly
- * what oscillators and filtered noise are good at.
+ * The roll is still the synthesised one from sfx.js, because a drum roll is
+ * noise rather than notes and that is exactly what oscillators and a filter are
+ * good at. The fallback is delayed to match: firing it immediately puts the
+ * synthesised finish *on top of* the roll instead of after it, which is what
+ * the sampled version is careful not to do.
  */
 export function finished() {
   sfx.drumroll();
-  play(
-    [
-      ['G4', 0.42, 0.12, 0.6],
-      ['C5', 0.5, 0.12, 0.7],
-      ['E5', 0.58, 0.12, 0.8],
-      ['G5', 0.66, 0.12, 0.85],
-      ['C6', 0.74, 2, 0.95],
-      ['G5', 0.75, 2, 0.7],
-      ['E5', 0.76, 2, 0.6],
-      ['C5', 0.77, 2.2, 0.55],
-    ],
-    () => sfx.tada()
-  );
+  play(FLOURISHES.finished(), () => setTimeout(() => sfx.tada(), 420));
 }
 
 /**
- * Renders the three flourishes back to back, for listening to.
+ * Renders the flourishes back to back, for listening to.
  *
  * Same reason music.js can render itself: whether a reward sound is any good is
  * a question only a person can answer, and it should not take playing a game to
@@ -199,55 +229,19 @@ export function finished() {
  */
 export async function renderFlourishes() {
   const T = await loadTone();
-  const buffer = await T.Offline(async (ctx) => {
-    const reverb = new T.Reverb({ decay: 1.6, wet: 0.26 });
-    reverb.toDestination();
-    await reverb.ready;
-    const sampler = new T.Sampler({
-      urls: { C4: 'C4.mp3', 'F#4': 'Gb4.mp3', C5: 'C5.mp3', 'F#5': 'Gb5.mp3', C6: 'C6.mp3' },
-      baseUrl: `${import.meta.env.BASE_URL}audio/instruments/${INSTRUMENT}/`,
-      release: 1.6,
-      volume: -6,
-    });
-    sampler.connect(reverb);
-    sampler.toDestination();
-    await T.loaded();
+  const buffer = await T.Offline(async () => {
+    const { sampler } = await buildVoice(T, T.getDestination());
 
-    // Three right answers, a milestone, then a finish, spaced so each is heard
-    // as its own event rather than as one long noise.
+    // Three right answers — they differ from each other — then a milestone and
+    // a finish, spaced so each is heard as its own event.
     const at = (notes, offset) => {
       for (const [note, t, duration, velocity] of notes) {
         sampler.triggerAttackRelease(note, duration, offset + t, velocity);
       }
     };
-    for (let i = 0; i < 3; i++) {
-      at(
-        [
-          [UP[0], 0, 0.18, 0.7],
-          [UP[1], 0.075, 0.18, 0.75],
-          [UP[2], 0.15, 0.18, 0.8],
-          [UP[3], 0.225, 0.9, 0.9],
-          [UP[4], 0.235, 0.9, 0.45],
-        ],
-        0.3 + i * 1.4
-      );
-    }
-    at(
-      [
-        ['C5', 0, 0.14, 0.7], ['E5', 0.07, 0.14, 0.75], ['G5', 0.14, 0.14, 0.8],
-        ['C6', 0.21, 0.16, 0.85], ['E6', 0.28, 1.4, 0.9], ['C6', 0.29, 1.4, 0.6],
-        ['G5', 0.3, 1.4, 0.5], ['C5', 0.31, 1.6, 0.45],
-      ],
-      5.2
-    );
-    at(
-      [
-        ['G4', 0, 0.12, 0.6], ['C5', 0.08, 0.12, 0.7], ['E5', 0.16, 0.12, 0.8],
-        ['G5', 0.24, 0.12, 0.85], ['C6', 0.32, 2, 0.95], ['G5', 0.33, 2, 0.7],
-        ['E5', 0.34, 2, 0.6], ['C5', 0.35, 2.2, 0.55],
-      ],
-      8.4
-    );
+    for (let i = 0; i < 3; i++) at(FLOURISHES.rightAnswer(), 0.3 + i * 1.4);
+    at(FLOURISHES.milestone(), 5.2);
+    at(FLOURISHES.finished(), 8.4);
   }, 12);
 
   return {

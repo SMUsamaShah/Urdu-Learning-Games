@@ -34,9 +34,6 @@ import { COLORS, DESIGN } from './lib/theme.js';
  * and the voice breaks up. See src/lib/audio-context.js.
  */
 const audioContext = createAppAudioContext();
-// Handed over before any module asks for Tone, so the tune and the reward
-// flourishes are built on the app's context rather than one of Tone's own.
-useAudioContext(audioContext);
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -79,6 +76,14 @@ const game = new Phaser.Game({
 // module-scope state — uninitialised, silent, and not the one the app is
 // playing. Anything holding state at module scope has to be reached through the
 // running app rather than imported afresh.
+// Whatever Phaser ended up using, which is not always what we handed it:
+// createAppAudioContext() returns null where Web Audio is unavailable or
+// refuses the latency hint, and Phaser then builds its own. Reading it back
+// here is the only way to be sure Tone shares it — pointing Tone at a context
+// Phaser is not using produces an InvalidAccessError the moment two nodes from
+// different contexts are connected, and the music simply never plays.
+useAudioContext(game.sound?.context ?? audioContext);
+
 window.__game = game;
 window.__music = music;
 window.__flourish = flourish;

@@ -128,6 +128,17 @@
        * occasionally asks — is this the latest build — and must never be the
        * most interesting thing on a screen aimed at a three-year-old.
        */
+      /*
+       * Explicitly, because the rule below sets `display` and an author
+       * declaration beats the user agent's `[hidden] { display: none }`. Without
+       * this the badge is permanently on screen with an empty label and a ring
+       * spinning for ever, and — being pointer-events: none — cannot even be
+       * dismissed. The frame counter escapes it only by never setting `display`.
+       */
+      .update-badge[hidden] {
+        display: none;
+      }
+
       .update-badge {
         position: fixed;
         right: 10px;
@@ -208,19 +219,22 @@
        * a module that loads but throws fires window.onerror, and a rejected
        * promise inside an async scene fires unhandledrejection.
        *
-       * This only speaks for STARTUP. Once Phaser has built the game — which is
-       * the last thing main.js does, and which sets window.__game — any further
-       * error belongs to something running, not to something that failed to
-       * load, and this must stay out of its way. It did not, and the result was
-       * a full-screen "The game could not load" over a game that was visibly
-       * running and playable, triggered by a dropped note in the background
-       * music. A misleading error report is worse than none: it sends whoever
-       * reads it after entirely the wrong thing.
+       * This only speaks for STARTUP, and startup is not over when
+       * `new Phaser.Game()` returns — that happens synchronously, before a
+       * single scene has run. The condition is a scene actually being up, so a
+       * throw inside Preload or Home is still reported; anything after that
+       * belongs to something running and this must stay out of its way.
+       *
+       * It did not, and the result was a full-screen "The game could not load"
+       * over a game that was visibly running and playable, triggered by a
+       * dropped note in the background music. A misleading error report is
+       * worse than none: it sends whoever reads it after entirely the wrong
+       * thing.
        */
       (function () {
         var shown = false;
         function fail(detail) {
-          if (shown || window.__game) return;
+          if (shown || (window.__game && window.__game.scene.getScenes(true).length)) return;
           shown = true;
           document.getElementById('boot-error').style.display = 'grid';
           document.getElementById('boot-error-detail').textContent = detail;
