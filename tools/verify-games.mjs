@@ -281,6 +281,140 @@ if (!process.exitCode) {
   if (!process.exitCode) step('every run was consecutive and every line-up was answerable');
 }
 
+// --------------------------------------------------------------- in order
+
+if (!process.exitCode) {
+  await start('InOrder');
+  step('InOrder: checking the run must be popped in order');
+
+  const board = () =>
+    page.evaluate(() => {
+      const scene = window.__game.scene.getScene('InOrder');
+      return {
+        run: scene.run,
+        next: scene.next,
+        round: scene.round,
+        sequence: scene.sequence,
+        bubbles: scene.bubbles.map((b) => ({ letterId: b.letterId, popped: b.popped })),
+      };
+    });
+
+  const first = await board();
+
+  // The run has to be a real consecutive slice, and every letter in it has to
+  // be on screen — a bubble missing from the middle makes the board unfinishable.
+  const at = first.sequence.indexOf(first.run[0]);
+  if (!first.run.every((id, i) => first.sequence[at + i] === id)) {
+    fail('the run is not a consecutive slice of the alphabet');
+  }
+  for (const id of first.run) {
+    if (!first.bubbles.some((b) => b.letterId === id)) fail(`"${id}" is in the run but not on screen`);
+  }
+  if (!process.exitCode) step(`${first.run.length} bubbles, in alphabet order`);
+
+  const tap = (letterId) =>
+    page.evaluate((id) => {
+      window.__game.scene.getScene('InOrder').bubbles.find((b) => b.letterId === id)?.emit('pointerup');
+    }, letterId);
+
+  // Out of order must do nothing at all — and the bubble must stay, because
+  // working through them until one gives is how a child finds out what next
+  // means.
+  if (first.run.length > 1) {
+    await tap(first.run[first.run.length - 1]);
+    await page.waitForTimeout(350);
+    const after = await board();
+    if (after.next !== 0) fail('popping the last of the run counted as the first');
+    else if (after.bubbles.some((b) => b.letterId === first.run[first.run.length - 1] && b.popped)) {
+      fail('an out-of-order bubble popped anyway');
+    } else step('out of order does nothing, and the bubble stays');
+  }
+
+  step('InOrder: popping the whole run');
+  for (const id of first.run) {
+    await tap(id);
+    await page.waitForTimeout(400);
+  }
+  const moved = await page
+    .waitForFunction(
+      (before) => window.__game.scene.getScene('InOrder').round > before,
+      first.round,
+      { timeout: 30000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!moved) fail('popping the whole run did not deal a new one');
+  else step('run popped and a new one dealt');
+}
+
+// ------------------------------------------------------------------- paint
+
+if (!process.exitCode) {
+  await start('Paint');
+  step('Paint: checking a finger actually paints');
+
+  const geo = await page.evaluate(() => {
+    const rect = window.__game.canvas.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, scale: rect.width / window.__game.scale.width };
+  });
+  const toPage = (x, y) => [geo.left + x * geo.scale, geo.top + y * geo.scale];
+
+  const before = await page.evaluate(() => {
+    const scene = window.__game.scene.getScene('Paint');
+    return { touched: scene.touched, centre: scene.centre, letterId: scene.letterId };
+  });
+  if (before.touched) fail('the letter was already painted before anything touched it');
+
+  // A real stroke down the middle of the letter. Painting is done by writing
+  // into a canvas texture from pointer events, so poking scene state would
+  // check nothing that a child's finger goes through.
+  const [sx, sy] = toPage(before.centre.x, before.centre.y - 120);
+  await page.mouse.move(sx, sy);
+  await page.mouse.down();
+  for (let i = 1; i <= 8; i++) {
+    const [x, y] = toPage(before.centre.x, before.centre.y - 120 + (240 * i) / 8);
+    await page.mouse.move(x, y);
+    await page.waitForTimeout(16);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(200);
+
+  const painted = await page.evaluate(() => {
+    const scene = window.__game.scene.getScene('Paint');
+    // Count how many pixels are neither transparent nor the white the letter
+    // starts as. Anything else can only have come from the brush.
+    const ctx = scene.canvas.context;
+    const { width, height } = scene.canvas;
+    const { data } = ctx.getImageData(0, 0, width, height);
+    let coloured = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 20) continue;
+      if (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240) continue;
+      coloured++;
+    }
+    return { touched: scene.touched, coloured };
+  });
+  if (!painted.touched) fail('a stroke across the letter did not register as painting');
+  else if (painted.coloured < 500) fail(`only ${painted.coloured} pixels took any colour`);
+  else step(`${painted.coloured} pixels painted inside the letter`);
+
+  // Next must move on to a different letter, and the new one must be clean.
+  await page.evaluate(() => window.__game.scene.getScene('Paint').nextLetter());
+  const stepped = await page
+    .waitForFunction(
+      (was) => {
+        const scene = window.__game.scene.getScene('Paint');
+        return scene.letterId !== was && scene.touched === false;
+      },
+      before.letterId,
+      { timeout: 20000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!stepped) fail('Next did not move on to a clean letter');
+  else step('Next moves on, and the new letter starts clean');
+}
+
 // ---------------------------------------------------------------- baskets
 
 if (!process.exitCode) {

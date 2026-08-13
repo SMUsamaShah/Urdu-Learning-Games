@@ -45,6 +45,8 @@ export const INSTRUCTIONS = [
   'sort-letters',
   'tap-quick',
   'odd-one',
+  'in-order',
+  'colour-in',
 ];
 
 /**

@@ -76,13 +76,17 @@ export default class OddOne extends QuizScene {
    * an odd letter first, then find three that share a family it is not in —
    * is the same work in a more awkward order.
    */
-  pickTarget() {
+  pickTarget(previous) {
     const family = Phaser.Utils.Array.GetRandom(this.families);
     const three = Phaser.Utils.Array.Shuffle([...this.byFamily.get(family)]).slice(0, 3);
 
     // From a different family, and not one that merely differs by dots.
+    // `previous` is excluded like every other screen here does it: the same odd
+    // letter twice running is a duller round, and it also looks to anything
+    // watching from outside like the round never advanced.
     const strangers = [...lettersById.keys()].filter(
       (id) =>
+        id !== previous &&
         letterGlyph(id) &&
         lettersById.get(id).shapeFamily !== family &&
         !shapeFamilySiblings(three[0]).includes(id)

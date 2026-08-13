@@ -42,6 +42,7 @@ const SCENES = [
   'Baskets',
   'Whack',
   'OddOne',
+  'InOrder',
   'JoinForms',
   'StartsWith',
   'Trace',

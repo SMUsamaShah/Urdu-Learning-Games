@@ -18,6 +18,8 @@ import Fishing from './scenes/Fishing.js';
 import Baskets from './scenes/Baskets.js';
 import Whack from './scenes/Whack.js';
 import OddOne from './scenes/OddOne.js';
+import InOrder from './scenes/InOrder.js';
+import Paint from './scenes/Paint.js';
 import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
 import { createAppAudioContext } from './lib/audio-context.js';
@@ -80,6 +82,8 @@ const game = new Phaser.Game({
     Baskets,
     Whack,
     OddOne,
+    InOrder,
+    Paint,
     Trace,
   ],
 });

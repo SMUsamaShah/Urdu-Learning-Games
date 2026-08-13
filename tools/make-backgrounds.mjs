@@ -140,6 +140,14 @@ const BACKDROPS = {
     'A bright empty playroom: a plain pale mint wall filling most of the ' +
     'picture, a pale wooden floor strip along the bottom edge, a small stack ' +
     'of toy blocks at the far right edge.',
+  InOrder:
+    'A calm shallow lagoon seen from above: flat pale turquoise water filling ' +
+    'the whole picture, a curve of pale sand along the very bottom edge and a ' +
+    'few green palm fronds at the far left and right edges only.',
+  Paint:
+    'An art room: a plain pale lilac wall filling most of the picture, a pale ' +
+    'wooden desk edge along the very bottom, a jar of paintbrushes at the far ' +
+    'left edge. Very quiet — a large letter is coloured in over the middle.',
   Trace:
     'An almost empty pale blue sky with the faintest suggestion of two soft ' +
     'clouds at the top corners and a thin strip of green grass along the very ' +

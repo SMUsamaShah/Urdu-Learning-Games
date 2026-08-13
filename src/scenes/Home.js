@@ -149,6 +149,20 @@ const GAMES = [
     icon: { letter: 'he', form: 'isolated' },
   },
   {
+    scene: 'InOrder',
+    ui: 'bubbles',
+    roman: 'In order',
+    color: 0x2f9e8a,
+    icon: { letter: 'alif', form: 'isolated' },
+  },
+  {
+    scene: 'Paint',
+    ui: 'colours',
+    roman: 'Colouring',
+    color: 0xd45f95,
+    icon: { letter: 'ain', form: 'isolated' },
+  },
+  {
     scene: 'Trace',
     ui: 'trace',
     roman: 'Write',

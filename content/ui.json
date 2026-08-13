@@ -235,6 +235,26 @@
       "id": "different",
       "text": "الگ",
       "roman": "alag"
+    },
+    {
+      "id": "in-order",
+      "text": "ترتیب سے پھوڑو",
+      "roman": "tarteeb se phoro"
+    },
+    {
+      "id": "bubbles",
+      "text": "بلبلے",
+      "roman": "bulbule"
+    },
+    {
+      "id": "colour-in",
+      "text": "رنگ بھرو",
+      "roman": "rang bharo"
+    },
+    {
+      "id": "colours",
+      "text": "رنگ",
+      "roman": "rang"
     }
   ]
 }
