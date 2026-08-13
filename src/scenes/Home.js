@@ -135,6 +135,20 @@ const GAMES = [
     icon: { letter: 'te', form: 'initial' },
   },
   {
+    scene: 'Whack',
+    ui: 'whack',
+    roman: 'Quick tap',
+    color: 0x6a5f8f,
+    icon: { letter: 'kaf', form: 'isolated' },
+  },
+  {
+    scene: 'OddOne',
+    ui: 'different',
+    roman: 'Odd one out',
+    color: 0x9f4f6a,
+    icon: { letter: 'he', form: 'isolated' },
+  },
+  {
     scene: 'Trace',
     ui: 'trace',
     roman: 'Write',

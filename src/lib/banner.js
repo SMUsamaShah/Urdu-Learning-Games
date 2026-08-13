@@ -43,6 +43,8 @@ export const INSTRUCTIONS = [
   'build-letter',
   'catch-letter',
   'sort-letters',
+  'tap-quick',
+  'odd-one',
 ];
 
 /**

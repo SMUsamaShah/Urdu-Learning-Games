@@ -132,6 +132,14 @@ const BACKDROPS = {
     'A sunny market yard: a plain sandy floor across the bottom third, a low ' +
     'stone wall behind it, one striped awning at the far left edge, wide pale ' +
     'sky above.',
+  Whack:
+    'A grassy field seen close up: flat green grass filling the lower two ' +
+    'thirds with a few small daisies, a hedge along the very top of the grass ' +
+    'and pale sky above it. Nothing else at all.',
+  OddOne:
+    'A bright empty playroom: a plain pale mint wall filling most of the ' +
+    'picture, a pale wooden floor strip along the bottom edge, a small stack ' +
+    'of toy blocks at the far right edge.',
   Trace:
     'An almost empty pale blue sky with the faintest suggestion of two soft ' +
     'clouds at the top corners and a thin strip of green grass along the very ' +

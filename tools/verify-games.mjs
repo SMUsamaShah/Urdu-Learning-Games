@@ -28,6 +28,7 @@ const QUIZZES = [
   { key: 'Sequence', rounds: 10 },
   { key: 'StartsWith', rounds: 8 },
   { key: 'Doors', rounds: 8 },
+  { key: 'OddOne', rounds: 8 },
 ];
 
 const { page, finish } = await openApp({

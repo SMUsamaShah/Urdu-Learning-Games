@@ -215,6 +215,26 @@
       "id": "baskets",
       "text": "ٹوکریاں",
       "roman": "tokriyan"
+    },
+    {
+      "id": "tap-quick",
+      "text": "جلدی پکڑو",
+      "roman": "jaldi pakro"
+    },
+    {
+      "id": "whack",
+      "text": "پھرتی",
+      "roman": "phurti"
+    },
+    {
+      "id": "odd-one",
+      "text": "الگ کون سا؟",
+      "roman": "alag kaun sa?"
+    },
+    {
+      "id": "different",
+      "text": "الگ",
+      "roman": "alag"
     }
   ]
 }

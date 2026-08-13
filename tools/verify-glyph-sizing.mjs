@@ -40,6 +40,8 @@ const SCENES = [
   'LetterPuzzle',
   'Fishing',
   'Baskets',
+  'Whack',
+  'OddOne',
   'JoinForms',
   'StartsWith',
   'Trace',
