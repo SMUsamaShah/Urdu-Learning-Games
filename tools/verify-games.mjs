@@ -26,6 +26,7 @@ const QUIZZES = [
   { key: 'WordPictures', rounds: 8 },
   { key: 'Numbers', rounds: 8 },
   { key: 'Sequence', rounds: 10 },
+  { key: 'StartsWith', rounds: 8 },
 ];
 
 const { page, finish } = await openApp({
@@ -276,6 +277,106 @@ if (!process.exitCode) {
     if (process.exitCode) break;
   }
   if (!process.exitCode) step('every run was consecutive and every line-up was answerable');
+}
+
+// -------------------------------------------------------------- join forms
+
+if (!process.exitCode) {
+  await start('JoinForms');
+  step('JoinForms: checking the board is joinable');
+
+  const board = () =>
+    page.evaluate(() => {
+      const scene = window.__game.scene.getScene('JoinForms');
+      return {
+        pool: scene.pool.length,
+        cards: scene.cards.map((c) => ({
+          letterId: c.letterId,
+          form: c.form,
+          row: c.row,
+          done: c.done,
+        })),
+        joined: scene.joined,
+        round: scene.round,
+      };
+    });
+
+  const first = await board();
+
+  // The empty board is a real failure mode and a quiet one. `letterForms`
+  // returns the form *names*, and reading it as though it were a map of them
+  // gave every letter no partner: the pool came out empty, the board came up
+  // with nothing on it, and not one thing threw. Only a screenshot caught it.
+  if (first.pool === 0) fail('no letters have a second form — the board is empty');
+  else if (first.cards.length === 0) fail('the board was dealt with no cards on it');
+  else step(`${first.pool} letters available, ${first.cards.length} cards dealt`);
+
+  // Every card must have exactly one partner: the same letter, on the other
+  // row, wearing a different face. An odd card out cannot be joined, and a
+  // child has no way to tell that it is the board that is stuck.
+  const byLetter = new Map();
+  for (const card of first.cards) {
+    byLetter.set(card.letterId, [...(byLetter.get(card.letterId) ?? []), card]);
+  }
+  for (const [letterId, cards] of byLetter) {
+    if (cards.length !== 2) {
+      fail(`"${letterId}" is on the board ${cards.length} times, not twice`);
+      continue;
+    }
+    const [a, b] = cards;
+    if (a.row === b.row) fail(`both "${letterId}" cards are on row ${a.row}`);
+    if (a.form === b.form) fail(`both "${letterId}" cards show the ${a.form} form`);
+    if (![a.form, b.form].includes('isolated')) {
+      fail(`neither "${letterId}" card is the isolated form`);
+    }
+  }
+  if (!process.exitCode) step(`${byLetter.size} pairs, each one letter in two faces`);
+
+  const tap = (letterId, row) =>
+    page.evaluate(
+      ([id, r]) => {
+        const scene = window.__game.scene.getScene('JoinForms');
+        scene.cards.find((c) => c.letterId === id && c.row === r)?.emit('pointerup');
+      },
+      [letterId, row]
+    );
+
+  // A wrong pair must cost nothing: no card leaves the board, and the one that
+  // was held is put back down rather than staying stuck to the finger.
+  const letters = [...byLetter.keys()];
+  if (letters.length >= 2) {
+    await tap(letters[0], 0);
+    await tap(letters[1], 1);
+    await page.waitForTimeout(400);
+    const after = await board();
+    if (after.joined !== 0) fail('a mismatched pair counted as joined');
+    else if (after.cards.some((c) => c.done)) fail('a mismatched pair took cards off the board');
+    else {
+      const held = await page.evaluate(
+        () => window.__game.scene.getScene('JoinForms').picked !== null
+      );
+      if (held) fail('a mismatched pair left a card still held');
+      else step('a wrong pair costs nothing and clears the selection');
+    }
+  }
+
+  // And solving it finishes the board and deals a new one.
+  step('JoinForms: joining every pair');
+  for (const letterId of letters) {
+    await tap(letterId, 0);
+    await tap(letterId, 1);
+    await page.waitForTimeout(220);
+  }
+  const moved = await page
+    .waitForFunction(
+      (before) => window.__game.scene.getScene('JoinForms').round > before,
+      first.round,
+      { timeout: 30000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!moved) fail('joining every pair did not start a new board');
+  else step('board finished and a new one dealt');
 }
 
 // ------------------------------------------------------------------ memory

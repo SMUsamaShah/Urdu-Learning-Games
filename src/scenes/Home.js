@@ -76,6 +76,22 @@ const GAMES = [
     icon: { letter: 'te', form: 'isolated' },
   },
   {
+    scene: 'JoinForms',
+    ui: 'forms',
+    roman: 'Shapes',
+    color: 0x8a6ad0,
+    // The initial form, because the tile is advertising the thing the game is
+    // about: a letter wearing a face the flashcards never showed.
+    icon: { letter: 'be', form: 'initial' },
+  },
+  {
+    scene: 'StartsWith',
+    ui: 'first-letter',
+    roman: 'Starts with',
+    color: 0xc9713f,
+    picture: 'bakri',
+  },
+  {
     scene: 'Trace',
     ui: 'trace',
     roman: 'Write',

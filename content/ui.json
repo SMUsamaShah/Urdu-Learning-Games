@@ -11,30 +11,150 @@
     "Add a string here, run `npm run bake`, and reference it by id."
   ],
   "strings": [
-    { "id": "app-title",   "text": "اردو کھیل",     "roman": "Urdu Games" },
-    { "id": "letters",     "text": "حروف",          "roman": "Letters" },
-    { "id": "find-letter", "text": "حرف ڈھونڈو",    "roman": "Find the letter" },
-    { "id": "again",       "text": "پھر سے",        "roman": "Again" },
-    { "id": "balloons",    "text": "غبارے",         "roman": "Balloons" },
-    { "id": "trace",       "text": "لکھو",          "roman": "Write" },
-    { "id": "numbers",     "text": "گنتی",          "roman": "Numbers" },
-    { "id": "words",       "text": "الفاظ",         "roman": "Words" },
-    { "id": "settings",    "text": "ترتیبات",       "roman": "Settings" },
-    { "id": "isolated",    "text": "الگ",           "roman": "isolated" },
-    { "id": "initial",     "text": "شروع",          "roman": "initial" },
-    { "id": "medial",      "text": "درمیان",        "roman": "medial" },
-    { "id": "final",       "text": "آخر",           "roman": "final" },
-    { "id": "match-pairs", "text": "جوڑے ملاؤ",     "roman": "Match the pairs" },
-    { "id": "whats-next",  "text": "آگے کیا؟",      "roman": "What comes next?" },
-    { "id": "order",       "text": "ترتیب",         "roman": "Order" },
-    { "id": "memory",      "text": "جوڑے",          "roman": "Pairs" },
-    { "id": "pop-balloon", "text": "غبارہ پھوڑو",   "roman": "Pop the balloon" },
-    { "id": "find-picture","text": "تصویر ڈھونڈو",  "roman": "Find the picture" },
-    { "id": "how-many",    "text": "کتنے ہیں؟",     "roman": "How many?" },
-    { "id": "fill-letter", "text": "حرف بھرو",      "roman": "Fill the letter" },
-    { "id": "well-done",   "text": "شاباش",         "roman": "Well done" },
-    { "id": "loading",     "text": "انتظار کریں",   "roman": "Please wait" },
-    { "id": "icon-word",   "text": "اردو",          "roman": "Urdu (app icon)" },
-    { "id": "install",     "text": "انسٹال کریں",   "roman": "Install" }
+    {
+      "id": "app-title",
+      "text": "اردو کھیل",
+      "roman": "Urdu Games"
+    },
+    {
+      "id": "letters",
+      "text": "حروف",
+      "roman": "Letters"
+    },
+    {
+      "id": "find-letter",
+      "text": "حرف ڈھونڈو",
+      "roman": "Find the letter"
+    },
+    {
+      "id": "again",
+      "text": "پھر سے",
+      "roman": "Again"
+    },
+    {
+      "id": "balloons",
+      "text": "غبارے",
+      "roman": "Balloons"
+    },
+    {
+      "id": "trace",
+      "text": "لکھو",
+      "roman": "Write"
+    },
+    {
+      "id": "numbers",
+      "text": "گنتی",
+      "roman": "Numbers"
+    },
+    {
+      "id": "words",
+      "text": "الفاظ",
+      "roman": "Words"
+    },
+    {
+      "id": "settings",
+      "text": "ترتیبات",
+      "roman": "Settings"
+    },
+    {
+      "id": "isolated",
+      "text": "الگ",
+      "roman": "isolated"
+    },
+    {
+      "id": "initial",
+      "text": "شروع",
+      "roman": "initial"
+    },
+    {
+      "id": "medial",
+      "text": "درمیان",
+      "roman": "medial"
+    },
+    {
+      "id": "final",
+      "text": "آخر",
+      "roman": "final"
+    },
+    {
+      "id": "match-pairs",
+      "text": "جوڑے ملاؤ",
+      "roman": "Match the pairs"
+    },
+    {
+      "id": "whats-next",
+      "text": "آگے کیا؟",
+      "roman": "What comes next?"
+    },
+    {
+      "id": "order",
+      "text": "ترتیب",
+      "roman": "Order"
+    },
+    {
+      "id": "memory",
+      "text": "جوڑے",
+      "roman": "Pairs"
+    },
+    {
+      "id": "pop-balloon",
+      "text": "غبارہ پھوڑو",
+      "roman": "Pop the balloon"
+    },
+    {
+      "id": "find-picture",
+      "text": "تصویر ڈھونڈو",
+      "roman": "Find the picture"
+    },
+    {
+      "id": "how-many",
+      "text": "کتنے ہیں؟",
+      "roman": "How many?"
+    },
+    {
+      "id": "fill-letter",
+      "text": "حرف بھرو",
+      "roman": "Fill the letter"
+    },
+    {
+      "id": "well-done",
+      "text": "شاباش",
+      "roman": "Well done"
+    },
+    {
+      "id": "loading",
+      "text": "انتظار کریں",
+      "roman": "Please wait"
+    },
+    {
+      "id": "icon-word",
+      "text": "اردو",
+      "roman": "Urdu (app icon)"
+    },
+    {
+      "id": "install",
+      "text": "انسٹال کریں",
+      "roman": "Install"
+    },
+    {
+      "id": "join-forms",
+      "text": "شکلیں ملاؤ",
+      "roman": "shaklein milao"
+    },
+    {
+      "id": "forms",
+      "text": "شکلیں",
+      "roman": "shaklein"
+    },
+    {
+      "id": "starts-with",
+      "text": "اس سے شروع",
+      "roman": "is se shuru"
+    },
+    {
+      "id": "first-letter",
+      "text": "پہلا حرف",
+      "roman": "pehla harf"
+    }
   ]
 }

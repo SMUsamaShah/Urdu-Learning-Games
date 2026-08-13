@@ -35,6 +35,8 @@ export const INSTRUCTIONS = [
   'how-many',
   'whats-next',
   'find-picture',
+  'join-forms',
+  'starts-with',
 ];
 
 /**

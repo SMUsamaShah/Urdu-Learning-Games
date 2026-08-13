@@ -34,6 +34,8 @@ const SCENES = [
   'Numbers',
   'Memory',
   'Sequence',
+  'JoinForms',
+  'StartsWith',
   'Trace',
 ];
 

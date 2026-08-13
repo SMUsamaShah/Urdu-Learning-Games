@@ -8,6 +8,8 @@ import WordPictures from './scenes/WordPictures.js';
 import Numbers from './scenes/Numbers.js';
 import Memory from './scenes/Memory.js';
 import Sequence from './scenes/Sequence.js';
+import JoinForms from './scenes/JoinForms.js';
+import StartsWith from './scenes/StartsWith.js';
 import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
 import { createAppAudioContext } from './lib/audio-context.js';
@@ -60,6 +62,8 @@ const game = new Phaser.Game({
     Numbers,
     Memory,
     Sequence,
+    JoinForms,
+    StartsWith,
     Trace,
   ],
 });
