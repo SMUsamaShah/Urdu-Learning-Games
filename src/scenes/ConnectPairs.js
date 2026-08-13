@@ -115,15 +115,25 @@ export default class ConnectPairs extends Phaser.Scene {
     const ids = Phaser.Utils.Array.Shuffle([...this.pool]).slice(0, count);
     const em = fitEmAlone(allLetterGlyphs('isolated'), CARD - 40, CARD - 44).em;
 
-    // Each column shuffled separately, so a pair is never simply the one
-    // opposite — which would make the whole board answerable without looking.
     const spread = (n, i) =>
       BAND.top + ((BAND.bottom - BAND.top) * (i + 0.5)) / n;
 
-    Phaser.Utils.Array.Shuffle([...ids]).forEach((id, i) => {
+    // Each column shuffled separately, and then the pictures shuffled again
+    // until no picture sits opposite its own letter. Two independent shuffles
+    // is the obvious way to write this and it is not enough: with three pairs
+    // they land in the same order one board in six, and that board can be
+    // solved by drawing three straight lines across without looking at
+    // anything. A derangement costs a couple of retries and removes the case.
+    const left = Phaser.Utils.Array.Shuffle([...ids]);
+    const right = Phaser.Utils.Array.Shuffle([...ids]);
+    if (count > 1) {
+      while (left.some((id, i) => id === right[i])) Phaser.Utils.Array.Shuffle(right);
+    }
+
+    left.forEach((id, i) => {
       this.letters.push(this.addLetter(id, RIGHT_X, spread(count, i), em, i));
     });
-    Phaser.Utils.Array.Shuffle([...ids]).forEach((id, i) => {
+    right.forEach((id, i) => {
       this.pictures.push(this.addPicture(id, LEFT_X, spread(count, i), i));
     });
 

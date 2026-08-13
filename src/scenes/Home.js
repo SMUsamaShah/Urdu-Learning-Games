@@ -1,18 +1,21 @@
 import Phaser from 'phaser';
-import { letterGlyph, numberGlyph, uiGlyph, uiGlyphs } from '../lib/content.js';
-import { addGlyph, addGlyphBaseline, fitEmLine } from '../lib/glyph.js';
-import { addWordImage, queueWordImages } from '../lib/images.js';
+import { uiGlyph } from '../lib/content.js';
+import { addGlyph } from '../lib/glyph.js';
+import { queueWordImages } from '../lib/images.js';
 import { canInstall, onInstallAvailability, promptInstall } from '../lib/install.js';
 import { addMascot } from '../lib/mascot.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { addScenery } from '../lib/scenery.js';
+import { gridPlaces, tilePictures, tileMaker } from '../lib/game-tile.js';
+import { openGamesPanel } from '../lib/games-panel.js';
 import { bob, popIn, squash } from '../lib/liveliness.js';
 import { musicOn, setMusicOn, startMusic } from '../lib/music.js';
 import { prepareFlourishes } from '../lib/flourish.js';
 import { ringBurst } from '../lib/particles.js';
 import * as sfx from '../lib/sfx.js';
-import { COLORS, DESIGN, chunkyGlyphEm, label, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 import { queueBackdrop } from '../lib/backdrops.js';
+import { FEATURED, GAMES, MORE, MORE_TILE } from '../lib/games.js';
 
 /**
  * The menu.
@@ -20,184 +23,16 @@ import { queueBackdrop } from '../lib/backdrops.js';
  * Games are listed right-to-left to match the reading direction of the script
  * being taught. Each tile carries its Urdu name as a baked glyph plus a small
  * roman gloss for the parent.
+ *
+ * ## Nine here, the rest one tap away
+ *
+ * `featured` picks the nine that live on this screen; everything else is behind
+ * the tenth tile, in `games-panel.js`, which is where the reasoning for the
+ * split is written down. The nine are the learning path — meet the letters,
+ * write one, find one, meet a word, hear what it starts with, then the counting
+ * and the three games that drill what has been met. The other fifteen are
+ * variations on those, so any of them is a fine thing to not find first.
  */
-
-/** Games ready to play. Unfinished games are simply absent rather than greyed
- *  out: a tile that does nothing when tapped is worse than no tile. */
-const GAMES = [
-  {
-    scene: 'Flashcards',
-    ui: 'letters',
-    roman: 'Letters',
-    color: 0x3f7fd4,
-    // Tiles are illustrated with a real Urdu letter rather than an emoji. The
-    // obvious pick, 🔤, is a picture of the Latin alphabet.
-    icon: { letter: 'be', form: 'isolated' },
-  },
-  {
-    scene: 'FindLetter',
-    ui: 'find-letter',
-    roman: 'Find the letter',
-    color: 0x5f9e5a,
-    icon: { letter: 'sin', form: 'isolated' },
-  },
-  {
-    scene: 'Balloons',
-    ui: 'balloons',
-    roman: 'Balloons',
-    color: 0xb4576d,
-    icon: { letter: 'mim', form: 'isolated' },
-  },
-  {
-    scene: 'WordPictures',
-    ui: 'words',
-    roman: 'Words',
-    color: 0x7a5bbd,
-    picture: 'seyb',
-  },
-  {
-    scene: 'Numbers',
-    ui: 'numbers',
-    roman: 'Numbers',
-    color: 0x2f8f8a,
-    number: 'n3',
-  },
-  {
-    scene: 'Memory',
-    ui: 'memory',
-    roman: 'Pairs',
-    color: 0xc2557f,
-    icon: { letter: 'jim', form: 'isolated' },
-  },
-  {
-    scene: 'Sequence',
-    ui: 'order',
-    roman: 'Order',
-    color: 0x4f8f3f,
-    icon: { letter: 'te', form: 'isolated' },
-  },
-  {
-    scene: 'JoinForms',
-    ui: 'forms',
-    roman: 'Shapes',
-    color: 0x8a6ad0,
-    // The initial form, because the tile is advertising the thing the game is
-    // about: a letter wearing a face the flashcards never showed.
-    icon: { letter: 'be', form: 'initial' },
-  },
-  {
-    scene: 'StartsWith',
-    ui: 'first-letter',
-    roman: 'Starts with',
-    color: 0xc9713f,
-    picture: 'bakri',
-  },
-  {
-    scene: 'Doors',
-    ui: 'doors',
-    roman: 'Doors',
-    color: 0x3f8f7a,
-    icon: { letter: 'dal', form: 'isolated' },
-  },
-  {
-    scene: 'TapAll',
-    ui: 'find-all',
-    roman: 'Find them all',
-    color: 0xb05fa8,
-    icon: { letter: 'sin', form: 'initial' },
-  },
-  {
-    scene: 'Caterpillar',
-    ui: 'gaps',
-    roman: 'Gaps',
-    color: 0x5b8f2f,
-    icon: { letter: 'nun', form: 'isolated' },
-  },
-  {
-    scene: 'LetterPuzzle',
-    ui: 'puzzle',
-    roman: 'Puzzle',
-    color: 0xc25f3f,
-    icon: { letter: 'sad', form: 'isolated' },
-  },
-  {
-    scene: 'Fishing',
-    ui: 'fishing',
-    roman: 'Fishing',
-    color: 0x2f7fa8,
-    picture: 'machhli',
-  },
-  {
-    scene: 'Baskets',
-    ui: 'baskets',
-    roman: 'Sorting',
-    color: 0x7d6a3f,
-    icon: { letter: 'te', form: 'initial' },
-  },
-  {
-    scene: 'Whack',
-    ui: 'whack',
-    roman: 'Quick tap',
-    color: 0x6a5f8f,
-    icon: { letter: 'kaf', form: 'isolated' },
-  },
-  {
-    scene: 'OddOne',
-    ui: 'different',
-    roman: 'Odd one out',
-    color: 0x9f4f6a,
-    icon: { letter: 'he', form: 'isolated' },
-  },
-  {
-    scene: 'InOrder',
-    ui: 'bubbles',
-    roman: 'In order',
-    color: 0x2f9e8a,
-    icon: { letter: 'alif', form: 'isolated' },
-  },
-  {
-    scene: 'Paint',
-    ui: 'colours',
-    roman: 'Colouring',
-    color: 0xd45f95,
-    icon: { letter: 'ain', form: 'isolated' },
-  },
-  {
-    scene: 'ConnectPairs',
-    ui: 'joining',
-    roman: 'Join up',
-    color: 0x4f7f5f,
-    icon: { letter: 'wao', form: 'isolated' },
-  },
-  {
-    scene: 'NumberLine',
-    ui: 'counting',
-    roman: 'Counting order',
-    color: 0x2f7f9e,
-    number: 'n5',
-  },
-  {
-    scene: 'Hidden',
-    ui: 'hiding',
-    roman: 'Hide and seek',
-    color: 0x4f7f3f,
-    icon: { letter: 'khe', form: 'isolated' },
-  },
-  {
-    scene: 'Bounce',
-    ui: 'bouncing',
-    roman: 'Bouncing',
-    color: 0xd4913f,
-    icon: { letter: 'lam', form: 'isolated' },
-  },
-  {
-    scene: 'Trace',
-    ui: 'trace',
-    roman: 'Write',
-    color: 0xd4762f,
-    icon: { letter: 'alif', form: 'isolated' },
-  },
-];
 
 /**
  * The grid and the title sit right of centre, because the spider sits at the
@@ -217,53 +52,7 @@ export default class Home extends Phaser.Scene {
     queueBackdrop(this);
     // Only the handful used as tile icons, not the whole set: the menu should
     // be on screen immediately, and the games load the rest themselves.
-    queueWordImages(
-      this,
-      GAMES.map((g) => g.picture).filter(Boolean)
-    );
-  }
-
-  /**
-   * The glyph a tile is illustrated with, where it has one.
-   *
-   * Pulled out so the icons can be measured as a set before any of them is
-   * drawn — see fitEmLine. Tiles illustrated with a picture have no glyph and are
-   * simply absent from the set.
-   */
-  static iconGlyph(game) {
-    if (game.number) return numberGlyph(game.number);
-    if (game.icon) return letterGlyph(game.icon.letter, game.icon.form);
-    return null;
-  }
-
-  /**
-   * A tile's picture: a letter, a word illustration or a numeral.
-   *
-   * Whatever a game is about, drawn the way that game draws it, so the menu
-   * previews the thing rather than decorating it.
-   *
-   * The letters and the numeral share one baseline and one em, for the same
-   * reason the names below them do: a row of tiles where ب is twice the size of
-   * م looks like eight unrelated buttons rather than one menu.
-   */
-  tileIcon(game, baselineY, box, fit) {
-    // A picture has no baseline to sit on, so it is centred in the same box the
-    // letters were fitted into, and drawn a little larger than their line: a
-    // letter only inks part of its line box, an apple fills all of its own.
-    if (game.picture) {
-      return addWordImage(this, 0, box.top + box.height / 2, game.picture, box.height * 1.3);
-    }
-    const glyph = Home.iconGlyph(game);
-    if (!glyph) return null;
-    const id = game.number ?? `${game.icon.letter}:${game.icon.form}`;
-    return addGlyphBaseline(
-      this,
-      0,
-      baselineY,
-      `tile-icon:em${Math.round(fit.em)}:${id}`,
-      glyph,
-      chunkyGlyphEm(fit.em)
-    );
+    queueWordImages(this, tilePictures(GAMES));
   }
 
   create() {
@@ -279,108 +68,52 @@ export default class Home extends Phaser.Scene {
     }
     label(this, STAGE_X, 190, 'Urdu Learning Games', { size: 20 });
 
-    /** @type {Phaser.GameObjects.Container[]} */
-    const tiles = [];
-
-    // A grid rather than one row. Games keep getting added, and squeezing them
-    // all into a single row shrinks every tile until none of them is a
-    // comfortable target for a small finger — better to wrap and keep them big.
+    // Ten tiles: the nine on the learning path and the door to the other
+    // fifteen. Five across and two down, sized to fill the stage rather than to
+    // a number typed here, so the one number that decides the whole grid is
+    // COLUMNS.
+    const COLUMNS = 5;
     const gap = 26;
-    const perRow = GAMES.length <= 4 ? GAMES.length : Math.ceil(GAMES.length / 2);
-    const rows = Math.ceil(GAMES.length / perRow);
+    const shown = [...FEATURED, MORE_TILE];
     const tileW = Math.min(
       252,
-      (STAGE.right - STAGE.left - gap * (perRow - 1)) / perRow
+      (STAGE.right - STAGE.left - gap * (COLUMNS - 1)) / COLUMNS
     );
-    const tileH = Math.round(tileW * (rows > 1 ? 0.74 : 0.92));
-    const rowGap = 22;
-
-    // A tile is three stacked lines: the icon, the Urdu name, the roman gloss.
-    // The first two are Urdu, and each is drawn at one em on one baseline across
-    // all eight tiles — measured here rather than typed as a number, because the
-    // tiles resize with the grid and because the whole point is that no tile's
-    // letters come out bigger than its neighbour's.
-    //
-    // The lines are as deep as they are because Nastaliq's vertical range is
-    // enormous: گنتی and لکھو reach two full ems above the baseline, since the
-    // ascender on a گ or a ک is drawn as a long rising stroke, while حروف and
-    // جوڑے drop half an em below it. Reserving room for both at once is the
-    // price of a shared baseline, and it is what decides the sizes below.
-    const iconBox = { top: -tileH * 0.46, height: tileH * 0.4 };
-    const iconFit = fitEmLine(
-      GAMES.map(Home.iconGlyph).filter(Boolean),
-      tileW * 0.66,
-      iconBox.height
-    );
-    const labelTop = -tileH * 0.07;
-    const labelFit = fitEmLine(
-      uiGlyphs(GAMES.map((game) => game.ui)),
-      tileW - 40,
-      tileH * 0.41
-    );
-    // Measured from the top of the grid rather than its centre, so adding a
-    // second row grows downwards into the space above the footer instead of
-    // pushing the last row through it.
-    const gridTop = rows > 1 ? 240 : 300;
-    const firstRowY = gridTop + tileH / 2;
-
-    GAMES.forEach((game, index) => {
-      const row = Math.floor(index / perRow);
-      const inRow = Math.min(GAMES.length - row * perRow, perRow);
-      const indexInRow = index % perRow;
-      // Right-to-left within each row, matching the script.
-      const rowW = inRow * tileW + (inRow - 1) * gap;
-      const rowStartX = STAGE_X + rowW / 2 - tileW / 2;
-
-      const button = makeButton(this, {
-        x: rowStartX - indexInRow * (tileW + gap),
-        y: firstRowY + row * (tileH + rowGap),
-        width: tileW,
-        height: tileH,
-        color: game.color,
-        onTap: () => {
-          sfx.whoosh();
-          // A beat between the tap and the screen changing, so the tile is
-          // seen to react. Leaving instantly makes the tap feel like it went
-          // to the next screen rather than to the thing that was pressed.
-          this.time.delayedCall(150, () => this.scene.start(game.scene));
-        },
-      });
-      button.on('pointerdown', () => squash(this, button));
-      tiles.push(button);
-
-      const icon = this.tileIcon(game, iconBox.top + iconFit.baseline, iconBox, iconFit);
-      if (icon) button.add(icon);
-
-      const nameGlyph = uiGlyph(game.ui);
-      if (nameGlyph) {
-        button.add(
-          addGlyphBaseline(
-            this,
-            0,
-            labelTop + labelFit.baseline,
-            `tile-label:em${Math.round(labelFit.em)}:${game.ui}`,
-            nameGlyph,
-            chunkyGlyphEm(labelFit.em)
-          )
-        );
-      }
-
-      button.add(
-        label(this, 0, tileH * 0.4, game.roman, {
-          size: 16,
-          color: COLORS.onColorDim,
-        })
-      );
+    const tileH = Math.round(tileW * 0.92);
+    const rowGap = 24;
+    // Measured from the top of the grid rather than its centre, so a second row
+    // grows downwards into the space above the footer instead of pushing the
+    // last row through it.
+    const places = gridPlaces(shown.length, {
+      columns: COLUMNS,
+      gap,
+      rowGap,
+      width: tileW,
+      height: tileH,
+      centerX: STAGE_X,
+      top: 236,
     });
+
+    const makeTile = tileMaker(this, shown, { width: tileW, height: tileH });
+    const tiles = shown.map((game, index) =>
+      makeTile(game, places[index].x, places[index].y, () => {
+        sfx.whoosh();
+        // A beat between the tap and the screen changing, so the tile is seen
+        // to react. Leaving instantly makes the tap feel like it went to the
+        // next screen rather than to the thing that was pressed.
+        this.time.delayedCall(150, () =>
+          game.scene ? this.scene.start(game.scene) : this.openMore()
+        );
+      })
+    );
 
     // The grid assembles itself instead of being there already. Reading order,
     // so it builds right to left the way the script does, and quickly — this is
     // a menu a child comes back to twenty times a day and a slow flourish
     // becomes an obstacle by the third visit.
     tiles.forEach((tile, index) => popIn(this, tile, { delay: 60 + index * 55 }));
-    // Then they breathe, out of phase, for as long as the menu is up. Eight
-    // still rectangles read as a form; eight that move a hair read as things
+    // Then they breathe, out of phase, for as long as the menu is up. Ten
+    // still rectangles read as a form; ten that move a hair read as things
     // waiting to be picked up.
     this.time.delayedCall(60 + tiles.length * 55 + 380, () => {
       tiles.forEach((tile, index) =>
@@ -416,6 +149,12 @@ export default class Home extends Phaser.Scene {
       // session gets the real sound rather than the synthesised fallback.
       prepareFlourishes();
     });
+  }
+
+  /** The other fifteen, over the menu. */
+  openMore() {
+    if (this.morePanel?.active) return;
+    this.morePanel = openGamesPanel(this, MORE, (game) => this.scene.start(game.scene));
   }
 
   /**

@@ -36,6 +36,38 @@ const { page, finish } = await openApp({
   timeoutMs: 300000,
 });
 
+// ---------------------------------------------------------------- the menu
+
+/**
+ * Every game reachable, and every tile pointing somewhere real.
+ *
+ * The menu shows nine of twenty-four and hides the rest behind one tile, so
+ * "the games all work" stopped being the same claim as "the games can all be
+ * got to". Both failures here are silent: a tile naming a scene that is not
+ * registered does nothing at all when tapped, and a game left out of both lists
+ * simply is not in the app any more.
+ */
+step('checking every game is reachable from the menu');
+const menu = await page.evaluate(async () => {
+  const { FEATURED, GAMES, MORE, missingIcons } = await import('/src/lib/games.js');
+  const { loadGlyphs } = await import('/src/lib/content.js');
+  await loadGlyphs();
+  const registered = window.__game.scene.scenes.map((s) => s.scene.key);
+  return {
+    listed: GAMES.map((g) => g.scene),
+    shown: [...FEATURED, ...MORE].map((g) => g.scene),
+    unknown: GAMES.filter((g) => !registered.includes(g.scene)).map((g) => g.scene),
+    missingIcons: missingIcons(),
+  };
+});
+for (const scene of menu.unknown) fail(`the menu offers "${scene}", which is not a registered scene`);
+for (const problem of menu.missingIcons) fail(`a menu tile has no glyph for its letter — ${problem}`);
+const unreachable = menu.listed.filter((key) => !menu.shown.includes(key));
+for (const key of unreachable) fail(`"${key}" is in the game list but on neither the menu nor the panel`);
+if (!menu.unknown.length && !unreachable.length && !menu.missingIcons.length) {
+  step(`${menu.listed.length} games, all reachable, every tile illustrated`);
+}
+
 const start = async (key) => {
   await startScene(page, key);
   // A beat for the entrance tweens; nothing below depends on them finishing,
@@ -811,11 +843,25 @@ if (!process.exitCode) {
   // where it landed — a scatter of near-misses over the ghost makes the letter
   // impossible to read.
   await dragTo(first.pieces[0], 300, 250);
+  // Waited for rather than sampled after a pause. The piece flies home on a
+  // tween, which runs on Phaser's clock — and headless that clock is roughly
+  // half wall-clock speed, so a fixed 300ms sometimes caught the piece still
+  // in the air and reported a broken game.
+  const wentBack = await page
+    .waitForFunction(
+      (home) => {
+        const piece = window.__game.scene.getScene('LetterPuzzle').pieces[0];
+        return Math.abs(piece.y - home) <= 4;
+      },
+      first.pieces[0].y,
+      { timeout: 15000 }
+    )
+    .then(() => true)
+    .catch(() => false);
   const strayed = await state();
   if (strayed.placed !== 0) fail('a piece dropped nowhere near its slot counted as placed');
-  else if (Math.abs(strayed.pieces[0].y - first.pieces[0].y) > 4) {
-    fail('a wrongly dropped piece did not go back to the tray');
-  } else step('a piece dropped away from its slot goes back');
+  else if (!wentBack) fail('a wrongly dropped piece did not go back to the tray');
+  else step('a piece dropped away from its slot goes back');
 
   step('LetterPuzzle: placing every piece');
   for (let i = 0; i < first.pieces.length; i++) {

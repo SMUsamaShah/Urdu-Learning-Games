@@ -201,6 +201,18 @@ for (const scene of SCENES) {
   if (!backdrop.known) fail(`${scene}: its backdrop was never loaded — is it queued in preload()?`);
   else if (!backdrop.found) fail(`${scene}: backdrop loaded but the screen is not using it`);
 
+  await checkWriting(scene, scene);
+}
+
+/**
+ * Every role of writing on a screen, each at exactly one size.
+ *
+ * A function rather than the body of the loop, because the panel of extra
+ * games is a screen with fifteen tiles of Urdu on it and is not a scene — it
+ * is drawn over Home. Left out of this walk it would be the only place in the
+ * app whose letters nobody measures.
+ */
+async function checkWriting(where, sceneKey) {
   const drawn = await page.evaluate((name) => {
     const scene = window.__game.scene.getScene(name);
 
@@ -232,21 +244,39 @@ for (const scene of SCENES) {
       roles: Object.entries(byRole).map(([role, ems]) => ({ role, ems: [...ems] })),
       broken: [...new Set(found.filter((f) => !Number.isFinite(f.em)).map((f) => `${f.role}:em${f.raw}`))],
     };
-  }, scene);
+  }, sceneKey);
 
   for (const key of drawn.broken) {
-    fail(`${scene}: "${key}" — that em is not a number, so the letter is drawn at whatever size Phaser fell back to`);
+    fail(`${where}: "${key}" — that em is not a number, so the letter is drawn at whatever size Phaser fell back to`);
   }
 
-  if (!drawn.roles.length) fail(`${scene}: no em-sized writing found at all`);
+  if (!drawn.roles.length) fail(`${where}: no em-sized writing found at all`);
   const mixed = drawn.roles.filter((d) => d.ems.length > 1);
   for (const { role, ems } of mixed) {
-    fail(`${scene}: "${role}" is drawn at ${ems.length} different sizes (${ems.join(', ')})`);
+    fail(`${where}: "${role}" is drawn at ${ems.length} different sizes (${ems.join(', ')})`);
   }
   step(
-    `${scene}: ${drawn.roles.length} role(s) of writing, ` +
+    `${where}: ${drawn.roles.length} role(s) of writing, ` +
       (mixed.length ? `${mixed.length} at mixed sizes` : 'each at one size')
   );
 }
+
+// The other fifteen games, on both pages of the panel that holds them.
+await startScene(page, 'Home');
+await page.evaluate(() => window.__game.scene.getScene('Home').openMore());
+await page.waitForTimeout(600);
+await checkWriting('Home + more games', 'Home');
+const turned = await page.evaluate(() => {
+  const panel = window.__game.scene.getScene('Home').morePanel;
+  const was = panel.page;
+  // The forward arrow: the leftmost button on the panel.
+  const buttons = panel.list.filter((c) => c.input && c.type === 'Container');
+  buttons.sort((a, b) => a.x - b.x)[0].emit('pointerup');
+  return { was, now: panel.page };
+});
+// Without this the check below would happily measure page one twice and pass.
+if (turned.now === turned.was) fail('the panel\'s forward arrow did not turn the page');
+await page.waitForTimeout(600);
+await checkWriting(`more games, page ${turned.now + 1}`, 'Home');
 
 await finish();
