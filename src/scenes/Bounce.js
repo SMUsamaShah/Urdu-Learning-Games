@@ -10,7 +10,7 @@ import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
-import { addStage, addStreak, wellDone } from '../lib/stage.js';
+import { addStage, wellDone } from '../lib/stage.js';
 import { bob } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
@@ -73,7 +73,6 @@ export default class Bounce extends Phaser.Scene {
     });
     this.banner = this.stage.banner;
     this.mascot = this.stage.mascot;
-    this.streakText = addStreak(this);
 
     this.fit = fitEmAlone(allLetterGlyphs('isolated'), BALL - 40, BALL - 46);
     this.promptLayer = this.add.container(168, 212);
@@ -144,7 +143,6 @@ export default class Bounce extends Phaser.Scene {
   }
 
   updateStreak() {
-    this.streakText.set(this.streak);
   }
 
   // ----------------------------------------------------------------- balls

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer } from '../lib/flourish.js';
 import { confetti, dance, flyStar } from '../lib/celebrate.js';
-import { addStage, addStreak, wellDone } from '../lib/stage.js';
+import { addStage, wellDone } from '../lib/stage.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
@@ -70,7 +70,6 @@ export default class QuizScene extends Phaser.Scene {
     this.instructionRoman = null;
 
     this.streak = 0;
-    this.best = 0;
     /** @type {*} */
     this.target = null;
     this.locked = false;
@@ -139,7 +138,6 @@ export default class QuizScene extends Phaser.Scene {
     });
     this.banner = this.stage.banner;
     this.mascot = this.stage.mascot;
-    this.streakText = addStreak(this);
 
     this.promptLayer = this.add.container(this.stageX, this.promptY);
     this.choicesLayer = this.add.container(0, 0);
@@ -173,7 +171,6 @@ export default class QuizScene extends Phaser.Scene {
     this.promptLayer.removeAll(true);
     this.buildPrompt(this.promptLayer, this.target);
     this.buildChoices(ids);
-    this.updateStreak();
     this.speak();
     // The spider points at the answers once they are all on screen, which is
     // the whole of its job during a question: "look over there".
@@ -269,10 +266,6 @@ export default class QuizScene extends Phaser.Scene {
     return speaker;
   }
 
-  updateStreak() {
-    this.best = Math.max(this.best, this.streak);
-    this.streakText.set(this.streak);
-  }
 
   choose(id, tile) {
     if (this.locked) return;
@@ -280,7 +273,6 @@ export default class QuizScene extends Phaser.Scene {
     if (id !== this.target) {
       sfx.nudge();
       this.streak = 0;
-      this.updateStreak();
       // A puzzled wobble, never a frown. There is no fail state here and the
       // spider must not look like there is one.
       this.mascot?.wonder();
@@ -336,13 +328,14 @@ export default class QuizScene extends Phaser.Scene {
       milestone();
       wellDone(this, this.stage);
     }
-    // The star updates the score when it lands, so the row of stars visibly
-    // grows *because* of the answer rather than alongside it.
+    // A star thrown from the answer into the ring, landing as the ring fills,
+    // so getting it right and the ring growing are one event rather than two
+    // things happening in different corners.
     flyStar(
       this,
       { x: tile.x, y: tile.y },
-      { x: this.streakText.x, y: this.streakText.y },
-      () => this.updateStreak()
+      this.stage.ring.flyTo,
+      () => this.stage.ring.catch()
     );
 
     this.time.delayedCall(1500, () => this.newRound());

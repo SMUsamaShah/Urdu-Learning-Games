@@ -31,8 +31,9 @@ import { paperFall } from './celebrate.js';
 import { jig } from './liveliness.js';
 import { addMascot } from './mascot.js';
 import { starShower } from './particles.js';
+import { addProgressRing } from './progress-ring.js';
 import { addScenery } from './scenery.js';
-import { COLORS, DESIGN, label, makeButton } from './theme.js';
+import { COLORS, DESIGN, makeButton } from './theme.js';
 
 /**
  * Where the spider sits on a game screen.
@@ -79,6 +80,11 @@ export function addStage(scene, options = {}) {
     scene.add.text(0, 0, '⌂', { fontSize: '34px', color: COLORS.ink }).setOrigin(0.5)
   );
 
+  // Every screen, in the one corner all of them leave free. It is the same
+  // ring on all twenty-four because it is the same total — a child does not
+  // have a fishing score and a balloon score, they have how far they have got.
+  const ring = addProgressRing(scene, DESIGN.width - 100, 100);
+
   const banner = instruction ? addBanner(scene, { ui: instruction, roman }) : null;
 
   // After the ribbon and before anything the scene adds, so a tile or a balloon
@@ -89,7 +95,7 @@ export function addStage(scene, options = {}) {
   // Leaving mid-word should not leave a voice talking over the menu.
   scene.events.once('shutdown', stopAll);
 
-  return { banner, mascot: spider };
+  return { banner, mascot: spider, ring };
 }
 
 /**
@@ -118,22 +124,4 @@ export function wellDone(scene, { banner, mascot }, options = {}) {
     banner.setInstruction('well-done', 'Well done!');
     jig(scene, banner, { angle: 4, repeats: 5 });
   }
-}
-
-/**
- * The row of stars in the top-right corner.
- *
- * Stars rather than a number, because the audience cannot read digits yet and a
- * row that grows is legible at a glance. Capped at five, which is also where
- * the milestone lands.
- *
- * @returns {*} a text object with `.set(streak)` on it
- */
-export function addStreak(scene) {
-  const text = label(scene, DESIGN.width - 90, 56, '', {
-    size: 26,
-    color: COLORS.accentCss,
-  });
-  text.set = (streak) => text.setText('★'.repeat(Math.min(streak, 5)));
-  return text;
 }

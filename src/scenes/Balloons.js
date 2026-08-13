@@ -11,7 +11,7 @@ import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
-import { addStage, addStreak, wellDone } from '../lib/stage.js';
+import { addStage, wellDone } from '../lib/stage.js';
 import { sayLetter } from '../lib/say.js';
 import { sway } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
@@ -84,7 +84,6 @@ export default class Balloons extends Phaser.Scene {
     });
     this.banner = this.stage.banner;
     this.mascot = this.stage.mascot;
-    this.streakText = addStreak(this);
 
     // A badge holding the letter to look for, in the corner, tappable to hear
     // it again. Taken straight from the reference apps, which all put the
@@ -223,7 +222,6 @@ export default class Balloons extends Phaser.Scene {
   }
 
   updateStreak() {
-    this.streakText.set(this.streak);
   }
 
   // --------------------------------------------------------------- balloons

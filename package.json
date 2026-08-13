@@ -23,6 +23,7 @@
     "verify:offline": "node tools/verify-offline.mjs",
     "verify:recording": "node tools/verify-recording.mjs",
     "verify:games": "node tools/verify-games.mjs",
+    "verify:progress": "node tools/verify-progress.mjs",
     "verify:sizing": "node tools/verify-glyph-sizing.mjs",
     "verify:fun": "node tools/verify-fun.mjs",
     "verify:trace": "node tools/verify-trace.mjs",

@@ -31,6 +31,7 @@ import { mountFpsMeter } from './lib/fps.js';
 import * as updates from './lib/updates.js';
 import * as music from './lib/music.js';
 import * as flourish from './lib/flourish.js';
+import * as progress from './lib/progress.js';
 import { useAudioContext } from './lib/tone-setup.js';
 import { DESIGN } from './lib/theme.js';
 
@@ -118,6 +119,7 @@ useAudioContext(game.sound?.context ?? audioContext);
 
 window.__game = game;
 window.__music = music;
+window.__progress = progress;
 window.__flourish = flourish;
 window.__updates = updates;
 

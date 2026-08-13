@@ -5,7 +5,7 @@ import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addWordImage, hasWordImage, queueWordImages } from '../lib/images.js';
-import { addStage, addStreak, wellDone } from '../lib/stage.js';
+import { addStage, wellDone } from '../lib/stage.js';
 import { sway } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayWord } from '../lib/say.js';
@@ -84,7 +84,6 @@ export default class Fishing extends Phaser.Scene {
     });
     this.banner = this.stage.banner;
     this.mascot = this.stage.mascot;
-    this.streakText = addStreak(this);
 
     this.fishFit = fitEmAlone(allLetterGlyphs('isolated'), 92, 76);
     // The word being asked about, in the corner where every screen here puts
@@ -153,7 +152,6 @@ export default class Fishing extends Phaser.Scene {
   }
 
   updateStreak() {
-    this.streakText.set(this.streak);
   }
 
   // ------------------------------------------------------------------- fish

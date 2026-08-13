@@ -10,7 +10,7 @@ import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
-import { addStage, addStreak, wellDone } from '../lib/stage.js';
+import { addStage, wellDone } from '../lib/stage.js';
 import { bob, squash } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
@@ -99,7 +99,6 @@ export default class Whack extends Phaser.Scene {
     });
     this.banner = this.stage.banner;
     this.mascot = this.stage.mascot;
-    this.streakText = addStreak(this);
 
     this.fit = fitEmAlone(allLetterGlyphs('isolated'), LETTER_BOX - 24, LETTER_BOX - 30);
     this.promptLayer = this.add.container(170, 210);
@@ -216,7 +215,6 @@ export default class Whack extends Phaser.Scene {
   }
 
   updateStreak() {
-    this.streakText.set(this.streak);
   }
 
   // ------------------------------------------------------------------ holes

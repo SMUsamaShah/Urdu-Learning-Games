@@ -1,5 +1,10 @@
 /**
- * The sound of getting something right.
+ * Getting something right: the sound of it, and the credit for it.
+ *
+ * Every one of the twenty-four games already called in here at exactly the
+ * moment a child got something right, so this is where the score is kept too.
+ * The alternative was a line in each game, twenty-four chances to forget it,
+ * and a twenty-fifth game that silently awards nothing. See progress.js.
  *
  * ## Why this is not in sfx.js
  *
@@ -37,6 +42,7 @@
  */
 
 import { loadTone, renderedChannels } from './tone-setup.js';
+import * as progress from './progress.js';
 import * as sfx from './sfx.js';
 
 /**
@@ -196,11 +202,16 @@ const FLOURISHES = {
 /** One right answer. */
 export function rightAnswer() {
   play(FLOURISHES.rightAnswer(), () => sfx.correct());
+  progress.award(1);
 }
 
 /** A run of five. */
 export function milestone() {
   play(FLOURISHES.milestone(), () => sfx.fanfare());
+  // Two on top of the one the answer itself earned. A run is worth more than
+  // the same number of answers spread out, which is the only place in this app
+  // where anything rewards not making a mistake.
+  progress.award(2);
 }
 
 /**
@@ -215,6 +226,9 @@ export function milestone() {
 export function finished() {
   sfx.drumroll();
   play(FLOURISHES.finished(), () => setTimeout(() => sfx.tada(), 420));
+  // Enough to be worth finishing a board for, not so much that finishing three
+  // easy boards beats playing properly.
+  progress.award(3);
 }
 
 /**

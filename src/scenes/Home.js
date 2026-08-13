@@ -15,6 +15,7 @@ import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { queueTileArt } from '../lib/tiles.js';
+import { addProgressRing } from '../lib/progress-ring.js';
 import { FEATURED, GAMES, MORE, MORE_TILE } from '../lib/games.js';
 
 /**
@@ -135,6 +136,11 @@ export default class Home extends Phaser.Scene {
     // Higher up than on the game screens so it stays clear of the Settings
     // button in the corner beneath it.
     addMascot(this, 116, 618, { height: 214 }).point();
+
+    // The same ring the games carry, in the corner the games keep the home
+    // button in — this screen has no home button, and between games is exactly
+    // when a child wants to see what they have got to.
+    addProgressRing(this, 100, 100);
 
     this.buildInstallHint();
     this.buildSettingsButton();

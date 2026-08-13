@@ -38,6 +38,7 @@ import { stopAll } from '../lib/audio.js';
 import { summaries } from '../lib/clip-store.js';
 import { expectedClips } from '../lib/clip-list.js';
 import { letters, numbers, words } from '../lib/content.js';
+import { reset as resetProgressTotal, state as progressState } from '../lib/progress.js';
 
 const el = (html) => {
   const t = document.createElement('template');
@@ -130,6 +131,10 @@ export function openSettings({ onClose } = {}) {
           pageRow('check', 'Sound check'),
         ])}
         ${group('Voice', [pageRow('recordings', 'Your recordings', '…')])}
+        ${group('Progress', [
+          actionRow('progress', 'Level reached', progressSummary()),
+          actionRow('reset-progress', 'Start again from level 1'),
+        ])}
         ${group('App', [
           actionRow('update', 'Check for update'),
           switchRow('fps', 'Show frame rate', showFps()),
@@ -140,6 +145,28 @@ export function openSettings({ onClose } = {}) {
     // Filled in after the list is on screen: it reads IndexedDB, and waiting on
     // it would leave the whole list blank for as long as that takes.
     countRecordings();
+  }
+
+  /** How far the child has got, for the row above the reset. */
+  function progressSummary() {
+    const { level, step, steps } = progressState();
+    return `Level ${level + 1} · ${step} of ${steps}`;
+  }
+
+  /**
+   * Wipes the total.
+   *
+   * Confirmed first, and worded as what it does rather than as "are you sure".
+   * This is the only destructive thing on the screen and the only one a parent
+   * could plausibly hit by accident while looking for the tune.
+   */
+  function resetProgress() {
+    if (!window.confirm('Start again from level 1? This clears all progress on this device.')) {
+      return;
+    }
+    resetProgressTotal();
+    const row = bodyEl.querySelector('[data-role="progress-value"]');
+    if (row) row.textContent = progressSummary();
   }
 
   async function countRecordings() {
@@ -303,6 +330,7 @@ export function openSettings({ onClose } = {}) {
     if (act === 'close') return close();
     if (act === 'back') return back();
     if (act === 'update') return checkUpdate();
+    if (act === 'reset-progress') return resetProgress();
   });
 
   root.addEventListener('change', (event) => {
