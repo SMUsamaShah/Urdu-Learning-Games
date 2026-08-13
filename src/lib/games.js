@@ -43,7 +43,7 @@ export const GAMES = [
     roman: 'Words',
     color: 0x7a5bbd,
     featured: true,
-    picture: 'seyb',
+    icon: { letter: 'alif', form: 'isolated' },
   },
   {
     scene: 'StartsWith',
@@ -51,7 +51,7 @@ export const GAMES = [
     roman: 'Starts with',
     color: 0xc9713f,
     featured: true,
-    picture: 'bakri',
+    icon: { letter: 'pe', form: 'isolated' },
   },
   {
     scene: 'Numbers',
@@ -127,7 +127,7 @@ export const GAMES = [
     ui: 'fishing',
     roman: 'Fishing',
     color: 0x2f7fa8,
-    picture: 'machhli',
+    icon: { letter: 'mim', form: 'initial' },
   },
   {
     scene: 'Baskets',
@@ -206,6 +206,7 @@ export const MORE = GAMES.filter((game) => !game.featured);
  * "there are more of these".
  */
 export const MORE_TILE = {
+  art: 'More',
   ui: 'more-games',
   roman: `More games (${MORE.length})`,
   color: 0x6a6f8c,
@@ -222,7 +223,9 @@ export const MORE_TILE = {
  * runtime; this is the same question asked from a test.
  */
 export function missingIcons() {
-  return GAMES.filter((game) => game.icon && !letterGlyph(game.icon.letter, game.icon.form)).map(
-    (game) => `${game.ui}: ${game.icon.letter}`
-  );
+  // The More tile too: it is not a game, and it is still a tile with a letter
+  // on it when its picture is missing.
+  return [...GAMES, MORE_TILE]
+    .filter((game) => game.icon && !letterGlyph(game.icon.letter, game.icon.form))
+    .map((game) => `${game.ui}: ${game.icon.letter} ${game.icon.form}`);
 }

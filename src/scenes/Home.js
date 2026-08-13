@@ -1,12 +1,11 @@
 import Phaser from 'phaser';
 import { uiGlyph } from '../lib/content.js';
 import { addGlyph } from '../lib/glyph.js';
-import { queueWordImages } from '../lib/images.js';
 import { canInstall, onInstallAvailability, promptInstall } from '../lib/install.js';
 import { addMascot } from '../lib/mascot.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { addScenery } from '../lib/scenery.js';
-import { gridPlaces, tilePictures, tileMaker } from '../lib/game-tile.js';
+import { gridPlaces, tileMaker } from '../lib/game-tile.js';
 import { openGamesPanel } from '../lib/games-panel.js';
 import { bob, popIn, squash } from '../lib/liveliness.js';
 import { musicOn, setMusicOn, startMusic } from '../lib/music.js';
@@ -15,6 +14,7 @@ import { ringBurst } from '../lib/particles.js';
 import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 import { queueBackdrop } from '../lib/backdrops.js';
+import { queueTileArt } from '../lib/tiles.js';
 import { FEATURED, GAMES, MORE, MORE_TILE } from '../lib/games.js';
 
 /**
@@ -50,9 +50,9 @@ export default class Home extends Phaser.Scene {
 
   preload() {
     queueBackdrop(this);
-    // Only the handful used as tile icons, not the whole set: the menu should
-    // be on screen immediately, and the games load the rest themselves.
-    queueWordImages(this, tilePictures(GAMES));
+    // Every tile's picture, including the panel's — the panel opens on a tap
+    // and has no loading screen of its own to hide behind.
+    queueTileArt(this, [...GAMES, MORE_TILE]);
   }
 
   create() {
@@ -79,7 +79,7 @@ export default class Home extends Phaser.Scene {
       252,
       (STAGE.right - STAGE.left - gap * (COLUMNS - 1)) / COLUMNS
     );
-    const tileH = Math.round(tileW * 0.92);
+    const tileH = Math.round(tileW * 1.04);
     const rowGap = 24;
     // Measured from the top of the grid rather than its centre, so a second row
     // grows downwards into the space above the footer instead of pushing the
@@ -91,7 +91,7 @@ export default class Home extends Phaser.Scene {
       width: tileW,
       height: tileH,
       centerX: STAGE_X,
-      top: 236,
+      top: 228,
     });
 
     const makeTile = tileMaker(this, shown, { width: tileW, height: tileH });

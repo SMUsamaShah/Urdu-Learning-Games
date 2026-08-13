@@ -35,10 +35,14 @@ const COLUMNS = 4;
 const ROWS = 2;
 const PER_PAGE = COLUMNS * ROWS;
 
-const PANEL = { width: 1120, height: 552, y: 382 };
+const PANEL = { width: 1120, height: 600, y: 376 };
 /** The coloured title bar across the top of the panel. */
 const HEADER = 84;
-const TILE = { width: 196, height: 168 };
+/**
+ * The same shape as a menu tile, so one drawing serves both grids. The menu's
+ * tiles are 173x180; this is that at 1.13x, and the art is generated to fit it.
+ */
+const TILE = { width: 196, height: 204 };
 const GAP = 24;
 const ROW_GAP = 22;
 

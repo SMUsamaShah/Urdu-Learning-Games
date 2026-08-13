@@ -1,6 +1,6 @@
 import { letterGlyph, numberGlyph, uiGlyph, uiGlyphs } from './content.js';
 import { addGlyphBaseline, fitEmLine } from './glyph.js';
-import { addWordImage } from './images.js';
+import { addTileArt } from './tiles.js';
 import { squash } from './liveliness.js';
 import { COLORS, chunkyGlyphEm, label, makeButton } from './theme.js';
 
@@ -35,17 +35,12 @@ export function iconGlyph(game) {
   return null;
 }
 
-/** Every word illustration a set of tiles needs, for preload(). */
-export function tilePictures(games) {
-  return games.map((game) => game.picture).filter(Boolean);
-}
-
 /**
  * Measures a set of games, then draws tiles from it.
  *
  * @param {Phaser.Scene} scene
- * @param {object[]} games entries with `ui`, `roman`, `color` and one of
- *   `icon` / `number` / `picture`
+ * @param {object[]} games entries with `ui`, `roman`, `color`, the name of a
+ *   picture in content/tiles.json, and an `icon` or `number` to fall back to
  * @param {{width: number, height: number, role?: string}} size every tile in
  *   the set, plus the texture-key prefix its glyphs are filed under — two grids
  *   of different-sized tiles are two roles, and verify:sizing checks each role
@@ -53,42 +48,33 @@ export function tilePictures(games) {
  * @returns {(game: object, x: number, y: number, onTap: () => void) => Phaser.GameObjects.Container}
  */
 export function tileMaker(scene, games, { width, height, role = 'tile' }) {
-  // The lines are as deep as they are because Nastaliq's vertical range is
-  // enormous: گنتی and لکھو reach two full ems above the baseline, since the
-  // ascender on a گ or a ک is drawn as a long rising stroke, while حروف and
-  // جوڑے drop half an em below it. Reserving room for both at once is the price
-  // of a shared baseline, and it is what decides the sizes here.
-  const iconBox = { top: -height * 0.46, height: height * 0.4 };
-  const iconFit = fitEmLine(games.map(iconGlyph).filter(Boolean), width * 0.66, iconBox.height);
-  // The Urdu name stops a little short of the roman gloss below it. گنتی and
-  // جوڑے drop a long way under their baseline, and a box that runs all the way
-  // down to the gloss puts that descender through the middle of it.
-  const labelTop = -height * 0.09;
+  // The picture, inset so the coloured card shows as a thin frame around it —
+  // the reference app's tiles are framed the same way, and the frame is what
+  // stops twenty-four pictures on a photographic backdrop reading as clutter.
+  const art = { width: width - 12, height: height - 12 };
+  // The name sits on a solid band of the game's own colour across the bottom of
+  // the picture, not on a gradient over it. A gradient was tried first and it
+  // cannot work here: these pictures are pale by house style, the band is 40
+  // pixels tall, and white Urdu on a grey wash over a cream illustration was
+  // unreadable at tile size on every light one. A solid band gives the same
+  // contrast on all twenty-five whatever the picture underneath does.
+  const band = { height: art.height * 0.38, radius: (width - 12) * 0.102 };
+  band.top = art.height / 2 - band.height;
   const labelFit = fitEmLine(
     uiGlyphs(games.map((game) => game.ui)),
     width - 34,
-    height * 0.38
+    band.height * 0.7
   );
 
-  /**
-   * A tile's picture: a letter, a word illustration or a numeral.
-   *
-   * Whatever a game is about, drawn the way that game draws it, so the menu
-   * previews the thing rather than decorating it.
-   */
+  // Where the letter goes on a tile with no picture. The lines are as deep as
+  // they are because Nastaliq's vertical range is enormous: گنتی and لکھو reach
+  // two full ems above the baseline, since the ascender on a گ or a ک is drawn
+  // as a long rising stroke, while حروف and جوڑے drop half an em below it.
+  const iconBox = { top: -height * 0.44, height: height * 0.34 };
+  const iconFit = fitEmLine(games.map(iconGlyph).filter(Boolean), width * 0.66, iconBox.height);
+
+  /** The letter a tile falls back to when its picture is missing. */
   const drawIcon = (game) => {
-    // A picture has no baseline to sit on, so it is centred in the same box the
-    // letters were fitted into, and drawn a little larger than their line: a
-    // letter only inks part of its line box, an apple fills all of its own.
-    if (game.picture) {
-      return addWordImage(
-        scene,
-        0,
-        iconBox.top + iconBox.height / 2,
-        game.picture,
-        iconBox.height * 1.3
-      );
-    }
     const glyph = iconGlyph(game);
     const id = game.number ?? (game.icon && `${game.icon.letter}:${game.icon.form}`);
     if (!glyph) {
@@ -121,8 +107,28 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
     });
     button.on('pointerdown', () => squash(scene, button));
 
-    const icon = drawIcon(game);
-    if (icon) button.add(icon);
+    // The picture if there is one, and the letter only if there is not. A game
+    // added without art still gets a tile that looks like the others rather
+    // than a blank one, and the fallback is the tile this menu had before.
+    const picture = addTileArt(scene, game, art.width, art.height);
+    if (picture) {
+      button.add(picture);
+      // Only the bottom corners are rounded, matching the picture's own baked
+      // ones. Phaser takes a radius per corner, which is what makes a band
+      // across the bottom of a rounded rectangle possible without a mask.
+      const caption = scene.add.graphics();
+      caption.fillStyle(game.color, 0.94);
+      caption.fillRoundedRect(-art.width / 2, band.top, art.width, band.height, {
+        tl: 0,
+        tr: 0,
+        bl: band.radius,
+        br: band.radius,
+      });
+      button.add(caption);
+    } else {
+      const icon = drawIcon(game);
+      if (icon) button.add(icon);
+    }
 
     const nameGlyph = uiGlyph(game.ui);
     if (nameGlyph) {
@@ -130,7 +136,7 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
         addGlyphBaseline(
           scene,
           0,
-          labelTop + labelFit.baseline,
+          band.top + 2 + labelFit.baseline,
           `${role}-label:em${Math.round(labelFit.em)}:${game.ui}`,
           nameGlyph,
           chunkyGlyphEm(labelFit.em)
@@ -139,9 +145,9 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
     }
 
     button.add(
-      label(scene, 0, height * 0.4, game.roman, {
-        size: Math.max(12, Math.round(height * 0.1)),
-        color: COLORS.onColorDim,
+      label(scene, 0, band.top + band.height * 0.85, game.roman, {
+        size: Math.max(11, Math.round(band.height * 0.2)),
+        color: COLORS.onColor,
       })
     );
 
