@@ -177,6 +177,20 @@ const GAMES = [
     number: 'n5',
   },
   {
+    scene: 'Hidden',
+    ui: 'hiding',
+    roman: 'Hide and seek',
+    color: 0x4f7f3f,
+    icon: { letter: 'khe', form: 'isolated' },
+  },
+  {
+    scene: 'Bounce',
+    ui: 'bouncing',
+    roman: 'Bouncing',
+    color: 0xd4913f,
+    icon: { letter: 'lam', form: 'isolated' },
+  },
+  {
     scene: 'Trace',
     ui: 'trace',
     roman: 'Write',

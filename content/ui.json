@@ -275,6 +275,26 @@
       "id": "counting",
       "text": "گنتی کی ترتیب",
       "roman": "ginti ki tarteeb"
+    },
+    {
+      "id": "find-hidden",
+      "text": "چھپے حرف ڈھونڈو",
+      "roman": "chhupe harf dhoondo"
+    },
+    {
+      "id": "hiding",
+      "text": "چھپن چھپائی",
+      "roman": "chhupan chhupai"
+    },
+    {
+      "id": "catch-bounce",
+      "text": "اچھلتا حرف پکڑو",
+      "roman": "uchhalta harf pakro"
+    },
+    {
+      "id": "bouncing",
+      "text": "اچھل کود",
+      "roman": "uchhal kood"
     }
   ]
 }

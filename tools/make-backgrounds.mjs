@@ -156,6 +156,14 @@ const BACKDROPS = {
     'A railway siding: flat pale gravel across the bottom third with two thin ' +
     'rails, a low hedge behind it, one signal post at the far right edge, ' +
     'wide pale sky above.',
+  Hidden:
+    'An overgrown garden corner: leafy green bushes and ferns filling the ' +
+    'bottom third and climbing the far left and right edges, a few flowers, ' +
+    'pale sky in the middle. Busier at the edges than the other scenes.',
+  Bounce:
+    'A gym floor seen flat on: a plain pale cream wall filling most of the ' +
+    'picture, a polished wooden floor strip along the bottom edge, one ' +
+    'wall-bar ladder at the far left edge, nothing in the middle.',
   Trace:
     'An almost empty pale blue sky with the faintest suggestion of two soft ' +
     'clouds at the top corners and a thin strip of green grass along the very ' +

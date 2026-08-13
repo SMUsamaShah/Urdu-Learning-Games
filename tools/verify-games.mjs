@@ -281,6 +281,159 @@ if (!process.exitCode) {
   if (!process.exitCode) step('every run was consecutive and every line-up was answerable');
 }
 
+// ------------------------------------------------------------------ hidden
+
+if (!process.exitCode) {
+  await start('Hidden');
+  step('Hidden: checking the hunt is findable');
+
+  const board = () =>
+    page.evaluate(() => {
+      const scene = window.__game.scene.getScene('Hidden');
+      return {
+        target: scene.target,
+        wanted: scene.wanted,
+        found: scene.found,
+        round: scene.round,
+        letters: scene.letters.map((l) => ({
+          letterId: l.letterId,
+          x: l.x,
+          y: l.y,
+          found: l.found,
+        })),
+      };
+    });
+
+  const first = await board();
+
+  const present = first.letters.filter((l) => l.letterId === first.target).length;
+  if (present !== first.wanted) {
+    fail(`hunting for ${first.wanted} of "${first.target}" but ${present} are on screen`);
+  } else step(`${first.letters.length} letters hidden, ${present} of them "${first.target}"`);
+
+  // Nothing may overlap. Two letters on top of each other are unreadable and
+  // impossible to tap apart, which turns a hunt into a mess.
+  for (let i = 0; i < first.letters.length; i++) {
+    for (let j = i + 1; j < first.letters.length; j++) {
+      const a = first.letters[i];
+      const b = first.letters[j];
+      const gap = Math.hypot(a.x - b.x, a.y - b.y);
+      if (gap < 80) {
+        fail(`two hidden letters are ${gap.toFixed(0)}px apart — they overlap`);
+        i = first.letters.length;
+        break;
+      }
+    }
+  }
+
+  // And every one has to be on screen. A letter placed off the edge is one the
+  // round can never be finished without.
+  for (const l of first.letters) {
+    if (l.x < 40 || l.x > 1240 || l.y < 40 || l.y > 700) {
+      fail(`a hidden letter is off screen at ${l.x.toFixed(0)},${l.y.toFixed(0)}`);
+      break;
+    }
+  }
+
+  const tap = (index) =>
+    page.evaluate((i) => {
+      window.__game.scene.getScene('Hidden').letters[i]?.emit('pointerup');
+    }, index);
+
+  const wrongAt = first.letters.findIndex((l) => l.letterId !== first.target);
+  if (wrongAt > -1) {
+    await tap(wrongAt);
+    await page.waitForTimeout(300);
+    const after = await board();
+    if (after.found !== 0) fail('tapping the wrong letter counted as a find');
+    else step('a wrong letter costs nothing');
+  }
+
+  step('Hidden: finding every one');
+  const rightIndexes = first.letters
+    .map((l, i) => (l.letterId === first.target ? i : -1))
+    .filter((i) => i > -1);
+  for (const i of rightIndexes) {
+    await tap(i);
+    await page.waitForTimeout(320);
+  }
+  const moved = await page
+    .waitForFunction(
+      (before) => window.__game.scene.getScene('Hidden').round > before,
+      first.round,
+      { timeout: 30000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!moved) fail('finding every hidden letter did not start a new round');
+  else step('all found and a new round dealt');
+}
+
+// ------------------------------------------------------------------ bounce
+
+if (!process.exitCode) {
+  await start('Bounce');
+  step('Bounce: checking the answer is always catchable');
+
+  const state = () =>
+    page.evaluate(() => {
+      const scene = window.__game.scene.getScene('Bounce');
+      return {
+        target: scene.target,
+        streak: scene.streak,
+        balls: scene.balls.map((b) => ({ letterId: b.letterId, x: b.x, y: b.y })),
+      };
+    });
+
+  const first = await state();
+  if (!first.balls.some((b) => b.letterId === first.target)) {
+    fail(`"${first.target}" is being asked for but is not bouncing`);
+  } else step(`${first.balls.length} balls, the answer among them`);
+
+  // Balls bounce for ever rather than leaving, so the answer can never go away
+  // while a child is still looking at the prompt. Watched over a real second,
+  // because this is a tween on the clock rather than scene state.
+  await page.waitForTimeout(1200);
+  const later = await state();
+  const stillThere = later.balls.some((b) => b.letterId === first.target);
+  if (!stillThere) fail('the answer stopped bouncing and left the screen');
+  else {
+    const moved = later.balls.some((b, i) => Math.abs(b.y - (first.balls[i]?.y ?? b.y)) > 4);
+    if (!moved) fail('nothing is actually bouncing');
+    else step('the balls bounce, and the answer stays');
+  }
+
+  // A wrong ball must stay on screen: removing it would make the answer easier
+  // to find by elimination every time somebody guessed.
+  const wrong = first.balls.find((b) => b.letterId !== first.target);
+  if (wrong) {
+    await page.evaluate((id) => {
+      const scene = window.__game.scene.getScene('Bounce');
+      scene.balls.find((b) => b.letterId === id)?.emit('pointerup');
+    }, wrong.letterId);
+    await page.waitForTimeout(400);
+    const after = await state();
+    if (!after.balls.some((b) => b.letterId === wrong.letterId)) {
+      fail('a wrongly tapped ball was taken off the screen');
+    } else step('a wrong ball keeps bouncing');
+  }
+
+  await page.evaluate(() => {
+    const scene = window.__game.scene.getScene('Bounce');
+    scene.balls.find((b) => b.letterId === scene.target)?.emit('pointerup');
+  });
+  const advanced = await page
+    .waitForFunction(
+      (was) => window.__game.scene.getScene('Bounce').target !== was,
+      first.target,
+      { timeout: 30000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!advanced) fail('catching the right ball did not start a new round');
+  else step('caught it, and a new round started');
+}
+
 // ---------------------------------------------------------- connect pairs
 
 if (!process.exitCode) {

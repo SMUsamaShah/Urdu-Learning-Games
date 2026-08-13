@@ -22,6 +22,8 @@ import InOrder from './scenes/InOrder.js';
 import Paint from './scenes/Paint.js';
 import ConnectPairs from './scenes/ConnectPairs.js';
 import NumberLine from './scenes/NumberLine.js';
+import Hidden from './scenes/Hidden.js';
+import Bounce from './scenes/Bounce.js';
 import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
 import { createAppAudioContext } from './lib/audio-context.js';
@@ -88,6 +90,8 @@ const game = new Phaser.Game({
     Paint,
     ConnectPairs,
     NumberLine,
+    Hidden,
+    Bounce,
     Trace,
   ],
 });

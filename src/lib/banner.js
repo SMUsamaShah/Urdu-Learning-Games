@@ -49,6 +49,8 @@ export const INSTRUCTIONS = [
   'colour-in',
   'join-picture',
   'count-gaps',
+  'find-hidden',
+  'catch-bounce',
 ];
 
 /**

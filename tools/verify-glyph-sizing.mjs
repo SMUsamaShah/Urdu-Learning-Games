@@ -45,6 +45,8 @@ const SCENES = [
   'InOrder',
   'ConnectPairs',
   'NumberLine',
+  'Hidden',
+  'Bounce',
   'JoinForms',
   'StartsWith',
   'Trace',
