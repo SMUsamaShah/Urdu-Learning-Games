@@ -18,10 +18,7 @@
  * Usage: npm run dev &  then  node tools/verify-games.mjs [baseUrl]
  */
 
-import { chromium } from 'playwright';
-import { launchOptions } from './browser.mjs';
-
-const APP = process.argv[2] || 'http://localhost:5173';
+import { fail, openApp, startScene, step } from './harness.mjs';
 
 /** The scenes built on QuizScene, which all answer to the same driving. */
 const QUIZZES = [
@@ -31,38 +28,15 @@ const QUIZZES = [
   { key: 'Sequence', rounds: 10 },
 ];
 
-const fail = (msg) => {
-  console.error('FAIL: ' + msg);
-  process.exitCode = 1;
-};
-const step = (msg) => process.stderr.write(`· ${msg}\n`);
-
-const watchdog = setTimeout(() => {
-  console.error('FAIL: timed out after 300s');
-  process.exit(1);
-}, 300000);
-watchdog.unref();
-
-const browser = await chromium.launch(launchOptions());
-const page = await browser.newPage({ viewport: { width: 1180, height: 820 } });
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-
-await page.goto(APP, { waitUntil: 'domcontentloaded' });
-await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
-  timeout: 30000,
+const { page, finish } = await openApp({
+  name: 'game',
+  timeoutMs: 300000,
 });
 
 const start = async (key) => {
-  await page.evaluate((k) => {
-    const game = window.__game;
-    game.scene.getScenes(true).forEach((s) => game.scene.stop(s.scene.key));
-    game.scene.start(k);
-  }, key);
-  await page.waitForFunction((k) => window.__game.scene.isActive(k), key, {
-    timeout: 20000,
-  });
+  await startScene(page, key);
+  // A beat for the entrance tweens; nothing below depends on them finishing,
+  // but a tile added on a delay would otherwise be missed.
   await page.waitForTimeout(400);
 };
 
@@ -435,12 +409,4 @@ if (!process.exitCode) {
   }
 }
 
-if (errors.length) {
-  for (const e of errors) console.error('  console: ' + e);
-  fail(`${errors.length} console error(s)`);
-}
-
-await browser.close();
-clearTimeout(watchdog);
-console.log(process.exitCode ? 'game verification FAILED' : 'game verification passed');
-process.exit(process.exitCode ?? 0);
+await finish();

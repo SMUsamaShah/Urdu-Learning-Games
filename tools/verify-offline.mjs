@@ -14,19 +14,12 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chromium } from 'playwright';
-import { launchOptions } from './browser.mjs';
+import { fail, homeIsUp, openApp, step } from './harness.mjs';
 import { ROOT } from './audio-keys.mjs';
 
 const PORT = 4177;
 const SUBPATH = '/Urdu-Learning-Games/';
 const URL_ = `http://localhost:${PORT}${SUBPATH}`;
-
-const fail = (msg) => {
-  console.error('FAIL: ' + msg);
-  process.exitCode = 1;
-};
-const step = (msg) => process.stderr.write(`· ${msg}\n`);
 
 if (!fs.existsSync(path.join(ROOT, 'dist', 'sw.js'))) {
   console.error('No dist/sw.js — run `npm run build` first.');
@@ -37,12 +30,6 @@ const audioManifest = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'content', 'audio.json'), 'utf8')
 );
 const clipKeys = Object.keys(audioManifest.clips);
-
-const watchdog = setTimeout(() => {
-  console.error('FAIL: timed out after 120s');
-  process.exit(1);
-}, 120000);
-watchdog.unref();
 
 step('starting preview server');
 const server = spawn(
@@ -57,18 +44,17 @@ await new Promise((resolve) => {
   setTimeout(resolve, 6000);
 });
 
-const browser = await chromium.launch(launchOptions());
-const context = await browser.newContext({ viewport: { width: 1180, height: 820 } });
-const page = await context.newPage();
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+const { context, page, errors, finish } = await openApp({
+  name: 'offline',
+  timeoutMs: 120000,
+  // Navigated below, because the first load is itself one of the things being
+  // checked — it is what installs the service worker.
+  open: false,
+});
 
 step('first load, installing the service worker');
 await page.goto(URL_, { waitUntil: 'networkidle' });
-await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
-  timeout: 20000,
-});
+await homeIsUp(page, 20000);
 
 // `navigator.serviceWorker.ready` resolves as soon as there is an active
 // worker, which can be while that worker is still in "activating" — so reading
@@ -235,7 +221,4 @@ if (errors.length) {
   fail(`${errors.length} console error(s) while checking for updates`);
 }
 
-await browser.close();
-clearTimeout(watchdog);
-console.log(process.exitCode ? 'offline verification FAILED' : 'offline verification passed');
-process.exit(process.exitCode ?? 0);
+await finish({ ignoreErrors: true });

@@ -26,7 +26,8 @@
     "verify:sizing": "node tools/verify-glyph-sizing.mjs",
     "verify:fun": "node tools/verify-fun.mjs",
     "verify:trace": "node tools/verify-trace.mjs",
-    "test": "node --test \"tests/**/*.test.mjs\""
+    "test": "eslint . && node --test \"tests/**/*.test.mjs\"",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@fontsource/noto-nastaliq-urdu": "^5.3.0",
@@ -34,6 +35,8 @@
     "tone": "^15.1.22"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.1",
     "harfbuzzjs": "^1.6.0",
     "playwright": "^1.62.1",
     "vite": "^8.2.1",

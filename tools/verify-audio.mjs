@@ -15,19 +15,12 @@ import { execFileSync } from 'node:child_process';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chromium } from 'playwright';
-import { launchOptions } from './browser.mjs';
+import { fail, homeIsUp, openApp, step } from './harness.mjs';
 import { RECORDED_DIR, ROOT, expectedClips, resolveClip } from './audio-keys.mjs';
 
 const APP = process.argv[2] || 'http://localhost:5173';
 const STUDIO_PORT = 5198;
 const CLIP = expectedClips()[0]; // letter/alif/name
-
-const fail = (msg) => {
-  console.error('FAIL: ' + msg);
-  process.exitCode = 1;
-};
-const step = (msg) => process.stderr.write(`· ${msg}\n`);
 
 if (resolveClip(CLIP.slug)) {
   console.log(`Skipping: ${CLIP.slug} is already recorded.`);
@@ -53,12 +46,6 @@ const cleanup = () => {
 process.on('exit', cleanup);
 for (const s of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(s, () => process.exit(1));
 
-const watchdog = setTimeout(() => {
-  console.error('FAIL: timed out after 120s');
-  process.exit(1);
-}, 120000);
-watchdog.unref();
-
 // ---------------------------------------------------------------- record
 
 step('starting studio server');
@@ -72,11 +59,11 @@ await new Promise((resolve) => {
   setTimeout(resolve, 4000);
 });
 
-const base = launchOptions();
-const browser = await chromium.launch({
-  ...base,
+const { newPage, finish } = await openApp({
+  name: 'audio',
+  timeoutMs: 120000,
+  open: false,
   args: [
-    ...base.args,
     '--use-fake-device-for-media-stream',
     '--use-fake-ui-for-media-stream',
     // Lets the game start audio without a real user gesture, which a headless
@@ -86,11 +73,11 @@ const browser = await chromium.launch({
 });
 
 step('recording a clip through the studio');
-const studio = await browser.newPage();
+const studio = await newPage();
 await studio.context().grantPermissions(['microphone'], {
   origin: `http://localhost:${STUDIO_PORT}`,
 });
-await studio.goto(`http://localhost:${STUDIO_PORT}/`, { waitUntil: 'networkidle' });
+await studio.goto(`http://localhost:${STUDIO_PORT}/`, { waitUntil: 'domcontentloaded' });
 await studio.waitForFunction(() => window.__studio?.state.clips.length > 0);
 await studio.evaluate(() => window.__studio.toggleRecording());
 await studio.waitForTimeout(900);
@@ -104,7 +91,7 @@ server.kill();
 const resolved = resolveClip(CLIP.slug);
 if (!resolved) {
   fail('studio did not write a file');
-  process.exit(1);
+  await finish();
 }
 step(`wrote public/${resolved.path}`);
 
@@ -114,15 +101,11 @@ console.log('  ' + rebuildManifest());
 // ---------------------------------------------------------------- play
 
 step('loading the app');
-const page = await browser.newPage({ viewport: { width: 1180, height: 820 } });
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-
-await page.goto(APP, { waitUntil: 'networkidle' });
-await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
-  timeout: 20000,
-});
+// domcontentloaded, not networkidle: the dev server keeps an HMR socket open,
+// so the network never goes idle and this timed out on every run.
+const page = await newPage();
+await page.goto(APP, { waitUntil: 'domcontentloaded' });
+await homeIsUp(page);
 
 const stats = await page.evaluate(() => window.__audio.audioStats());
 console.log(`  manifest seen by app: ${JSON.stringify(stats)}`);
@@ -146,12 +129,4 @@ const silent = await page.evaluate(() => window.__audio.play('letter/be/sound'))
 if (silent !== false) fail('a missing clip should resolve false, not throw');
 else console.log('  missing clip resolved silently, as intended');
 
-if (errors.length) {
-  for (const e of errors) console.error('  console: ' + e);
-  fail(`${errors.length} console error(s)`);
-}
-
-await browser.close();
-clearTimeout(watchdog);
-console.log(process.exitCode ? 'audio verification FAILED' : 'audio verification passed');
-process.exit(process.exitCode ?? 0);
+await finish();

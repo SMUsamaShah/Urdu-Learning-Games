@@ -27,8 +27,6 @@
  * mostly seen at eight or ten pixels across.
  */
 
-import Phaser from 'phaser';
-
 const SPARK = 'fx:spark';
 const STAR = 'fx:star';
 const PUFF = 'fx:puff';

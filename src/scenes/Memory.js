@@ -1,18 +1,15 @@
 import Phaser from 'phaser';
 import { allLetterGlyphs, lettersById, letterGlyph, wordForLetter } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
-import { stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { finished, rightAnswer } from '../lib/flourish.js';
-import { addBanner } from '../lib/banner.js';
-import { dance, paperFall } from '../lib/celebrate.js';
+import { dance } from '../lib/celebrate.js';
 import { addWordImage, hasWordImage, queueWordImages } from '../lib/images.js';
-import { addStageMascot } from '../lib/mascot.js';
-import { hop, jig, squash } from '../lib/liveliness.js';
-import { sparkleBurst, starShower } from '../lib/particles.js';
+import { addStage, wellDone } from '../lib/stage.js';
+import { hop, squash } from '../lib/liveliness.js';
+import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayWord } from '../lib/say.js';
-import { addScenery } from '../lib/scenery.js';
-import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
 
 /**
  * Find the letter and the picture that go together.
@@ -66,9 +63,6 @@ export default class Memory extends Phaser.Scene {
   }
 
   create() {
-    this.cameras.main.setBackgroundColor(COLORS.bg);
-    addScenery(this);
-
     // Only letters that can make a pair: the game is a letter next to its
     // picture, so a letter with no word, or a word with no picture, has nothing
     // to be paired with and must not reach the board.
@@ -79,26 +73,14 @@ export default class Memory extends Phaser.Scene {
 
     this.round = 0;
 
-    makeButton(this, {
-      x: 72,
-      y: 56,
-      width: 96,
-      height: 68,
-      color: COLORS.panel,
-      rim: false,
-      onTap: () => {
-        sfx.swoosh();
-        this.scene.start('Home');
-      },
-    }).add(
-      this.add.text(0, 0, '⌂', { fontSize: '34px', color: COLORS.ink }).setOrigin(0.5)
-    );
-
-    this.banner = addBanner(this, { ui: 'match-pairs', roman: 'Match the pairs' });
-    this.mascot = addStageMascot(this);
+    this.stage = addStage(this, {
+      instruction: 'match-pairs',
+      roman: 'Match the pairs',
+    });
+    this.banner = this.stage.banner;
+    this.mascot = this.stage.mascot;
     this.board = this.add.container(0, 0);
 
-    this.events.once('shutdown', stopAll);
     this.newBoard();
   }
 
@@ -355,11 +337,7 @@ export default class Memory extends Phaser.Scene {
     // has been noticed.
     finished();
     this.time.delayedCall(700, () => {
-      paperFall(this);
-      starShower(this, { duration: 2600 });
-      jig(this, this.banner, { angle: 4, repeats: 5 });
-      this.mascot?.cheer();
-      this.banner.setInstruction('well-done', 'Well done!');
+      wellDone(this, this.stage, { duration: 2600 });
       this.round++;
       this.time.delayedCall(2200, () => this.newBoard());
     });

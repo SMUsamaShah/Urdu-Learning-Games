@@ -1,13 +1,10 @@
 import Phaser from 'phaser';
-import { stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer } from '../lib/flourish.js';
-import { addBanner } from '../lib/banner.js';
-import { confetti, dance, flyStar, paperFall } from '../lib/celebrate.js';
-import { addStageMascot } from '../lib/mascot.js';
-import { addScenery } from '../lib/scenery.js';
-import { bob, hop, jig, popIn, squash } from '../lib/liveliness.js';
-import { sparkleBurst, starShower } from '../lib/particles.js';
+import { confetti, dance, flyStar } from '../lib/celebrate.js';
+import { addStage, addStreak, wellDone } from '../lib/stage.js';
+import { bob, hop, popIn, squash } from '../lib/liveliness.js';
+import { sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -109,50 +106,21 @@ export default class QuizScene extends Phaser.Scene {
   // ----------------------------------------------------------------- scene
 
   create() {
-    this.cameras.main.setBackgroundColor(COLORS.bg);
-    addScenery(this, { hills: this.showHills !== false });
     this.streak = 0;
     this.locked = false;
     this.target = null;
 
-    makeButton(this, {
-      x: 72,
-      y: 56,
-      width: 96,
-      height: 68,
-      color: COLORS.panel,
-      rim: false,
-      onTap: () => {
-        sfx.swoosh();
-        this.scene.start('Home');
-      },
-    }).add(
-      this.add
-        .text(0, 0, '⌂', { fontSize: '34px', color: COLORS.ink })
-        .setOrigin(0.5)
-    );
-
-    this.streakText = label(this, DESIGN.width - 90, 56, '', {
-      size: 26,
-      color: COLORS.accentCss,
+    this.stage = addStage(this, {
+      hills: this.showHills !== false,
+      instruction: this.instruction,
+      roman: this.instructionRoman,
     });
-
-    if (this.instruction) {
-      this.banner = addBanner(this, {
-        ui: this.instruction,
-        roman: this.instructionRoman,
-      });
-    }
-
-    // The spider. It goes in before the answers so a tile overlapping it draws
-    // on top, which is the right way round: the answers are what matters.
-    this.mascot = addStageMascot(this);
+    this.banner = this.stage.banner;
+    this.mascot = this.stage.mascot;
+    this.streakText = addStreak(this);
 
     this.promptLayer = this.add.container(this.stageX, this.promptY);
     this.choicesLayer = this.add.container(0, 0);
-
-    // Leaving mid-word should not leave a voice talking over the menu.
-    this.events.once('shutdown', stopAll);
 
     this.onCreated?.();
     this.newRound();
@@ -264,9 +232,7 @@ export default class QuizScene extends Phaser.Scene {
 
   updateStreak() {
     this.best = Math.max(this.best, this.streak);
-    // Stars rather than a number: the audience cannot read digits yet, and a
-    // row that grows is legible at a glance.
-    this.streakText.setText('★'.repeat(Math.min(this.streak, 5)));
+    this.streakText.set(this.streak);
   }
 
   choose(id, tile) {
@@ -328,14 +294,8 @@ export default class QuizScene extends Phaser.Scene {
     // the biggest thing this app does, and doing it on every single answer
     // would turn it into wallpaper within a minute.
     if (this.streak % MILESTONE === 0) {
-      paperFall(this);
-      starShower(this);
       milestone();
-      this.banner?.setInstruction('well-done', 'Well done!');
-      // The ribbon joins in. It is the thing that has been giving instructions
-      // all game, so it saying well done and then jumping about is the closest
-      // this app has to somebody in the room being pleased.
-      if (this.banner) jig(this, this.banner, { angle: 4, repeats: 5 });
+      wellDone(this, this.stage);
     }
     // The star updates the score when it lands, so the row of stars visibly
     // grows *because* of the answer rather than alongside it.

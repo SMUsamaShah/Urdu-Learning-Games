@@ -112,11 +112,6 @@ export function hasClip(key) {
   return deviceKeys.has(key) || Boolean(manifest?.clips?.[key]);
 }
 
-/** Whether this device has its own recording for a clip. */
-export function hasDeviceClip(key) {
-  return deviceKeys.has(key);
-}
-
 /**
  * Drops a cached buffer so the next play picks up a new recording.
  *

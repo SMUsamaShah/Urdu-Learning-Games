@@ -22,21 +22,7 @@
  * Usage: npm run dev &  then  node tools/verify-glyph-sizing.mjs [baseUrl]
  */
 
-import { chromium } from 'playwright';
-import { hasBrowser, launchOptions } from './browser.mjs';
-
-const APP = process.argv[2] || 'http://localhost:5173';
-
-const fail = (msg) => {
-  console.error('FAIL: ' + msg);
-  process.exitCode = 1;
-};
-const step = (msg) => process.stderr.write(`· ${msg}\n`);
-
-if (!hasBrowser()) {
-  console.log('no Chromium installed, skipping');
-  process.exit(0);
-}
+import { fail, openApp, startScene, step } from './harness.mjs';
 
 /** Screens to walk, and the scene each one starts from. */
 const SCENES = [
@@ -51,14 +37,9 @@ const SCENES = [
   'Trace',
 ];
 
-const browser = await chromium.launch(launchOptions());
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-
-await page.goto(APP, { waitUntil: 'domcontentloaded' });
-await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
-  timeout: 30000,
+const { page, finish } = await openApp({
+  name: 'glyph sizing',
+  context: { viewport: { width: 1280, height: 720 } },
 });
 
 // --- 1. The fitters, against every glyph in the app -------------------------
@@ -181,16 +162,7 @@ if (!fits.problems.length) {
 // --- 2. The screens, going through them -------------------------------------
 
 for (const scene of SCENES) {
-  await page.evaluate((name) => {
-    const game = window.__game;
-    for (const active of game.scene.getScenes(true)) {
-      if (active.scene.key !== name) game.scene.stop(active.scene.key);
-    }
-    game.scene.start(name);
-  }, scene);
-  await page.waitForFunction((name) => window.__game?.scene.isActive(name), scene, {
-    timeout: 15000,
-  });
+  await startScene(page, scene);
   // The scenes tween things in; nothing here depends on the tween, but a glyph
   // added on a delay would otherwise be missed.
   await page.waitForFunction(
@@ -235,13 +207,4 @@ for (const scene of SCENES) {
   );
 }
 
-if (errors.length) {
-  for (const e of errors) console.error('  ' + e);
-  fail(`${errors.length} page error(s)`);
-}
-
-await browser.close();
-console.log(
-  process.exitCode ? 'glyph sizing verification FAILED' : 'glyph sizing verification passed'
-);
-process.exit(process.exitCode ?? 0);
+await finish();

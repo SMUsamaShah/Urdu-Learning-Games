@@ -210,9 +210,9 @@ export async function readZip(input) {
 
 // --------------------------------------------------------------- the archive
 
-export const ARCHIVE_VERSION = 1;
-export const CLIPS_DIR = 'recorded/';
-export const META_NAME = 'urdu-clips.json';
+const ARCHIVE_VERSION = 1;
+const CLIPS_DIR = 'recorded/';
+const META_NAME = 'urdu-clips.json';
 
 const README = `Urdu Learning Games — exported voice recordings
 ================================================

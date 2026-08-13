@@ -20,20 +20,13 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chromium } from 'playwright';
-import { launchOptions } from './browser.mjs';
+import { fail, homeIsUp, openApp, step } from './harness.mjs';
 import { RECORDED_DIR, ROOT, expectedClips, resolveClip } from './audio-keys.mjs';
 
 const APP_PORT = 5199;
 const STUDIO_PORT = 5196;
 const APP = `http://localhost:${APP_PORT}`;
 const CLIP = expectedClips()[0]; // letter/alif/name
-
-const fail = (msg) => {
-  console.error('FAIL: ' + msg);
-  process.exitCode = 1;
-};
-const step = (msg) => process.stderr.write(`· ${msg}\n`);
 
 if (resolveClip(CLIP.slug)) {
   console.log(`Skipping: ${CLIP.slug} is already recorded in the repo.`);
@@ -47,12 +40,6 @@ const cleanup = () => {
 };
 process.on('exit', cleanup);
 for (const s of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(s, () => process.exit(1));
-
-const watchdog = setTimeout(() => {
-  console.error('FAIL: timed out after 180s');
-  process.exit(1);
-}, 180000);
-watchdog.unref();
 
 function serve(command, args, ready) {
   const child = spawn(command, args, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -78,22 +65,16 @@ await new Promise((resolve) => {
   setTimeout(resolve, 5000);
 });
 
-const base = launchOptions();
-const browser = await chromium.launch({
-  ...base,
-  args: [
-    ...base.args,
-    '--use-fake-device-for-media-stream',
-    '--use-fake-ui-for-media-stream',
-  ],
-});
-const context = await browser.newContext({
-  viewport: { width: 1180, height: 820 },
-  acceptDownloads: true,
+const { context, page, finish } = await openApp({
+  name: 'recording',
+  timeoutMs: 180000,
+  // Navigated below by openHome(), after the audio probe is installed — an
+  // init script only applies to loads that come after it.
+  open: false,
+  context: { acceptDownloads: true },
+  args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
 });
 await context.grantPermissions(['microphone'], { origin: APP });
-
-const page = await context.newPage();
 
 // Watch what the page does with audio hardware. Two things caused real,
 // user-reported stuttering and must not come back:
@@ -137,15 +118,9 @@ const audioProbe = () =>
     };
   });
 
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-
 const openHome = async () => {
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
-    timeout: 30000,
-  });
+  await homeIsUp(page);
 };
 
 // ------------------------------------------------------ the parental gate
@@ -396,14 +371,4 @@ if (finalProbe.contexts === 1 && finalProbe.micLive === 0) {
   step(`ends with 1 AudioContext and no open microphone`);
 }
 
-if (errors.length) {
-  for (const e of errors) console.error('  console: ' + e);
-  fail(`${errors.length} console error(s)`);
-}
-
-await browser.close();
-clearTimeout(watchdog);
-console.log(
-  process.exitCode ? 'recording verification FAILED' : 'recording verification passed'
-);
-process.exit(process.exitCode ?? 0);
+await finish();

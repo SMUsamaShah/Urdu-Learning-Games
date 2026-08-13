@@ -13,13 +13,13 @@ import {
 } from '../lib/content.js';
 import { addGlyph, addGlyphBaseline, fitEmAlone, fitEmLine } from '../lib/glyph.js';
 import { addWordImage, queueWordImages } from '../lib/images.js';
-import { clipKeys, hasClip, play, playSequence, stopAll } from '../lib/audio.js';
+import { clipKeys, hasClip, play, playSequence } from '../lib/audio.js';
 import { sayLetter } from '../lib/say.js';
 import * as sfx from '../lib/sfx.js';
-import { addScenery } from '../lib/scenery.js';
+import { addStage } from '../lib/stage.js';
 import { breathe, hop, jig, popIn, squash } from '../lib/liveliness.js';
 import { ringBurst, sparkleBurst } from '../lib/particles.js';
-import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
 
 /**
  * Free exploration of the alphabet, and the backbone the other games hang off.
@@ -162,34 +162,15 @@ export default class Flashcards extends Phaser.Scene {
   }
 
   create() {
-    this.cameras.main.setBackgroundColor(COLORS.bg);
-    // No hills: the letter strip already fills the bottom of this screen.
-    addScenery(this, { hills: false });
+    // No ribbon and no spider: this screen is a letter and its word, and there
+    // is nothing to instruct. No hills either — the letter strip already fills
+    // the bottom of the screen.
+    addStage(this, { hills: false, mascot: false });
     this.sequence = sequenceFor('alphabetical');
     this.selectedIndex = 0;
 
     this.buildStrip();
     this.buildCard();
-
-    makeButton(this, {
-      x: 72,
-      y: 56,
-      width: 96,
-      height: 68,
-      color: COLORS.panel,
-      rim: false,
-      onTap: () => {
-        sfx.swoosh();
-        this.scene.start('Home');
-      },
-    }).add(
-      this.add
-        .text(0, 0, '⌂', { fontSize: '34px', color: COLORS.ink })
-        .setOrigin(0.5)
-    );
-
-    // Leaving mid-word should not leave a voice talking over the menu.
-    this.events.once('shutdown', stopAll);
 
     // Say the first letter once the scene is up. Reaching here always took a
     // tap on Home, so the audio context is already unlocked.

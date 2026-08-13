@@ -18,41 +18,10 @@
  * Usage: npm run dev &  then  node tools/verify-trace.mjs [baseUrl]
  */
 
-import { chromium } from 'playwright';
-import { launchOptions } from './browser.mjs';
+import { fail, openApp, startScene, step } from './harness.mjs';
 
-const APP = process.argv[2] || 'http://localhost:5173';
-
-const fail = (msg) => {
-  console.error('FAIL: ' + msg);
-  process.exitCode = 1;
-};
-const step = (msg) => process.stderr.write(`· ${msg}\n`);
-
-const watchdog = setTimeout(() => {
-  console.error('FAIL: timed out after 240s');
-  process.exit(1);
-}, 240000);
-watchdog.unref();
-
-const browser = await chromium.launch(launchOptions());
-const page = await browser.newPage({ viewport: { width: 1180, height: 820 } });
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-
-await page.goto(APP, { waitUntil: 'domcontentloaded' });
-await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
-  timeout: 30000,
-});
-await page.evaluate(() => {
-  const game = window.__game;
-  game.scene.getScenes(true).forEach((s) => game.scene.stop(s.scene.key));
-  game.scene.start('Trace');
-});
-await page.waitForFunction(() => window.__game.scene.isActive('Trace'), null, {
-  timeout: 20000,
-});
+const { page, finish } = await openApp({ name: 'trace' });
+await startScene(page, 'Trace');
 await page.waitForTimeout(500);
 
 const state = () =>
@@ -194,12 +163,4 @@ await page.screenshot({
   path: process.argv[3] || 'trace-check.png',
 });
 
-if (errors.length) {
-  for (const e of errors) console.error('  console: ' + e);
-  fail(`${errors.length} console error(s)`);
-}
-
-await browser.close();
-clearTimeout(watchdog);
-console.log(process.exitCode ? 'trace verification FAILED' : 'trace verification passed');
-process.exit(process.exitCode ?? 0);
+await finish();

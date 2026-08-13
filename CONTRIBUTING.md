@@ -597,10 +597,12 @@ check the conditions that cause it, not the symptom.
 
 ## Two Phaser 4 traps
 
-Glyphs are sized by **height alone**, so a wide letter silently overflows
-whatever box you put it in — and Urdu has letters several times wider than they
-are tall (ے, ک). Anything placing a glyph in a bounded space should go through
-`fitGlyphHeight()`.
+Glyphs must never be sized by height alone: Urdu has letters several times wider
+than they are tall (ے, ک), so a size chosen to fit the box vertically silently
+overflows it sideways. Anything placing a glyph in a bounded space goes through
+`fitEmLine()` (several glyphs sharing a baseline) or `fitEmAlone()` (one glyph
+with the box to itself). Which of the two is a real choice — see the note at the
+top of `src/lib/glyph.js`.
 
 `glyphTexture` caches on the key alone, and its docstring says the key must be
 unique per glyph **and size and colour**. It is easy to forget the colour part:

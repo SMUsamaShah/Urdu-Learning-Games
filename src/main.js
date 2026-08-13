@@ -16,7 +16,7 @@ import * as updates from './lib/updates.js';
 import * as music from './lib/music.js';
 import * as flourish from './lib/flourish.js';
 import { useAudioContext } from './lib/tone-setup.js';
-import { COLORS, DESIGN } from './lib/theme.js';
+import { DESIGN } from './lib/theme.js';
 
 /**
  * Every screen is a Phaser Scene, so adding a game means adding one file and

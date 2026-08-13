@@ -14,8 +14,7 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chromium } from 'playwright';
-import { launchOptions } from './browser.mjs';
+import { fail, openApp, step } from './harness.mjs';
 import { RECORDED_DIR, ROOT, expectedClips, resolveClip } from './audio-keys.mjs';
 
 // Distinct from every other verify script's port. They are often run one after
@@ -24,22 +23,6 @@ import { RECORDED_DIR, ROOT, expectedClips, resolveClip } from './audio-keys.mjs
 const PORT = 5195;
 const SHOT = process.argv[2];
 const TEST_SLUG = expectedClips()[0].slug;
-
-const fail = (msg) => {
-  console.error('FAIL: ' + msg);
-  process.exitCode = 1;
-};
-
-// Unbuffered progress, so a hang shows exactly which step it hung on.
-const step = (msg) => process.stderr.write(`· ${msg}\n`);
-
-// The whole check should take seconds. Anything longer is a hang, and dying
-// loudly beats a background job that never returns.
-const watchdog = setTimeout(() => {
-  console.error('FAIL: timed out after 90s');
-  process.exit(1);
-}, 90000);
-watchdog.unref();
 
 // Refuse to clobber a real recording if one already exists for this clip.
 const existing = resolveClip(TEST_SLUG);
@@ -76,29 +59,28 @@ await new Promise((resolve) => {
   setTimeout(resolve, 4000);
 });
 
-step('launching chromium');
-const browser = await chromium.launch({
-  ...launchOptions(),
+// The studio is not the game, so there is no menu to wait for; it does its own
+// navigation once mic permission is granted.
+const { page, finish } = await openApp({
+  name: 'studio',
+  // The whole check should take seconds. Anything longer is a hang, and dying
+  // loudly beats a background job that never returns.
+  timeoutMs: 90000,
+  open: false,
+  context: { viewport: { width: 1280, height: 820 }, deviceScaleFactor: 2 },
   args: [
-    ...launchOptions().args,
     // A synthetic microphone, and permission granted without a prompt.
     '--use-fake-device-for-media-stream',
     '--use-fake-ui-for-media-stream',
   ],
 });
 
-step('opening page');
-const page = await browser.newPage({ viewport: { width: 1280, height: 820 }, deviceScaleFactor: 2 });
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-
 step('granting mic permission');
 await page.context().grantPermissions(['microphone'], {
   origin: `http://localhost:${PORT}`,
 });
 step('navigating');
-await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle' });
+await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => window.__studio?.state.clips.length > 0, null, {
   timeout: 15000,
 });
@@ -137,16 +119,8 @@ if (!resolved) {
   if (resolved.source !== 'recorded') fail('clip did not resolve as a recording');
 }
 
-if (errors.length) {
-  for (const e of errors) console.error('  console: ' + e);
-  fail(`${errors.length} console error(s)`);
-}
-
+// The spawned server holds the event loop open through its stdio pipe, so
+// finish() exits deliberately rather than waiting to be reaped. `cleanup` still
+// runs on exit.
 step('closing');
-await browser.close();
-clearTimeout(watchdog);
-console.log(process.exitCode ? 'studio verification FAILED' : 'studio verification passed');
-
-// The spawned server holds the event loop open through its stdio pipe, so exit
-// deliberately rather than waiting to be reaped. `cleanup` still runs on exit.
-process.exit(process.exitCode ?? 0);
+await finish();

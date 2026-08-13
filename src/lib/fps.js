@@ -36,7 +36,6 @@ export function setShowFps(on) {
 
 /** @type {HTMLElement|null} */
 let el = null;
-let raf = 0;
 
 function apply(on) {
   if (!el) return;
@@ -56,7 +55,7 @@ export function mountFpsMeter(game) {
 
   let last = 0;
   const tick = (now) => {
-    raf = requestAnimationFrame(tick);
+    requestAnimationFrame(tick);
     // Four times a second. Every frame makes the number unreadable and adds a
     // layout to each one.
     if (now - last < 250) return;
@@ -69,12 +68,6 @@ export function mountFpsMeter(game) {
     // glance while a child is using the app, not to be precise.
     el.dataset.level = fps >= 50 ? 'good' : fps >= 30 ? 'fair' : 'poor';
   };
-  raf = requestAnimationFrame(tick);
+  requestAnimationFrame(tick);
   return el;
-}
-
-export function unmountFpsMeter() {
-  cancelAnimationFrame(raf);
-  el?.remove();
-  el = null;
 }

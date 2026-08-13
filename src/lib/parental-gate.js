@@ -20,7 +20,7 @@
 
 import './parental-gate.css';
 
-export const HOLD_MS = 900;
+const HOLD_MS = 900;
 
 /**
  * Asks the arithmetic question.
@@ -112,12 +112,4 @@ export function attachHoldToOpen(scene, target, { onProgress, onOpen }) {
   target.on('pointerout', stop);
   scene.events.once('shutdown', stop);
   return stop;
-}
-
-/**
- * Hold, then answer. Resolves true only if both are cleared.
- * @returns {Promise<boolean>}
- */
-export function openParentalGate() {
-  return askParentalQuestion();
 }

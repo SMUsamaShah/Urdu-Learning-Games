@@ -4,13 +4,10 @@ import { glyphTexture, glyphWidth } from '../lib/glyph.js';
 import { stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { finished } from '../lib/flourish.js';
-import { addBanner } from '../lib/banner.js';
-import { confetti, paperFall } from '../lib/celebrate.js';
-import { addMascot } from '../lib/mascot.js';
+import { confetti } from '../lib/celebrate.js';
+import { addStage, wellDone } from '../lib/stage.js';
 import { sayLetter } from '../lib/say.js';
-import { addScenery } from '../lib/scenery.js';
-import { jig } from '../lib/liveliness.js';
-import { sparkleTrail, sparkleBurst, starShower } from '../lib/particles.js';
+import { sparkleTrail, sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -81,32 +78,20 @@ export default class Trace extends Phaser.Scene {
   }
 
   create() {
-    this.cameras.main.setBackgroundColor(COLORS.bg);
-    addScenery(this, { hills: false });
     this.sequence = sequenceFor('alphabetical').filter((id) => letterGlyph(id));
     this.index = 0;
 
-    makeButton(this, {
-      x: 72,
-      y: 56,
-      width: 96,
-      height: 68,
-      color: COLORS.panel,
-      rim: false,
-      onTap: () => {
-        sfx.swoosh();
-        this.scene.start('Home');
-      },
-    }).add(
-      this.add.text(0, 0, '⌂', { fontSize: '34px', color: COLORS.ink }).setOrigin(0.5)
-    );
-
-    this.banner = addBanner(this, { ui: 'fill-letter', roman: 'Fill the letter' });
-
-    // Smaller and lower than on the quiz screens: a traced letter is 400px tall
-    // and some of them are very wide, so the spider has to keep out of the way
-    // of the thing being drawn.
-    this.mascot = addMascot(this, 92, 700, { height: 176 });
+    this.stage = addStage(this, {
+      hills: false,
+      instruction: 'fill-letter',
+      roman: 'Fill the letter',
+      // Smaller and lower than on the quiz screens: a traced letter is 400px
+      // tall and some of them are very wide, so the spider has to keep out of
+      // the way of the thing being drawn.
+      mascot: { x: 92, y: 700, height: 176 },
+    });
+    this.banner = this.stage.banner;
+    this.mascot = this.stage.mascot;
 
     makeButton(this, {
       x: DESIGN.width - 250,
@@ -132,8 +117,9 @@ export default class Trace extends Phaser.Scene {
     this.buildLetter();
     this.attachDrawing();
 
+    // addStage already stops any voice on shutdown; the trail is this scene's
+    // own and has to be let go of too, or its emitter outlives the scene.
     this.events.once('shutdown', () => {
-      stopAll();
       this.trail?.destroy();
       this.trail = null;
     });
@@ -431,11 +417,7 @@ export default class Trace extends Phaser.Scene {
     sparkleBurst(this, DESIGN.width / 2, 360, { count: 44, speed: 420 });
     // Finishing a letter is a whole activity completed, not one answer among
     // many, so it gets the full-screen version every time.
-    paperFall(this);
-    starShower(this, { duration: 2400 });
-    this.mascot?.cheer();
-    this.banner.setInstruction('well-done', 'Well done!');
-    jig(this, this.banner, { angle: 4, repeats: 5 });
+    wellDone(this, this.stage, { duration: 2400 });
 
     // Clear the rest of the cover, so the reward is seeing the letter complete
     // rather than the patchy version they happened to stop at.

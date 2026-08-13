@@ -66,7 +66,7 @@ const MIME_CANDIDATES = [
 ];
 
 /** Picks a container the browser can actually produce. */
-export function pickMimeType() {
+function pickMimeType() {
   for (const [mime, ext] of MIME_CANDIDATES) {
     if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mime)) {
       return { mime, ext };

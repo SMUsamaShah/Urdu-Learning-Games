@@ -29,21 +29,7 @@
  * Usage: npm run dev &  then  node tools/verify-take-polish.mjs [baseUrl]
  */
 
-import { chromium } from 'playwright';
-import { hasBrowser, launchOptions } from './browser.mjs';
-
-const APP = process.argv[2] || 'http://localhost:5173';
-
-const fail = (msg) => {
-  console.error('FAIL: ' + msg);
-  process.exitCode = 1;
-};
-const step = (msg) => process.stderr.write(`· ${msg}\n`);
-
-if (!hasBrowser()) {
-  console.log('no Chromium installed, skipping');
-  process.exit(0);
-}
+import { fail, openApp, step } from './harness.mjs';
 
 const LEAD = 0.8;
 const SPEECH = 0.5;
@@ -98,15 +84,7 @@ const CASES = [
   },
 ];
 
-const browser = await chromium.launch(launchOptions());
-const page = await browser.newPage();
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-
-await page.goto(APP, { waitUntil: 'domcontentloaded' });
-await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
-  timeout: 30000,
-});
+const { page, finish } = await openApp({ name: 'take polish' });
 
 for (const testCase of CASES) {
   step(`${testCase.name} (room ${testCase.noiseDb} dBFS, voice ${testCase.speech})`);
@@ -273,13 +251,4 @@ for (const testCase of CASES) {
   }
 }
 
-if (errors.length) {
-  for (const e of errors) console.error('  ' + e);
-  fail(`${errors.length} page error(s)`);
-}
-
-await browser.close();
-console.log(
-  process.exitCode ? 'take polish verification FAILED' : 'take polish verification passed'
-);
-process.exit(process.exitCode ?? 0);
+await finish();

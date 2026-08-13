@@ -36,7 +36,7 @@ export function canInstall() {
 }
 
 /** True when already running as an installed app. */
-export function isStandalone() {
+function isStandalone() {
   if (typeof window === 'undefined') return false;
   return (
     window.matchMedia?.('(display-mode: standalone)').matches ||

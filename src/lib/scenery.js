@@ -32,7 +32,7 @@
 
 import { DESIGN } from './theme.js';
 
-export const SKY = {
+const SKY = {
   top: '#8fd4f5',
   horizon: '#dff2fb',
   hillBack: '#86c76a',

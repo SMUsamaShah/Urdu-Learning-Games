@@ -58,8 +58,3 @@ export function sayWord(wordId) {
 export function sayNumber(numberId) {
   return playSequence([clipKeys.number(numberId)].filter(hasClip), GAP_MS);
 }
-
-/** Whether a letter would make any sound at all, for deciding to show a speaker. */
-export function letterIsSpoken(letterId) {
-  return hasClip(clipKeys.letterName(letterId));
-}

@@ -58,7 +58,7 @@ export const LATENCY_MODES = {
   },
 };
 
-export const DEFAULT_LATENCY = 'balanced';
+const DEFAULT_LATENCY = 'balanced';
 
 /** The chosen mode, remembered across visits. */
 export function latencyMode() {

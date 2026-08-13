@@ -132,13 +132,9 @@ export function deleteClip(key) {
   return run(CLIPS, 'readwrite', (s) => s.delete(key));
 }
 
-export function clearClips() {
-  return run(CLIPS, 'readwrite', (s) => s.clear());
-}
-
 // -------------------------------------------------------------------- meta
 
-export async function getLastExport() {
+async function getLastExport() {
   const value = await run(META, 'readonly', (s) => s.get('lastExportedAt'));
   return value ?? null;
 }
@@ -158,7 +154,7 @@ export function setLastExport(when = Date.now()) {
  *
  * @returns {Promise<boolean>}
  */
-export async function requestPersistence() {
+async function requestPersistence() {
   if (!navigator.storage?.persist) return false;
   try {
     if (await navigator.storage.persisted()) return true;
@@ -168,23 +164,12 @@ export async function requestPersistence() {
   }
 }
 
-export async function isPersisted() {
+async function isPersisted() {
   if (!navigator.storage?.persisted) return false;
   try {
     return await navigator.storage.persisted();
   } catch {
     return false;
-  }
-}
-
-/** @returns {Promise<{usage: number, quota: number}|null>} */
-export async function estimate() {
-  if (!navigator.storage?.estimate) return null;
-  try {
-    const { usage = 0, quota = 0 } = await navigator.storage.estimate();
-    return { usage, quota };
-  } catch {
-    return null;
   }
 }
 

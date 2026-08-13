@@ -83,7 +83,7 @@ export function chunkyGlyphEm(em, fill = '#ffffff') {
 }
 
 /** One hue per shape family, so a family reads as a group at a glance. */
-export const FAMILY_COLORS = {
+const FAMILY_COLORS = {
   alif: 0xe4633c, be: 0x2f86d0, jim: 0x7b52c9, dal: 0x2f9e5f,
   re: 0xe0821c, sin: 0x1a9c96, suad: 0xd94f5c, toe: 0x3f74d6,
   ain: 0x9b5fc9, fe: 0xd44f8c, qaf: 0x0f9c8c, kaf: 0xcf8a1b,
@@ -107,7 +107,7 @@ export function familyColor(family) {
  * @param {number} height
  * @param {number} [inset] how deep the notches cut, as a fraction of the radius
  */
-export function starPoints(width, height, inset = 0.54) {
+function starPoints(width, height, inset = 0.54) {
   const points = [];
   for (let i = 0; i < 10; i++) {
     const radius = i % 2 ? inset : 1;

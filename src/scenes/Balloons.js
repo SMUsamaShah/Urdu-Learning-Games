@@ -7,16 +7,13 @@ import {
   shapeFamilySiblings,
 } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
-import { clipKeys, hasClip, stopAll } from '../lib/audio.js';
+import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer } from '../lib/flourish.js';
-import { addBanner } from '../lib/banner.js';
-import { paperFall } from '../lib/celebrate.js';
-import { addStageMascot } from '../lib/mascot.js';
+import { addStage, addStreak, wellDone } from '../lib/stage.js';
 import { sayLetter } from '../lib/say.js';
-import { addScenery } from '../lib/scenery.js';
-import { jig, sway } from '../lib/liveliness.js';
-import { popPuff, sparkleBurst, starShower } from '../lib/particles.js';
+import { sway } from '../lib/liveliness.js';
+import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, chunkyGlyphEm, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
@@ -65,38 +62,24 @@ export default class Balloons extends Phaser.Scene {
   }
 
   create() {
-    this.cameras.main.setBackgroundColor(COLORS.bg);
-    // Balloons rise the full height, so hills would only be something for them
-    // to disappear behind.
-    addScenery(this, { hills: false });
     this.sequence = sequenceFor('alphabetical').filter((id) => letterGlyph(id));
     this.streak = 0;
     this.balloons = [];
     this.locked = false;
 
-    makeButton(this, {
-      x: 72,
-      y: 56,
-      width: 96,
-      height: 68,
-      color: COLORS.panel,
-      rim: false,
-      onTap: () => {
-        sfx.swoosh();
-        this.scene.start('Home');
-      },
-    }).add(
-      this.add
-        .text(0, 0, '⌂', { fontSize: '34px', color: COLORS.ink })
-        .setOrigin(0.5)
-    );
-
-    this.streakText = label(this, DESIGN.width - 90, 56, '', {
-      size: 26,
-      color: COLORS.accentCss,
+    this.stage = addStage(this, {
+      // Balloons rise the full height, so hills would only be something for
+      // them to disappear behind.
+      hills: false,
+      instruction: 'pop-balloon',
+      roman: 'Pop the balloon',
+      // The spider watches the balloons go by, above them so one drifting past
+      // does not cross its face.
+      mascot: { depth: 12 },
     });
-
-    this.banner = addBanner(this, { ui: 'pop-balloon', roman: 'Pop the balloon' });
+    this.banner = this.stage.banner;
+    this.mascot = this.stage.mascot;
+    this.streakText = addStreak(this);
 
     // A badge holding the letter to look for, in the corner, tappable to hear
     // it again. Taken straight from the reference apps, which all put the
@@ -105,11 +88,6 @@ export default class Balloons extends Phaser.Scene {
     // not be somewhere the answers drift over.
     this.promptLayer = this.add.container(212, 66).setDepth(21);
 
-    // The spider watches the balloons go by, above them so one drifting past
-    // does not cross its face.
-    this.mascot = addStageMascot(this, { depth: 12 });
-
-    this.events.once('shutdown', stopAll);
     this.newRound();
   }
 
@@ -240,7 +218,7 @@ export default class Balloons extends Phaser.Scene {
   }
 
   updateStreak() {
-    this.streakText.setText('★'.repeat(Math.min(this.streak, 5)));
+    this.streakText.set(this.streak);
   }
 
   // --------------------------------------------------------------- balloons
@@ -387,11 +365,8 @@ export default class Balloons extends Phaser.Scene {
     // Every fifth in a row, the whole screen celebrates rather than just the
     // balloon. See QuizScene for why this is rationed.
     if (this.streak % 5 === 0) {
-      paperFall(this);
-      starShower(this);
       milestone();
-      this.banner.setInstruction('well-done', 'Well done!');
-      jig(this, this.banner, { angle: 4, repeats: 5 });
+      wellDone(this, this.stage);
     }
 
     // Let the remaining balloons drift off rather than vanishing, then reset.

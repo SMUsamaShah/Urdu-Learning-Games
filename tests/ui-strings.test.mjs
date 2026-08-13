@@ -86,6 +86,9 @@ describe('ui strings', () => {
     for (const file of sourceFiles(path.join(ROOT, 'src'))) {
       const source = fs.readFileSync(file, 'utf8');
       for (const pattern of [
+        // How a scene names its ribbon: through addStage, directly through
+        // addBanner, or as a QuizScene field.
+        /\binstruction:\s*'([\w-]+)'/g,
         /addBanner\(\s*this,\s*\{\s*ui:\s*'([\w-]+)'/g,
         /\bthis\.instruction\s*=\s*'([\w-]+)'/g,
       ]) {

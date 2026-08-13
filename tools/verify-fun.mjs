@@ -48,38 +48,16 @@
  * Usage: npm run dev &  then  node tools/verify-fun.mjs [baseUrl]
  */
 
-import { chromium } from 'playwright';
-import { hasBrowser, launchOptions } from './browser.mjs';
+import { fail, openApp, step } from './harness.mjs';
 
-const APP = process.argv[2] || 'http://localhost:5173';
-
-const fail = (msg) => {
-  console.error('FAIL: ' + msg);
-  process.exitCode = 1;
-};
-const step = (msg) => process.stderr.write(`· ${msg}\n`);
-
-if (!hasBrowser()) {
-  console.log('no Chromium installed, skipping');
-  process.exit(0);
-}
-
-const options = launchOptions();
-const browser = await chromium.launch({
-  ...options,
+const { page, finish } = await openApp({
+  name: 'fun',
+  context: { viewport: { width: 1280, height: 720 } },
   // Without this the AudioContext starts suspended and never resumes, because
   // a synthetic click is not a user gesture as far as the autoplay policy is
   // concerned — so every audio assertion below would measure silence and be
   // right to.
-  args: [...options.args, '--autoplay-policy=no-user-gesture-required'],
-});
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-
-await page.goto(APP, { waitUntil: 'domcontentloaded' });
-await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
-  timeout: 30000,
+  args: ['--autoplay-policy=no-user-gesture-required'],
 });
 
 // --- 1 and 2. The tune, and what it does under a voice ----------------------
@@ -162,8 +140,7 @@ const music = await page.evaluate(async () => {
 
 if (music.noOutput) {
   fail('the music module never produced an output node — it failed to build');
-  await browser.close();
-  process.exit(1);
+  await finish();
 }
 
 step(
@@ -422,11 +399,4 @@ if (!toggled.found) {
   step('  switches off, on, and is remembered');
 }
 
-if (errors.length) {
-  for (const e of errors) console.error('  ' + e);
-  fail(`${errors.length} page error(s)`);
-}
-
-await browser.close();
-console.log(process.exitCode ? 'fun verification FAILED' : 'fun verification passed');
-process.exit(process.exitCode ?? 0);
+await finish();

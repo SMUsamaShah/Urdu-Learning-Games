@@ -16,7 +16,7 @@ import manifest from '../../content/images.json';
 const BASE = import.meta.env.BASE_URL ?? '/';
 
 /** Texture key for a word's picture. Namespaced so it cannot collide. */
-export const wordImageKey = (wordId) => `word-image:${wordId}`;
+const wordImageKey = (wordId) => `word-image:${wordId}`;
 
 export function hasWordImage(wordId) {
   return Boolean(manifest.words?.[wordId]);
