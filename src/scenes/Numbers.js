@@ -49,6 +49,7 @@ export default class Numbers extends QuizScene {
   }
 
   preload() {
+    super.preload();
     queueWordImages(this);
   }
 

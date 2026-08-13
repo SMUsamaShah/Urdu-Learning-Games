@@ -10,6 +10,7 @@ import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer } from '../lib/flourish.js';
+import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, addStreak, wellDone } from '../lib/stage.js';
 import { sayLetter } from '../lib/say.js';
 import { sway } from '../lib/liveliness.js';
@@ -59,6 +60,10 @@ export default class Balloons extends Phaser.Scene {
     /** @type {Phaser.GameObjects.Container[]} */
     this.balloons = [];
     this.locked = false;
+  }
+
+  preload() {
+    queueBackdrop(this);
   }
 
   create() {

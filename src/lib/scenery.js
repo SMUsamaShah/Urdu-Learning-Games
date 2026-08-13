@@ -30,6 +30,7 @@
  * without thinking about layering.
  */
 
+import { addBackdrop } from './backdrops.js';
 import { DESIGN } from './theme.js';
 
 const SKY = {
@@ -294,17 +295,25 @@ function backdropTexture(scene, hills) {
  * @returns {Phaser.GameObjects.Container}
  */
 export function addScenery(scene, options = {}) {
-  const { hills = true, clouds = true, birds = true } = options;
+  const { hills = true, birds = true } = options;
   const layer = scene.add.container(0, 0).setDepth(-100);
 
+  // The painted one where this screen has its own, the drawn one otherwise.
+  // See backdrops.js — every scene must look finished either way.
+  const painted = addBackdrop(scene, DESIGN.width, DESIGN.height);
   layer.add(
-    scene.add
-      .image(0, 0, backdropTexture(scene, hills))
-      .setOrigin(0, 0)
-      .setDisplaySize(DESIGN.width, DESIGN.height)
+    painted ??
+      scene.add
+        .image(0, 0, backdropTexture(scene, hills))
+        .setOrigin(0, 0)
+        .setDisplaySize(DESIGN.width, DESIGN.height)
   );
 
-  if (clouds) {
+  // Drawn clouds only over the drawn sky. A painted backdrop has its own, and
+  // two sets in two styles at once looks like a mistake rather than weather.
+  // The birds stay either way: they are small, they cross occasionally, and a
+  // screen where nothing at all moves reads as switched off.
+  if (options.clouds ?? !painted) {
     // Each cloud drifts on its own slow loop. Movement in the background is
     // what makes a screen feel alive while nothing is being tapped, and slow
     // enough that it never pulls attention off the game.

@@ -5,6 +5,7 @@ import { stopAll } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { finished } from '../lib/flourish.js';
 import { confetti } from '../lib/celebrate.js';
+import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { sayLetter } from '../lib/say.js';
 import { sparkleTrail, sparkleBurst } from '../lib/particles.js';
@@ -75,6 +76,10 @@ export default class Trace extends Phaser.Scene {
     this.grid = [];
     this.insideCount = 0;
     this.coveredCount = 0;
+  }
+
+  preload() {
+    queueBackdrop(this);
   }
 
   create() {

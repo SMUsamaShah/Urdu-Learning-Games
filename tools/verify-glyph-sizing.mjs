@@ -173,6 +173,21 @@ for (const scene of SCENES) {
     { timeout: 15000 }
   );
 
+  // Every screen has a painted backdrop, and a scene that forgets to queue it
+  // in `preload` falls back to the drawn meadow — quietly, because the fallback
+  // is meant to be invisible. This walk is already visiting every screen, so it
+  // is the cheapest place to notice.
+  const backdrop = await page.evaluate((name) => {
+    const scene = window.__game.scene.getScene(name);
+    const wanted = `backdrop:${name}`;
+    const found = scene.children.list.some((child) =>
+      child.list?.some((c) => c.texture?.key === wanted)
+    );
+    return { known: scene.textures.exists(wanted), found };
+  }, scene);
+  if (!backdrop.known) fail(`${scene}: its backdrop was never loaded — is it queued in preload()?`);
+  else if (!backdrop.found) fail(`${scene}: backdrop loaded but the screen is not using it`);
+
   const drawn = await page.evaluate((name) => {
     const scene = window.__game.scene.getScene(name);
 

@@ -39,6 +39,7 @@ export default class WordPictures extends QuizScene {
   }
 
   preload() {
+    super.preload();
     // Small WebPs, and Phaser skips any texture it already holds, so coming
     // back to this screen or stepping across to Numbers costs nothing.
     queueWordImages(this);

@@ -3,6 +3,7 @@ import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer } from '../lib/flourish.js';
 import { confetti, dance, flyStar } from '../lib/celebrate.js';
 import { addStage, addStreak, wellDone } from '../lib/stage.js';
+import { queueBackdrop } from '../lib/backdrops.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
@@ -104,6 +105,18 @@ export default class QuizScene extends Phaser.Scene {
   onCorrect(id) {}
 
   // ----------------------------------------------------------------- scene
+
+  /**
+   * Queues this screen's painted backdrop.
+   *
+   * A subclass with its own `preload` must call `super.preload()`. Forgetting
+   * costs the backdrop and nothing else — the scene falls back to the drawn
+   * meadow — which is exactly why verify:games checks that every screen got the
+   * picture it was meant to.
+   */
+  preload() {
+    queueBackdrop(this);
+  }
 
   create() {
     this.streak = 0;

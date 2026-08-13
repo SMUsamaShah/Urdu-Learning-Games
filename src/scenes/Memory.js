@@ -5,6 +5,7 @@ import * as sfx from '../lib/sfx.js';
 import { finished, rightAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
 import { addWordImage, hasWordImage, queueWordImages } from '../lib/images.js';
+import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { hop, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
@@ -59,6 +60,7 @@ export default class Memory extends Phaser.Scene {
   }
 
   preload() {
+    queueBackdrop(this);
     queueWordImages(this);
   }
 

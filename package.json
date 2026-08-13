@@ -27,7 +27,8 @@
     "verify:fun": "node tools/verify-fun.mjs",
     "verify:trace": "node tools/verify-trace.mjs",
     "test": "eslint . && node --test \"tests/**/*.test.mjs\"",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "backgrounds": "node tools/make-backgrounds.mjs"
   },
   "dependencies": {
     "@fontsource/noto-nastaliq-urdu": "^5.3.0",

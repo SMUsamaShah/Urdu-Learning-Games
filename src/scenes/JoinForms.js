@@ -4,6 +4,7 @@ import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
 import { finished, rightAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
+import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
@@ -65,6 +66,10 @@ export default class JoinForms extends Phaser.Scene {
     this.picked = null;
     this.joined = 0;
     this.locked = false;
+  }
+
+  preload() {
+    queueBackdrop(this);
   }
 
   create() {

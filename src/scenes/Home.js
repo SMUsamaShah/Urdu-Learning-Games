@@ -12,6 +12,7 @@ import { prepareFlourishes } from '../lib/flourish.js';
 import { ringBurst } from '../lib/particles.js';
 import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, chunkyGlyphEm, label, makeButton } from '../lib/theme.js';
+import { queueBackdrop } from '../lib/backdrops.js';
 
 /**
  * The menu.
@@ -115,6 +116,7 @@ export default class Home extends Phaser.Scene {
   }
 
   preload() {
+    queueBackdrop(this);
     // Only the handful used as tile icons, not the whole set: the menu should
     // be on screen immediately, and the games load the rest themselves.
     queueWordImages(

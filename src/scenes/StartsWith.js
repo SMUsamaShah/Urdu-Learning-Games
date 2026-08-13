@@ -60,6 +60,7 @@ export default class StartsWith extends QuizScene {
   }
 
   preload() {
+    super.preload();
     queueWordImages(this);
   }
 

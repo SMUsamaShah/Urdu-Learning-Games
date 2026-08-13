@@ -16,6 +16,7 @@ import { addWordImage, queueWordImages } from '../lib/images.js';
 import { clipKeys, hasClip, play, playSequence } from '../lib/audio.js';
 import { sayLetter } from '../lib/say.js';
 import * as sfx from '../lib/sfx.js';
+import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage } from '../lib/stage.js';
 import { breathe, hop, jig, popIn, squash } from '../lib/liveliness.js';
 import { ringBurst, sparkleBurst } from '../lib/particles.js';
@@ -156,6 +157,7 @@ export default class Flashcards extends Phaser.Scene {
   }
 
   preload() {
+    queueBackdrop(this);
     // Small WebPs, shared with the picture games; Phaser skips any it already
     // holds, so this is free after the first visit.
     queueWordImages(this);
