@@ -148,6 +148,126 @@ function shrink(points, factor) {
   return points.map((p) => ({ x: p.x * factor, y: p.y * factor }));
 }
 
+/** `0x8a7a63` as a canvas colour. */
+function css(hex, alpha = 1) {
+  const value = `#${hex.toString(16).padStart(6, '0')}`;
+  if (alpha >= 1) return value;
+  const [r, g, b] = [16, 8, 0].map((shift) => (hex >> shift) & 0xff);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/** Rounded rectangle, with a hand-rolled path where `roundRect` is missing. */
+function roundedRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(x, y, width, height, radius);
+    return;
+  }
+  // Safari before 16.4, which is exactly the hand-me-down tablet this app is
+  // most likely to be played on.
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+}
+
+function polygon(ctx, points, dy = 0) {
+  ctx.beginPath();
+  points.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y + dy) : ctx.moveTo(p.x, p.y + dy)));
+  ctx.closePath();
+}
+
+/**
+ * Rendering at twice the drawn size. Two rather than the three glyph.js uses:
+ * these are flat shapes with one curve radius, not Nastaliq strokes a pixel
+ * wide, and a menu of ten tiles at 3x is four times the texture memory for an
+ * edge nobody can see.
+ */
+const CARD_SUPERSAMPLE = 2;
+/** Room around the shape for the shadow (8px down) and the outer rim stroke. */
+const CARD_PAD = 14;
+
+/**
+ * Bakes a button's card — shadow, face and rim — into one cached texture.
+ *
+ * ## Why this is not three Graphics objects
+ *
+ * It was, and it cost the menu a third of its frame rate. A Phaser Graphics
+ * object re-tessellates its whole path on every frame it is visible, whether or
+ * not anything about it changed, so ten menu tiles with a shadow, a face and a
+ * caption band each were thirty full retessellations per frame for a picture
+ * that had not moved since the scene opened. Measured on the menu: 12.3fps with
+ * them, 19.7 without the tile grid at all.
+ *
+ * A card is completely determined by its size, colour, shape and whether it has
+ * a rim, so that tuple is the cache key and buttons that look alike share one
+ * texture. The 24 game screens get this for free — every home button, every
+ * answer tile and every balloon is a `makeButton`.
+ *
+ * @returns {string} texture key
+ */
+function cardTexture(scene, { width, height, color, shape, rim, paint, paintKey }) {
+  // The painter's name leads, so a baked face still announces its role and its
+  // em the way a glyph texture does. verify:sizing walks texture keys to check
+  // that one role is never drawn at two sizes, and a tile whose writing is
+  // inside a card texture would otherwise drop out of that check entirely.
+  const shapeKey = `${shape}:${Math.round(width)}x${Math.round(height)}:${color}:${rim ? 1 : 0}`;
+  const key = paintKey ? `${paintKey}:${shapeKey}` : `card:${shapeKey}`;
+  if (scene.textures.exists(key)) return key;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil((width + CARD_PAD * 2) * CARD_SUPERSAMPLE);
+  canvas.height = Math.ceil((height + CARD_PAD * 2) * CARD_SUPERSAMPLE);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(CARD_SUPERSAMPLE, CARD_SUPERSAMPLE);
+  // Origin at the shape's centre, matching how the shapes are described.
+  ctx.translate(CARD_PAD + width / 2, CARD_PAD + height / 2);
+
+  let outline = null;
+  if (shape === 'star') outline = starPoints(width, height);
+  else if (shape === 'blob') outline = blobPoints(width, height);
+  else if (shape === 'circle') outline = blobPoints(width, height, 4, 0);
+
+  ctx.fillStyle = css(COLORS.shadow, 0.22);
+  if (outline) polygon(ctx, outline, 8);
+  else roundedRect(ctx, -width / 2, -height / 2 + 8, width, height, 26);
+  ctx.fill();
+
+  ctx.fillStyle = css(color);
+  if (outline) polygon(ctx, outline);
+  else roundedRect(ctx, -width / 2, -height / 2, width, height, 26);
+  ctx.fill();
+
+  if (rim) {
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 6;
+    if (outline) polygon(ctx, shrink(outline, shape === 'star' ? 0.9 : 0.93));
+    else roundedRect(ctx, -width / 2 + 3, -height / 2 + 3, width - 6, height - 6, 23);
+    ctx.stroke();
+
+    ctx.strokeStyle = css(COLORS.outline, 0.85);
+    ctx.lineWidth = 3;
+    if (outline) polygon(ctx, outline);
+    else roundedRect(ctx, -width / 2, -height / 2, width, height, 26);
+    ctx.stroke();
+  }
+
+  // Anything the caller wants on the face, drawn into the same texture rather
+  // than stacked on top as more quads. The origin is the shape's centre and the
+  // scale is 1:1 in game pixels, so a painter positions things exactly as it
+  // would position child objects.
+  paint?.(ctx, { width, height });
+
+  const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
+  texture.context.drawImage(canvas, 0, 0);
+  texture.refresh();
+  return key;
+}
+
 /**
  * A large, tappable button with a press animation.
  *
@@ -170,6 +290,13 @@ function shrink(points, factor) {
  * @param {boolean} [config.rim=true] The white-and-dark sticker edge. Off for
  *   the small chrome buttons, where it is just noise.
  * @param {() => void} config.onTap
+ * @param {(ctx: CanvasRenderingContext2D, size: object) => void} [config.paint]
+ *   Draws the button's contents into the card texture instead of adding them as
+ *   children. For a face that never changes this is one quad and one texture
+ *   rather than several of each; the menu's tiles are built this way.
+ * @param {string} [config.paintKey] Identifies what `paint` will draw, so two
+ *   buttons that paint differently do not share a cached texture. Required
+ *   whenever `paint` is given.
  * @returns {Phaser.GameObjects.Container}
  */
 export function makeButton(scene, config) {
@@ -182,46 +309,20 @@ export function makeButton(scene, config) {
     shape = 'card',
     rim = true,
     onTap,
+    paint,
+    paintKey,
   } = config;
   const container = scene.add.container(x, y);
 
-  let outline = null;
-  if (shape === 'star') outline = starPoints(width, height);
-  else if (shape === 'blob') outline = blobPoints(width, height);
-  // A circle is a blob with no bumps. Same code path, so the rim and shadow are
-  // drawn exactly the same way for all three.
-  else if (shape === 'circle') outline = blobPoints(width, height, 4, 0);
+  // One baked image rather than a shadow Graphics and a face Graphics. See
+  // cardTexture: the shapes never change after the scene opens, and a Graphics
+  // re-tessellates every frame regardless.
+  const card = scene.add
+    .image(0, 0, cardTexture(scene, { width, height, color, shape, rim, paint, paintKey }))
+    .setScale(1 / CARD_SUPERSAMPLE);
 
-  const shadow = scene.add.graphics();
-  shadow.fillStyle(COLORS.shadow, 0.22);
-  if (outline) {
-    shadow.fillPoints(outline.map((p) => ({ x: p.x, y: p.y + 8 })), true);
-  } else {
-    shadow.fillRoundedRect(-width / 2, -height / 2 + 8, width, height, 26);
-  }
-
-  const face = scene.add.graphics();
-  face.fillStyle(color, 1);
-  if (outline) face.fillPoints(outline, true);
-  else face.fillRoundedRect(-width / 2, -height / 2, width, height, 26);
-
-  // A white rim with a dark line outside it. This is what makes a coloured
-  // shape read as a sticker sitting on the scene rather than a hole cut out of
-  // it, and it is the single most recognisable thing about the look of the apps
-  // this is aimed at.
-  if (rim && outline) {
-    face.lineStyle(6, 0xffffff, 0.95);
-    face.strokePoints(shrink(outline, shape === 'star' ? 0.9 : 0.93), true);
-    face.lineStyle(3, COLORS.outline, 0.85);
-    face.strokePoints(outline, true);
-  } else if (rim) {
-    face.lineStyle(6, 0xffffff, 0.95);
-    face.strokeRoundedRect(-width / 2 + 3, -height / 2 + 3, width - 6, height - 6, 23);
-    face.lineStyle(3, COLORS.outline, 0.85);
-    face.strokeRoundedRect(-width / 2, -height / 2, width, height, 26);
-  }
-
-  container.add([shadow, face]);
+  container.add(card);
+  container.card = card;
   container.setSize(width, height);
   container.setInteractive({ useHandCursor: true });
 

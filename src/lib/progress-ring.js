@@ -41,6 +41,36 @@ const RADIUS = 46;
 const THICKNESS = 13;
 /** How far out the orbiting stars sit. */
 const ORBIT = RADIUS + 16;
+const RING_SUPERSAMPLE = 2;
+
+/** The white disc and the empty track, baked once for the whole app. */
+function ringPlateTexture(scene) {
+  const key = 'progress-ring-plate';
+  if (scene.textures.exists(key)) return key;
+
+  const size = (RADIUS + THICKNESS / 2 + 4) * 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = Math.ceil(size * RING_SUPERSAMPLE);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(RING_SUPERSAMPLE, RING_SUPERSAMPLE);
+  ctx.translate(size / 2, size / 2);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.82)';
+  ctx.beginPath();
+  ctx.arc(0, 0, RADIUS + THICKNESS / 2 + 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(138,122,99,0.18)';
+  ctx.lineWidth = THICKNESS;
+  ctx.beginPath();
+  ctx.arc(0, 0, RADIUS, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
+  texture.context.drawImage(canvas, 0, 0);
+  texture.refresh();
+  return key;
+}
 
 /**
  * @param {Phaser.Scene} scene
@@ -53,16 +83,13 @@ export function addProgressRing(scene, x, y) {
   const ring = scene.add.container(x, y).setDepth(40).setName('progress-ring');
   ring.flyTo = { x, y };
 
-  // A soft disc behind everything, so the ring reads on a painted backdrop
-  // without needing an outline heavy enough to fight the letters.
-  const plate = scene.add.graphics();
-  plate.fillStyle(0xffffff, 0.82);
-  plate.fillCircle(0, 0, RADIUS + THICKNESS / 2 + 3);
-  ring.add(plate);
-
-  const track = scene.add.graphics();
+  // The disc behind everything and the empty track never change, so they are
+  // baked into one texture and shared by every screen's ring — a Graphics
+  // re-tessellates every frame whether or not it moved. Only the arc is left
+  // as one, because that genuinely does change while it fills.
+  ring.add(scene.add.image(0, 0, ringPlateTexture(scene)).setScale(1 / RING_SUPERSAMPLE));
   const arc = scene.add.graphics();
-  ring.add([track, arc]);
+  ring.add(arc);
 
   const stars = scene.add.container(0, 0);
   ring.add(stars);
@@ -80,12 +107,6 @@ export function addProgressRing(scene, x, y) {
   let shown = state();
   /** Animated separately from the model, so the arc can catch up smoothly. */
   let drawn = shown.fraction;
-
-  const drawTrack = () => {
-    track.clear();
-    track.lineStyle(THICKNESS, COLORS.shadow, 0.18);
-    track.strokeCircle(0, 0, RADIUS);
-  };
 
   const drawArc = () => {
     // Published so a verifier can see the arc actually move. Reading the
@@ -155,7 +176,6 @@ export function addProgressRing(scene, x, y) {
     drawStars();
   };
 
-  drawTrack();
   redrawAll();
 
   /**

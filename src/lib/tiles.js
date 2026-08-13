@@ -52,16 +52,20 @@ export function queueTileArt(scene, games) {
 }
 
 /**
- * A tile's picture at the given size, or null.
+ * A tile's picture as something a canvas can draw, or null.
+ *
+ * The decoded image rather than a Phaser game object: the menu paints the whole
+ * face of a tile into one texture instead of stacking sprites, so what it needs
+ * here is a drawImage source. See game-tile.js.
  *
  * Null when the game has no picture and also when it has one that has not
- * loaded, so the caller falls back to drawing the letter rather than showing
- * Phaser's missing-texture square.
+ * loaded, so the caller falls back to the letter rather than showing Phaser's
+ * missing-texture square.
  *
- * @returns {Phaser.GameObjects.Image|null}
+ * @returns {HTMLImageElement|HTMLCanvasElement|null}
  */
-export function addTileArt(scene, game, width, height) {
+export function tileArtImage(scene, game) {
   const key = tileArtKey(artName(game));
   if (!scene.textures.exists(key)) return null;
-  return scene.add.image(0, 0, key).setDisplaySize(width, height);
+  return scene.textures.get(key).getSourceImage();
 }

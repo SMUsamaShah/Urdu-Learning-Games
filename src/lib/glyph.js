@@ -75,7 +75,7 @@ export function glyphTexture(scene, key, glyph, options = {}) {
     padding = 0.06,
   } = options;
 
-  const [bx, by, bw, bh] = glyph.bbox;
+  const [, , bw, bh] = glyph.bbox;
 
   // A glyph with no ink (should never happen, the baker fails loudly on it)
   // still needs a texture rather than a crash.
@@ -99,8 +99,43 @@ export function glyphTexture(scene, key, glyph, options = {}) {
 
   const ctx = canvas.getContext('2d');
   ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
-  // Map the glyph's bbox onto the padded canvas.
-  ctx.translate(pad - bx * scale, pad - by * scale);
+  ctx.translate(pad, pad);
+  paintGlyph(ctx, glyph, { scale, color, stroke, strokeWidth, strokeEm });
+
+  const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
+  texture.context.drawImage(canvas, 0, 0);
+  texture.refresh();
+  return key;
+}
+
+/**
+ * Paints one glyph into a 2D context, with its bounding box at the origin.
+ *
+ * Split out of glyphTexture so a caller that is already drawing a canvas can
+ * put a letter on it without minting a texture for the letter alone. The menu
+ * bakes each tile — card, picture, caption band, Urdu name, roman gloss — into
+ * a single texture that way, which took the menu from five textures and three
+ * overlapping quads per tile down to one of each.
+ *
+ * The context's transform is respected and restored, so the caller positions
+ * the glyph by translating before the call.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Glyph} glyph
+ * @param {object} options
+ * @param {number} options.scale font units to context units
+ * @param {string} [options.color]
+ * @param {string} [options.stroke]
+ * @param {number} [options.strokeWidth] a constant line, in context units
+ * @param {number} [options.strokeEm] a line as a fraction of the font's em
+ */
+export function paintGlyph(ctx, glyph, options) {
+  const { scale, color = '#ffffff', stroke = null, strokeWidth = 0, strokeEm = 0 } = options;
+  const [bx, by] = glyph.bbox;
+  if (!glyph.d) return;
+
+  ctx.save();
+  ctx.translate(-bx * scale, -by * scale);
   ctx.scale(scale, scale);
 
   const path = new Path2D(glyph.d);
@@ -134,11 +169,7 @@ export function glyphTexture(scene, key, glyph, options = {}) {
     ctx.lineJoin = 'round';
     ctx.stroke(path);
   }
-
-  const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
-  texture.context.drawImage(canvas, 0, 0);
-  texture.refresh();
-  return key;
+  ctx.restore();
 }
 
 /**

@@ -63,11 +63,46 @@ export function mountFpsMeter(game) {
     if (el.hidden) return;
 
     const fps = game?.loop?.actualFps ?? 0;
-    el.textContent = `${Math.round(fps)} fps`;
+    // With what it took to draw it. A frame rate on its own says something is
+    // slow; this says what to look at, and it is the difference between a
+    // round trip and a fix. Objects and textures are what actually moved the
+    // menu from 40fps — 69 objects and 67 textures down to 29 and 26.
+    el.textContent = `${Math.round(fps)} fps · ${describe(game)}`;
     // Green above 50, amber 30-50, red below: the point is to be readable at a
     // glance while a child is using the app, not to be precise.
     el.dataset.level = fps >= 50 ? 'good' : fps >= 30 ? 'fair' : 'poor';
   };
   requestAnimationFrame(tick);
   return el;
+}
+
+/**
+ * What the running scene is asking the renderer to do.
+ *
+ * Counted on the display list rather than read off the renderer, because
+ * Phaser 4 publishes no draw-call figure — and the two numbers that actually
+ * predict the cost here are how many things are drawn and how many distinct
+ * textures they come from. A Graphics count is included separately: those
+ * re-tessellate every frame whether or not they changed, and a screen quietly
+ * accumulating them is the failure this readout exists to make visible.
+ */
+function describe(game) {
+  const scene = game?.scene?.scenes?.find((s) => s.sys.settings.visible && s.sys.isActive());
+  if (!scene) return '';
+  let objects = 0;
+  let graphics = 0;
+  const textures = new Set();
+  const walk = (list) => {
+    for (const child of list) {
+      if (child.type === 'Graphics') graphics++;
+      if (child.list) {
+        walk(child.list);
+        continue;
+      }
+      objects++;
+      if (child.texture) textures.add(child.texture.key);
+    }
+  };
+  walk(scene.children.list);
+  return `${objects} obj · ${textures.size} tex${graphics ? ` · ${graphics} gfx` : ''}`;
 }

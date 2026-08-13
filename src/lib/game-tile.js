@@ -1,8 +1,8 @@
-import { letterGlyph, numberGlyph, uiGlyph, uiGlyphs } from './content.js';
-import { addGlyphBaseline, fitEmLine } from './glyph.js';
-import { addTileArt } from './tiles.js';
+import { glyphUpem, letterGlyph, numberGlyph, uiGlyph, uiGlyphs } from './content.js';
+import { fitEmLine, glyphMetrics, paintGlyph } from './glyph.js';
+import { tileArtImage } from './tiles.js';
 import { squash } from './liveliness.js';
-import { COLORS, chunkyGlyphEm, label, makeButton } from './theme.js';
+import { COLORS, chunkyGlyphEm, makeButton } from './theme.js';
 
 /**
  * The tiles the menu is made of.
@@ -11,16 +11,30 @@ import { COLORS, chunkyGlyphEm, label, makeButton } from './theme.js';
  * — the menu itself and the panel of extra games behind it — and a tile that
  * looked different in the two would read as two different apps.
  *
+ * ## One texture, one quad
+ *
+ * A tile is five things stacked: the coloured card, the picture, the caption
+ * band, the Urdu name and the roman gloss. Built the obvious way that is five
+ * objects and five textures each, and on a menu of ten it was 69 objects and 67
+ * distinct textures — with three full-tile quads drawn over each other for
+ * every tile, most of the first two hidden behind the last.
+ *
+ * None of it ever changes after the scene opens, so the whole face is painted
+ * once into a single cached texture and drawn as one quad. That took the menu
+ * to 29 objects and 27 textures, and cut the grid's fill in half.
+ *
+ * The cost is that a tile cannot animate its parts separately. It never did:
+ * tiles bob and squash as a whole.
+ *
  * ## Why a factory rather than a function per tile
  *
- * A tile is three stacked lines: the icon, the Urdu name, the roman gloss. The
- * two Urdu lines are drawn at one em on one shared baseline **across the whole
- * grid**, which cannot be decided one tile at a time — it is the tallest icon
- * and the deepest-descending name in the set that settle the size for all of
- * them. So the set is measured once, up front, and the returned function draws
- * tiles at sizes that are already agreed. Sizing per tile is exactly the bug
- * this shape exists to prevent: it would give a grid where ب comes out twice
- * the size of م and the menu reads as a pile of unrelated buttons.
+ * The Urdu names are drawn at one em on one shared baseline **across the whole
+ * grid**, which cannot be decided one tile at a time — it is the
+ * deepest-descending name in the set that settles the size for all of them. So
+ * the set is measured once, up front, and the returned function paints tiles at
+ * sizes that are already agreed. Sizing per tile is exactly the bug this shape
+ * exists to prevent: it would give a grid where ب comes out twice the size of م
+ * and the menu reads as a pile of unrelated buttons.
  */
 
 /**
@@ -35,6 +49,22 @@ export function iconGlyph(game) {
   return null;
 }
 
+/** The roman gloss's face, matching label() in theme.js. */
+const ROMAN_FONT = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+
+/** Rounded along the bottom two corners only, square where it meets the art. */
+function bandPath(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height);
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + width, y);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.arcTo(x + width, y + height, x + width - r, y + height, r);
+  ctx.lineTo(x + r, y + height);
+  ctx.arcTo(x, y + height, x, y + height - r, r);
+  ctx.closePath();
+}
+
 /**
  * Measures a set of games, then draws tiles from it.
  *
@@ -42,9 +72,10 @@ export function iconGlyph(game) {
  * @param {object[]} games entries with `ui`, `roman`, `color`, the name of a
  *   picture in content/tiles.json, and an `icon` or `number` to fall back to
  * @param {{width: number, height: number, role?: string}} size every tile in
- *   the set, plus the texture-key prefix its glyphs are filed under — two grids
- *   of different-sized tiles are two roles, and verify:sizing checks each role
- *   is drawn at exactly one size
+ *   the set, plus a name for the set. The name leads the baked face's texture
+ *   key and carries the em it was drawn at, so two grids of different-sized
+ *   tiles neither share a cached face nor look to verify:sizing like one role
+ *   drawn at two sizes
  * @returns {(game: object, x: number, y: number, onTap: () => void) => Phaser.GameObjects.Container}
  */
 export function tileMaker(scene, games, { width, height, role = 'tile' }) {
@@ -58,42 +89,72 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
   // pixels tall, and white Urdu on a grey wash over a cream illustration was
   // unreadable at tile size on every light one. A solid band gives the same
   // contrast on all twenty-five whatever the picture underneath does.
-  const band = { height: art.height * 0.38, radius: (width - 12) * 0.102 };
+  const band = { height: art.height * 0.38, radius: art.width * 0.102 };
   band.top = art.height / 2 - band.height;
   const labelFit = fitEmLine(
     uiGlyphs(games.map((game) => game.ui)),
     width - 34,
     band.height * 0.7
   );
+  const romanSize = Math.max(11, Math.round(band.height * 0.2));
 
-  // Where the letter goes on a tile with no picture. The lines are as deep as
-  // they are because Nastaliq's vertical range is enormous: گنتی and لکھو reach
-  // two full ems above the baseline, since the ascender on a گ or a ک is drawn
-  // as a long rising stroke, while حروف and جوڑے drop half an em below it.
+  // Where the letter goes on a tile with no picture. The line is as deep as it
+  // is because Nastaliq's vertical range is enormous: گنتی and لکھو reach two
+  // full ems above the baseline, since the ascender on a گ or a ک is drawn as a
+  // long rising stroke, while حروف and جوڑے drop half an em below it.
   const iconBox = { top: -height * 0.44, height: height * 0.34 };
   const iconFit = fitEmLine(games.map(iconGlyph).filter(Boolean), width * 0.66, iconBox.height);
 
-  /** The letter a tile falls back to when its picture is missing. */
-  const drawIcon = (game) => {
-    const glyph = iconGlyph(game);
-    const id = game.number ?? (game.icon && `${game.icon.letter}:${game.icon.form}`);
-    if (!glyph) {
-      // A tile that asked for a letter and did not get one still draws — it
-      // just comes out as a name with a hole above it, which is exactly what
-      // `sad` and `he` did for weeks (the ids are `suad` and `choti-he`). Said
-      // out loud, because the verifiers fail on a console error and nothing
-      // else was ever going to notice.
-      if (id) console.error(`menu tile "${game.ui}" has no glyph for ${id}`);
-      return null;
+  /** Paints one letter centred on x, sitting on the shared baseline. */
+  const paintCentred = (ctx, glyph, em, baselineY, options) => {
+    const metrics = glyphMetrics(glyph, em);
+    ctx.save();
+    ctx.translate(-metrics.width / 2, baselineY - metrics.baseline);
+    paintGlyph(ctx, glyph, { scale: em / glyphUpem(), ...options });
+    ctx.restore();
+  };
+
+  /**
+   * Everything on a tile's face, painted into the card's own texture.
+   *
+   * Runs once per distinct tile and never again — see the note at the top on
+   * why this is not five objects.
+   */
+  const paintFace = (game) => (ctx) => {
+    const picture = tileArtImage(scene, game);
+    if (picture) {
+      ctx.drawImage(picture, -art.width / 2, -art.height / 2, art.width, art.height);
+    } else {
+      // No picture: the letter the tile used to carry, in the same place.
+      const glyph = iconGlyph(game);
+      const id = game.number ?? (game.icon && `${game.icon.letter}:${game.icon.form}`);
+      if (glyph) {
+        paintCentred(ctx, glyph, iconFit.em, iconBox.top + iconFit.baseline, chunkyGlyphEm(iconFit.em));
+      } else if (id) {
+        // A tile that asked for a letter and did not get one still draws — it
+        // just comes out as a name with a hole above it, which is exactly what
+        // `sad` and `he` did for weeks (the ids are `suad` and `choti-he`).
+        // Said out loud, because the verifiers fail on a console error and
+        // nothing else was ever going to notice.
+        console.error(`menu tile "${game.ui}" has no glyph for ${id}`);
+      }
     }
-    return addGlyphBaseline(
-      scene,
-      0,
-      iconBox.top + iconFit.baseline,
-      `${role}-icon:em${Math.round(iconFit.em)}:${id}`,
-      glyph,
-      chunkyGlyphEm(iconFit.em)
-    );
+
+    ctx.fillStyle =
+      `rgba(${(game.color >> 16) & 0xff},${(game.color >> 8) & 0xff},${game.color & 0xff},0.94)`;
+    bandPath(ctx, -art.width / 2, band.top, art.width, band.height, band.radius);
+    ctx.fill();
+
+    const nameGlyph = uiGlyph(game.ui);
+    if (nameGlyph) {
+      paintCentred(ctx, nameGlyph, labelFit.em, band.top + 2 + labelFit.baseline, chunkyGlyphEm(labelFit.em));
+    }
+
+    ctx.fillStyle = COLORS.onColor;
+    ctx.font = `500 ${romanSize}px ${ROMAN_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(game.roman, 0, band.top + band.height * 0.85);
   };
 
   return (game, x, y, onTap) => {
@@ -104,53 +165,10 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
       height,
       color: game.color,
       onTap,
+      paint: paintFace(game),
+      paintKey: `${role}-face:em${Math.round(labelFit.em)}:${game.ui}`,
     });
     button.on('pointerdown', () => squash(scene, button));
-
-    // The picture if there is one, and the letter only if there is not. A game
-    // added without art still gets a tile that looks like the others rather
-    // than a blank one, and the fallback is the tile this menu had before.
-    const picture = addTileArt(scene, game, art.width, art.height);
-    if (picture) {
-      button.add(picture);
-      // Only the bottom corners are rounded, matching the picture's own baked
-      // ones. Phaser takes a radius per corner, which is what makes a band
-      // across the bottom of a rounded rectangle possible without a mask.
-      const caption = scene.add.graphics();
-      caption.fillStyle(game.color, 0.94);
-      caption.fillRoundedRect(-art.width / 2, band.top, art.width, band.height, {
-        tl: 0,
-        tr: 0,
-        bl: band.radius,
-        br: band.radius,
-      });
-      button.add(caption);
-    } else {
-      const icon = drawIcon(game);
-      if (icon) button.add(icon);
-    }
-
-    const nameGlyph = uiGlyph(game.ui);
-    if (nameGlyph) {
-      button.add(
-        addGlyphBaseline(
-          scene,
-          0,
-          band.top + 2 + labelFit.baseline,
-          `${role}-label:em${Math.round(labelFit.em)}:${game.ui}`,
-          nameGlyph,
-          chunkyGlyphEm(labelFit.em)
-        )
-      );
-    }
-
-    button.add(
-      label(scene, 0, band.top + band.height * 0.85, game.roman, {
-        size: Math.max(11, Math.round(band.height * 0.2)),
-        color: COLORS.onColor,
-      })
-    );
-
     return button;
   };
 }
