@@ -280,6 +280,90 @@ if (!process.exitCode) {
   if (!process.exitCode) step('every run was consecutive and every line-up was answerable');
 }
 
+// ------------------------------------------------------------- caterpillar
+
+if (!process.exitCode) {
+  await start('Caterpillar');
+  step('Caterpillar: checking the run and the tray agree');
+
+  const board = () =>
+    page.evaluate(() => {
+      const scene = window.__game.scene.getScene('Caterpillar');
+      return {
+        run: scene.run,
+        holes: scene.holes,
+        filled: scene.filled,
+        round: scene.round,
+        tray: scene.tray.list.map((t) => ({ letterId: t.letterId, used: t.used })),
+        sequence: scene.sequence,
+      };
+    });
+
+  const first = await board();
+
+  // The run has to be a real consecutive slice of the alphabet, or the game is
+  // teaching an order that does not exist.
+  const at = first.sequence.indexOf(first.run[0]);
+  const consecutive =
+    at > -1 && first.run.every((id, i) => first.sequence[at + i] === id);
+  if (!consecutive) fail('the run is not a consecutive slice of the alphabet');
+
+  // Every hole's answer must be in the tray. A hole whose letter was never
+  // offered cannot be filled, and the round would simply stop.
+  const trayIds = first.tray.map((t) => t.letterId);
+  for (const hole of first.holes) {
+    if (!trayIds.includes(first.run[hole])) {
+      fail(`"${first.run[hole]}" is a hole but is not in the tray`);
+    }
+  }
+  // And the tray must offer more than the answers, or every tap is right and
+  // there is nothing being asked.
+  if (trayIds.length <= first.holes.length) {
+    fail(`the tray has ${trayIds.length} letters for ${first.holes.length} holes — no choice at all`);
+  }
+  // Holes never at either end: those are answerable by carrying on, which is
+  // the easier question Sequence already asks.
+  if (first.holes.includes(0) || first.holes.includes(first.run.length - 1)) {
+    fail('a hole is at the end of the run');
+  }
+  if (!process.exitCode) {
+    step(`${first.run.length} in the run, ${first.holes.length} holes, ${trayIds.length} in the tray`);
+  }
+
+  const tapTray = (letterId) =>
+    page.evaluate((id) => {
+      const scene = window.__game.scene.getScene('Caterpillar');
+      scene.tray.list.find((t) => t.letterId === id && !t.used)?.emit('pointerup');
+    }, letterId);
+
+  // A wrong tray letter must not fill the hole it was aimed at.
+  const wrong = trayIds.find((id) => !first.holes.some((h) => first.run[h] === id));
+  if (wrong) {
+    await tapTray(wrong);
+    await page.waitForTimeout(400);
+    const after = await board();
+    if (after.filled !== 0) fail('a wrong tray letter filled a hole');
+    else step('a wrong tray letter fills nothing');
+  }
+
+  // Holes fill in reading order, so the answers have to be given in that order.
+  step('Caterpillar: filling every hole');
+  for (const hole of first.holes) {
+    await tapTray(first.run[hole]);
+    await page.waitForTimeout(700);
+  }
+  const moved = await page
+    .waitForFunction(
+      (before) => window.__game.scene.getScene('Caterpillar').round > before,
+      first.round,
+      { timeout: 30000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!moved) fail('filling every hole did not start a new run');
+  else step('run completed and a new one dealt');
+}
+
 // ----------------------------------------------------------------- tap all
 
 if (!process.exitCode) {

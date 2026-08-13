@@ -175,6 +175,16 @@
       "id": "find-all",
       "text": "سارے",
       "roman": "saare"
+    },
+    {
+      "id": "fill-gaps",
+      "text": "خالی جگہ بھرو",
+      "roman": "khaali jagah bharo"
+    },
+    {
+      "id": "gaps",
+      "text": "خالی جگہ",
+      "roman": "khaali jagah"
     }
   ]
 }

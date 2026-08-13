@@ -39,6 +39,7 @@ export const INSTRUCTIONS = [
   'starts-with',
   'knock-door',
   'tap-all',
+  'fill-gaps',
 ];
 
 /**

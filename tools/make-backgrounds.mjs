@@ -112,6 +112,9 @@ const BACKDROPS = {
   TapAll:
     'A tidy park lawn: a neat hedge and a row of small round bushes along the ' +
     'bottom edge, one lamp post at the far right edge, wide pale sky.',
+  Caterpillar:
+    'A leafy garden hedge running along the bottom edge with a few round ' +
+    'bushes, one tall sunflower at the far right edge, wide pale sky above.',
   Trace:
     'An almost empty pale blue sky with the faintest suggestion of two soft ' +
     'clouds at the top corners and a thin strip of green grass along the very ' +

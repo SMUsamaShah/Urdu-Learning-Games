@@ -12,6 +12,7 @@ import JoinForms from './scenes/JoinForms.js';
 import StartsWith from './scenes/StartsWith.js';
 import Doors from './scenes/Doors.js';
 import TapAll from './scenes/TapAll.js';
+import Caterpillar from './scenes/Caterpillar.js';
 import Trace from './scenes/Trace.js';
 import * as audio from './lib/audio.js';
 import { createAppAudioContext } from './lib/audio-context.js';
@@ -68,6 +69,7 @@ const game = new Phaser.Game({
     StartsWith,
     Doors,
     TapAll,
+    Caterpillar,
     Trace,
   ],
 });

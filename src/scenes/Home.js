@@ -107,6 +107,13 @@ const GAMES = [
     icon: { letter: 'sin', form: 'initial' },
   },
   {
+    scene: 'Caterpillar',
+    ui: 'gaps',
+    roman: 'Gaps',
+    color: 0x5b8f2f,
+    icon: { letter: 'nun', form: 'isolated' },
+  },
+  {
     scene: 'Trace',
     ui: 'trace',
     roman: 'Write',
