@@ -280,6 +280,94 @@ if (!process.exitCode) {
   if (!process.exitCode) step('every run was consecutive and every line-up was answerable');
 }
 
+// ------------------------------------------------------------ letter puzzle
+
+if (!process.exitCode) {
+  await start('LetterPuzzle');
+  step('LetterPuzzle: dragging the pieces home');
+
+  // The only screen whose input is a drag, so this is driven with a real
+  // mouse.down / move / up against the canvas rather than by poking scene
+  // state. A snap that only works when the scene moves the piece itself would
+  // pass every state-poking check and fail for every child.
+  const geo = await page.evaluate(() => {
+    const rect = window.__game.canvas.getBoundingClientRect();
+    const scale = rect.width / window.__game.scale.width;
+    return { left: rect.left, top: rect.top, scale };
+  });
+  const toPage = (x, y) => [geo.left + x * geo.scale, geo.top + y * geo.scale];
+
+  const state = () =>
+    page.evaluate(() => {
+      const scene = window.__game.scene.getScene('LetterPuzzle');
+      return {
+        round: scene.round,
+        placed: scene.placed,
+        pieces: scene.pieces.map((p) => ({
+          x: p.x,
+          y: p.y,
+          homeX: p.homeX,
+          homeY: p.homeY,
+          placed: p.placed,
+        })),
+      };
+    });
+
+  const first = await state();
+  if (first.pieces.length < 2) fail(`a puzzle with ${first.pieces.length} piece(s) is not a puzzle`);
+  else step(`${first.pieces.length} pieces to place`);
+
+  const dragTo = async (piece, tx, ty) => {
+    const [sx, sy] = toPage(piece.x, piece.y);
+    const [ex, ey] = toPage(tx, ty);
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    // Several steps: Phaser starts a drag on movement, and one jump from
+    // grab to release is not a drag as far as the input manager is concerned.
+    for (let i = 1; i <= 6; i++) {
+      await page.mouse.move(sx + ((ex - sx) * i) / 6, sy + ((ey - sy) * i) / 6);
+      await page.waitForTimeout(16);
+    }
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+  };
+
+  // Dropped far from home, a piece must go back to the tray rather than stick
+  // where it landed — a scatter of near-misses over the ghost makes the letter
+  // impossible to read.
+  await dragTo(first.pieces[0], 300, 250);
+  const strayed = await state();
+  if (strayed.placed !== 0) fail('a piece dropped nowhere near its slot counted as placed');
+  else if (Math.abs(strayed.pieces[0].y - first.pieces[0].y) > 4) {
+    fail('a wrongly dropped piece did not go back to the tray');
+  } else step('a piece dropped away from its slot goes back');
+
+  step('LetterPuzzle: placing every piece');
+  for (let i = 0; i < first.pieces.length; i++) {
+    const now = await state();
+    const piece = now.pieces[i];
+    if (piece.placed) continue;
+    await dragTo(piece, piece.homeX, piece.homeY);
+  }
+
+  const done = await state();
+  if (done.placed !== first.pieces.length) {
+    fail(`placed ${done.placed} of ${first.pieces.length} pieces by dragging them home`);
+  } else {
+    step('every piece snapped home');
+    const moved = await page
+      .waitForFunction(
+        (before) => window.__game.scene.getScene('LetterPuzzle').round > before,
+        first.round,
+        { timeout: 30000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (!moved) fail('completing the letter did not move on to the next');
+    else step('letter finished and the next one dealt');
+  }
+}
+
 // ------------------------------------------------------------- caterpillar
 
 if (!process.exitCode) {

@@ -114,6 +114,13 @@ const GAMES = [
     icon: { letter: 'nun', form: 'isolated' },
   },
   {
+    scene: 'LetterPuzzle',
+    ui: 'puzzle',
+    roman: 'Puzzle',
+    color: 0xc25f3f,
+    icon: { letter: 'sad', form: 'isolated' },
+  },
+  {
     scene: 'Trace',
     ui: 'trace',
     roman: 'Write',

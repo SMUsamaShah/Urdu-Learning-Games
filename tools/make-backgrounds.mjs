@@ -115,6 +115,11 @@ const BACKDROPS = {
   Caterpillar:
     'A leafy garden hedge running along the bottom edge with a few round ' +
     'bushes, one tall sunflower at the far right edge, wide pale sky above.',
+  LetterPuzzle:
+    'A plain playroom floor seen flat on: a soft cream wall filling most of ' +
+    'the picture, a pale wooden floor strip along the bottom edge, one potted ' +
+    'plant at the far left edge. Very quiet — a large letter is built over ' +
+    'the middle of this screen.',
   Trace:
     'An almost empty pale blue sky with the faintest suggestion of two soft ' +
     'clouds at the top corners and a thin strip of green grass along the very ' +

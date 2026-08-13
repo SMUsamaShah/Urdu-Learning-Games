@@ -40,6 +40,7 @@ export const INSTRUCTIONS = [
   'knock-door',
   'tap-all',
   'fill-gaps',
+  'build-letter',
 ];
 
 /**

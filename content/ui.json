@@ -185,6 +185,16 @@
       "id": "gaps",
       "text": "خالی جگہ",
       "roman": "khaali jagah"
+    },
+    {
+      "id": "build-letter",
+      "text": "حرف بناؤ",
+      "roman": "harf banao"
+    },
+    {
+      "id": "puzzle",
+      "text": "جوڑ توڑ",
+      "roman": "jor tor"
     }
   ]
 }
