@@ -10,6 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "bake": "node tools/bake-glyphs.mjs",
+    "seed:strokes": "node tools/seed-strokes.mjs",
+    "trace-studio": "node tools/trace-studio/server.mjs",
     "icons": "node tools/make-icons.mjs",
     "images": "node tools/make-word-images.mjs",
     "instruments": "node tools/fetch-instruments.mjs",
