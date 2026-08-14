@@ -306,3 +306,52 @@
   flex: 1;
   min-width: 0;
 }
+
+/* --------------------------------------------------------- short windows */
+
+/*
+ * A phone held sideways is about 390px tall, and the traces page is the one
+ * that cannot simply scroll: it holds an editor whose board should take the
+ * room that is left, not push the Save button past the bottom of the screen.
+ *
+ * Keyed on height rather than orientation, because the problem is the height —
+ * a small phone in portrait with a keyboard up is the same shape.
+ */
+@media (max-height: 520px) {
+  .set-head {
+    padding: 6px 10px;
+  }
+
+  .set-title {
+    font-size: 16px;
+  }
+
+  .set-traces {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .set-traces-bar {
+    padding: 4px 12px;
+    font-size: 13px;
+  }
+
+  /*
+   * Only Export survives here.
+   *
+   * Sideways, chrome is nearly two thirds of the screen and the board is what
+   * suffers. The count and the "from the app" note are both things you read
+   * once; the button is the one thing on this row you cannot do without, and
+   * there is nowhere else to put it.
+   */
+  .set-traces-bar .set-traces-count,
+  .set-traces-bar .set-traces-where {
+    display: none;
+  }
+
+  /* The explanation is for somebody deciding whether to use this page, and it
+     has already been read by the time the screen is this size. */
+  .set-traces .set-note {
+    display: none;
+  }
+}

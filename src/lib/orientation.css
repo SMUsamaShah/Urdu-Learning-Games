@@ -1,0 +1,75 @@
+/*
+ * "Turn your phone", for the browsers that cannot be told to hold it sideways.
+ *
+ * No words. The person holding the phone is three and cannot read one language
+ * yet, let alone two — so it is a phone that tips over and rights itself, on
+ * the same sky the games are played on, and nothing else. A grown-up reading
+ * over their shoulder will understand it just as fast.
+ */
+
+.turn-card {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: #8fd4f5;
+}
+
+.turn-card.is-on {
+  display: flex;
+}
+
+.turn-phone {
+  width: 96px;
+  height: 168px;
+  border: 7px solid #2b3047;
+  border-radius: 16px;
+  background: #fdf3e3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Tips over, waits, and comes back — a loop that reads as an instruction
+     rather than as decoration. */
+  animation: turn-over 3.2s ease-in-out infinite;
+}
+
+.turn-screen {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #e98a1f;
+}
+
+.turn-arrow {
+  font-size: 46px;
+  line-height: 1;
+  color: #2b3047;
+  opacity: 0.7;
+}
+
+@keyframes turn-over {
+  0%,
+  22% {
+    transform: rotate(0deg);
+  }
+  45%,
+  78% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* Somebody who has switched animation off still needs the message, so the
+   phone simply sits on its side. */
+@media (prefers-reduced-motion: reduce) {
+  .turn-phone {
+    animation: none;
+    transform: rotate(-90deg);
+  }
+}

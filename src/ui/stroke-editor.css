@@ -371,3 +371,102 @@
     max-height: 30vh;
   }
 }
+
+/* ------------------------------------------------------------------- short */
+
+/*
+ * A phone held sideways: about 390px tall, and most of that was chrome.
+ *
+ * The header, the count bar, the title row and three rows of letter picker came
+ * to more than the whole window, so the board was a sliver at the bottom and
+ * everything below it was off screen. This is the shape the installed app is
+ * usually in, so it is the one that has to work: the picker becomes a single
+ * scrolling row, the rows lose their padding, and the board takes what is left.
+ *
+ * Keyed on height rather than orientation, because a short window is the actual
+ * problem — a small phone in portrait with the keyboard up is the same shape.
+ */
+@media (max-height: 520px) {
+  /*
+   * Fit the window rather than grow past it.
+   *
+   * `min-height: 100%` lets the editor be taller than the space it is given and
+   * scroll, which is right when there is room to scroll into and wrong here:
+   * the board would stretch to its content and push Save off the bottom. A
+   * flex item will not shrink below its content unless it is told it may, hence
+   * min-height: 0 all the way down the chain.
+   */
+  .ste-root {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .ste-head {
+    padding: 6px 12px;
+  }
+
+  .ste-title {
+    font-size: 15px;
+  }
+
+  .ste-letters {
+    /* One row that scrolls sideways. Three rows of the alphabet is more of the
+       screen than the letter being corrected. */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: none;
+    padding: 5px 12px;
+  }
+
+  .ste-letters button {
+    flex: none;
+  }
+
+  .ste-body {
+    padding: 8px 12px;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  .ste-stage {
+    min-height: 0;
+  }
+
+  .ste-board {
+    /* No min-height: there is no height to spare, and a floor here is exactly
+       what pushed everything else off the screen. */
+    height: 100%;
+    min-height: 0;
+  }
+
+  .ste-hint {
+    display: none;
+  }
+
+  .ste-controls {
+    padding: 6px 12px 8px;
+  }
+
+  .ste-btn {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+}
+
+/* Sideways on a phone: the side panel goes back beside the board, because
+   height is the scarce thing and width is not. */
+@media (max-height: 520px) and (min-width: 560px) {
+  .ste-body {
+    flex-direction: row;
+  }
+
+  .ste-side {
+    width: 210px;
+  }
+
+  .ste-strokes {
+    display: flex;
+    max-height: none;
+  }
+}

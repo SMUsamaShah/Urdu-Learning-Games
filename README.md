@@ -98,6 +98,23 @@ so far.
 No game has a fail state. A wrong answer nudges, keeps the round, and lets the
 child try again.
 
+## Which way up
+
+The games are drawn at 1280×720 and scaled to fit, so held upright they would
+letterbox into a strip across the middle of the phone — no use to a
+three-year-old aiming at balloons. The app asks to be held sideways.
+
+It asks in JavaScript rather than in the manifest, which matters: a manifest
+lock is absolute, and it pinned the grown-ups screens too. The tracing editor
+wants a tall window and a finger, so the lock is **released while Settings is
+open** and taken back on the way out.
+
+`screen.orientation.lock` is Android and desktop; iOS Safari has never shipped
+it. There, nothing can hold the app sideways, so a game opened upright shows a
+card of a phone tipping over instead — no words, since the person holding it
+cannot read yet. It never covers the grown-ups screens, and never appears on a
+device with a mouse.
+
 ## Installing it on a phone
 
 Open the deployed URL on the phone and use the browser's "add to home screen"
@@ -219,6 +236,12 @@ an order.
 To get corrections made on a tablet into the repo: **Export…** writes
 `urdu-traces-<date>.json`, and the desktop studio's *Import a tablet export*
 merges it. Or send it to me and I will.
+
+**Turn the phone upright for this.** The games are drawn at 1280×720 and the
+app holds itself sideways for them, but it lets go the moment Settings opens —
+a tall window is worth roughly three times the board height, which is the
+difference between placing a point and guessing at one. Sideways still works;
+it is just cramped.
 
 **Paths belong to the font they were drawn against.** A stroke is a centreline
 through one typeface's outlines; against another it sits beside the letter

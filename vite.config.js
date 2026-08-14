@@ -73,7 +73,12 @@ export default defineConfig({
         start_url: '.',
         scope: '.',
         display: 'standalone',
-        orientation: 'landscape',
+        // Deliberately not 'landscape'. A manifest lock is absolute — an
+        // installed app can never turn, including on the grown-ups screens,
+        // where the tracing editor wants a tall window and a finger. The app
+        // asks for landscape itself and releases it there; see
+        // src/lib/orientation.js.
+        orientation: 'any',
         background_color: '#8fd4f5',
         theme_color: '#8fd4f5',
         categories: ['education', 'kids'],

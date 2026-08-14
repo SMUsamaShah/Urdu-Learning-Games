@@ -33,6 +33,7 @@ import * as music from './lib/music.js';
 import * as flourish from './lib/flourish.js';
 import * as progress from './lib/progress.js';
 import * as strokes from './lib/strokes.js';
+import * as orientation from './lib/orientation.js';
 import { useAudioContext } from './lib/tone-setup.js';
 import { DESIGN } from './lib/theme.js';
 
@@ -125,6 +126,12 @@ window.__music = music;
 // afresh and see the same thing — see the note above about the dev server's
 // cache-busting query string.
 window.__strokes = strokes;
+window.__orientation = orientation;
+
+// Asks to be held sideways, and puts up a "turn your phone" card where the
+// browser has no way to be told. Released while the grown-ups screens are open
+// — see src/lib/orientation.js.
+orientation.watchOrientation();
 window.__progress = progress;
 window.__flourish = flourish;
 window.__updates = updates;

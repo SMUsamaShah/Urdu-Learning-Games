@@ -4,6 +4,7 @@ import { addGlyph } from '../lib/glyph.js';
 import { canInstall, onInstallAvailability, promptInstall } from '../lib/install.js';
 import { addMascot } from '../lib/mascot.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
+import { lockLandscape, releaseOrientation } from '../lib/orientation.js';
 import { addScenery } from '../lib/scenery.js';
 import { gridPlaces, tileMaker } from '../lib/game-tile.js';
 import { openGamesPanel } from '../lib/games-panel.js';
@@ -259,8 +260,13 @@ export default class Home extends Phaser.Scene {
     // Phaser keeps handling keys underneath a DOM overlay, so a space bar meant
     // for the record button would also poke the game.
     this.input.keyboard.enabled = false;
+    // The games are held sideways; these screens are not. The tracing editor in
+    // particular wants a tall window and a finger, and a phone that cannot be
+    // turned is a phone where ھ cannot be fixed.
+    releaseOrientation();
     openSettings({
       onClose: () => {
+        lockLandscape();
         this.input.keyboard.enabled = true;
         // Restarted rather than resumed: the music switch and the recordings
         // both change what this screen should show.

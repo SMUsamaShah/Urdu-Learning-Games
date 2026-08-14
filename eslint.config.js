@@ -63,6 +63,7 @@ const BROWSER = {
   requestIdleCallback: 'readonly',
   Path2D: 'readonly',
   DOMPoint: 'readonly',
+  screen: 'readonly',
   TextEncoder: 'readonly',
   TextDecoder: 'readonly',
   getSelection: 'readonly',
