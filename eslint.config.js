@@ -62,6 +62,7 @@ const BROWSER = {
   alert: 'readonly',
   requestIdleCallback: 'readonly',
   Path2D: 'readonly',
+  DOMPoint: 'readonly',
   TextEncoder: 'readonly',
   TextDecoder: 'readonly',
   getSelection: 'readonly',
