@@ -51,6 +51,37 @@ const editor = buildStrokeEditor({
 holder.append(editor.el);
 tally();
 
+/**
+ * Takes the file the tablet exported and merges it into the repo.
+ *
+ * The server does the refusing — a file drawn for another font is rejected
+ * whole rather than merged with a warning — and this only reports what it
+ * said. Reloading afterwards is the honest way to show the result: the editor
+ * holds the letters it opened with, and half of them have just changed
+ * underneath it.
+ */
+const file = document.getElementById('import-file');
+document.getElementById('btn-import').addEventListener('click', () => file.click());
+file.addEventListener('change', async () => {
+  const chosen = file.files?.[0];
+  if (!chosen) return;
+  count.textContent = 'Importing…';
+  const response = await fetch('/api/import', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: await chosen.text(),
+  });
+  const body = await response.json().catch(() => ({}));
+  file.value = '';
+  if (!response.ok) {
+    count.textContent = body.error ?? `import failed (${response.status})`;
+    count.dataset.bad = 'true';
+    return;
+  }
+  count.textContent = `Imported ${body.merged.length} letter(s) — reloading…`;
+  setTimeout(() => window.location.reload(), 900);
+});
+
 // A save writes a file; leaving with unsaved edits loses work that took real
 // effort to draw.
 window.addEventListener('beforeunload', (event) => {

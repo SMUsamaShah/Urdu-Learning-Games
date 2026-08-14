@@ -86,17 +86,82 @@ const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
  * milliseconds. Order comes from letters.json so a save never reshuffles the
  * file and makes the diff unreadable.
  */
-function saveLetter(letterId, strokes) {
-  const current = readJson(STROKES_FILE);
+function writeOrdered(current) {
   const { letters } = readJson(path.join(CONTENT_DIR, 'letters.json'));
-  current.letters[letterId] = { strokes, ...(strokes.length ? { corrected: true } : {}) };
-
   const ordered = {};
   for (const letter of letters) {
     if (current.letters[letter.id]) ordered[letter.id] = current.letters[letter.id];
   }
   current.letters = ordered;
   fs.writeFileSync(STROKES_FILE, `${JSON.stringify(current, null, 2)}\n`);
+}
+
+function saveLetter(letterId, strokes) {
+  const current = readJson(STROKES_FILE);
+  current.letters[letterId] = { strokes, ...(strokes.length ? { corrected: true } : {}) };
+  writeOrdered(current);
+}
+
+/**
+ * Merges a phone or tablet export into content/strokes.json.
+ *
+ * The handover at the end of the loop: somebody fixes ھ on the sofa, exports,
+ * sends me the file, and this puts it in the repo without anybody editing JSON
+ * by hand.
+ *
+ * ## Why the fingerprint is checked here and not only trusted
+ *
+ * A path is a centreline through one typeface's outlines. Against another it
+ * sits beside the letter, and a guide beside the letter teaches a child to
+ * write it wrongly. The app already refuses to *use* stale paths — but an
+ * import writes them into the repo, where they look exactly like good ones and
+ * outlive the mistake. So a mismatch is refused outright rather than merged
+ * with a warning.
+ *
+ * @returns {{merged: string[], error?: string}}
+ */
+function importExport(file) {
+  const glyphs = readJson(path.join(CONTENT_DIR, 'glyphs.json'));
+  const current = readJson(STROKES_FILE);
+
+  if (file?.kind !== 'urdu-traces' || !file.letters) {
+    return { merged: [], error: 'that is not a traces export' };
+  }
+  if (!file.font?.sha) {
+    return { merged: [], error: 'the export does not say which font it was drawn for' };
+  }
+  if (file.font.sha !== glyphs.font?.sha) {
+    return {
+      merged: [],
+      error:
+        `drawn for ${file.font.file ?? 'another font'} (${file.font.sha}), ` +
+        `and the app now ships ${glyphs.font?.file} (${glyphs.font?.sha}). ` +
+        'Those paths sit beside the letters in this font — re-seed and redraw them.',
+    };
+  }
+  if (file.upem && file.upem !== glyphs.upem) {
+    return { merged: [], error: `the export is in ${file.upem} units per em, not ${glyphs.upem}` };
+  }
+
+  const merged = [];
+  for (const [letterId, entry] of Object.entries(file.letters)) {
+    if (!glyphs.letters[letterId]?.isolated) {
+      return { merged: [], error: `no glyph for "${letterId}"` };
+    }
+    const bad = (entry.strokes ?? []).findIndex((s) =>
+      s.kind === 'dab' ? s.points?.length !== 1 : !(s.points?.length >= 2)
+    );
+    if (!Array.isArray(entry.strokes) || bad >= 0) {
+      return { merged: [], error: `${letterId} stroke ${bad + 1} is not usable` };
+    }
+    current.letters[letterId] = { strokes: entry.strokes, corrected: true };
+    merged.push(letterId);
+  }
+
+  // Nothing is written until every letter has passed, so a bad file leaves the
+  // repo exactly as it was rather than half-merged.
+  if (merged.length) writeOrdered(current);
+  return { merged };
 }
 
 const server = http.createServer(async (req, res) => {
@@ -148,6 +213,20 @@ const server = http.createServer(async (req, res) => {
       saveLetter(letterId, strokes);
       console.log(`  saved ${letterId}: ${strokes.length} stroke(s)`);
       return sendJson(res, 200, { ok: true });
+    }
+
+    if (req.method === 'POST' && route === '/api/import') {
+      const body = await readBody(req);
+      if (body.length === 0) return sendJson(res, 400, { error: 'empty body' });
+      const { merged, error } = importExport(JSON.parse(body.toString('utf8')));
+      if (error) {
+        console.log(`  import refused: ${error}`);
+        // 409 rather than 400: the file is well-formed, it just does not belong
+        // with what is in the repo.
+        return sendJson(res, 409, { error });
+      }
+      console.log(`  imported ${merged.length} letter(s): ${merged.join(', ')}`);
+      return sendJson(res, 200, { merged });
     }
 
     return send(res, 404, 'not found');

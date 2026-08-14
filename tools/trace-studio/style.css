@@ -77,3 +77,35 @@ main > * {
   flex: 1;
   min-width: 0;
 }
+
+/* The import sits in the header rather than beside Save: it is a once-in-a-
+   while errand, not part of correcting a letter. */
+.import {
+  margin-left: auto;
+}
+
+.import button {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.import button:hover {
+  border-color: var(--dim);
+}
+
+#count {
+  margin-left: 0;
+}
+
+/* A refused import says why, and the reason is long — it names both fonts. */
+#count[data-bad='true'] {
+  color: #d94f4f;
+  flex-basis: 100%;
+  text-align: left;
+}

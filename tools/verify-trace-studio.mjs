@@ -17,6 +17,7 @@
 
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { CONTENT_DIR, ROOT } from './audio-keys.mjs';
 import { fail, openApp, step } from './harness.mjs';
@@ -175,6 +176,75 @@ const pruned = JSON.parse(fs.readFileSync(STROKES_FILE, 'utf8')).letters[LETTER]
 console.log(`points after the long press: ${pruned.strokes[0].points.length}`);
 if (pruned.strokes[0].points.length !== before.strokes[0].points.length - 1) {
   fail('the long press did not remove a point');
+}
+
+// --- importing a tablet export ---------------------------------------------
+//
+// The far end of the loop: fix a letter on the sofa, export, send it over,
+// merge it here. The refusal matters more than the merge — an import writes
+// into the repo, where a path drawn for the wrong font looks exactly like a
+// good one and outlives the mistake.
+
+const glyphs = JSON.parse(fs.readFileSync(path.join(CONTENT_DIR, 'glyphs.json'), 'utf8'));
+const exported = {
+  kind: 'urdu-traces',
+  version: 1,
+  upem: glyphs.upem,
+  font: glyphs.font,
+  letters: {
+    [LETTER]: {
+      strokes: [{ kind: 'drag', points: before.strokes[0].points.map(([x, y]) => [x + 3, y]) }],
+      corrected: true,
+    },
+  },
+};
+
+const post = async (payload) => {
+  const response = await fetch(`http://localhost:${PORT}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return { status: response.status, body: await response.json() };
+};
+
+step('importing an export drawn for the current font');
+const good = await post(exported);
+if (good.status !== 200) fail(`a matching export was refused: ${good.body.error}`);
+else console.log(`merged ${good.body.merged.join(', ')}`);
+
+const imported = JSON.parse(fs.readFileSync(STROKES_FILE, 'utf8')).letters[LETTER];
+if (imported.strokes[0].points.length !== before.strokes[0].points.length) {
+  fail('the imported letter is not the one that was sent');
+}
+if (Math.abs(imported.strokes[0].points[0][0] - before.strokes[0].points[0][0] - 3) > 0.01) {
+  fail('the import did not replace the letter in content/strokes.json');
+}
+
+// The same thing through the button somebody actually presses. The endpoint
+// working and the file picker being wired to it are two different claims.
+step('importing through the file picker');
+const dropped = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'traces-')), 'urdu-traces.json');
+fs.writeFileSync(dropped, JSON.stringify(exported));
+await page.setInputFiles('#import-file', dropped);
+await page.waitForFunction(
+  () => document.getElementById('count')?.textContent.startsWith('Imported'),
+  null,
+  { timeout: 8000 }
+);
+// It reloads to show the merged paths, and the editor has to come back up.
+await page.waitForSelector('.ste-board', { timeout: 15000 });
+
+step('importing one drawn for a different font');
+const stale = await post({ ...exported, font: { file: 'another.woff2', sha: 'deadbeefcafe' } });
+if (stale.status !== 409) fail(`a stale export was answered with ${stale.status}, not a refusal`);
+else console.log(`refused: ${stale.body.error}`);
+
+// And refused *whole*: a half-merge would leave the repo carrying paths from
+// two different fonts with nothing to say which is which.
+const afterStale = JSON.parse(fs.readFileSync(STROKES_FILE, 'utf8')).letters[LETTER];
+if (JSON.stringify(afterStale) !== JSON.stringify(imported)) {
+  fail('the refused import changed content/strokes.json anyway');
 }
 
 // Playback is the only honest way to check a stroke order, so it has to run.

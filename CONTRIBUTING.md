@@ -321,7 +321,31 @@ Every stroke in it is a real mouse down/move/up against the canvas. It asserts
 that all 38 letters have something to trace, that tracing raises coverage, that
 finishing moves on, that Start again really starts again, and that scribbling
 outside the letter counts for nothing — a child will do exactly that, and must
-not be rewarded for it.
+not be rewarded for it. It also measures every guide against the letter it
+claims to write, which is the check that matters most: a path that traces half
+a ص follows, completes and celebrates exactly as if it were right.
+
+If you touched the pen paths, the editor or the font, there are two more:
+
+```sh
+npm run verify:trace-studio     # starts its own server
+npm run dev & npm run verify:traces
+```
+
+The first drives the desktop studio: drag a point, long-press one away, import
+an export, and assert `content/strokes.json` on disk changed to match — then
+restores the file byte for byte. The second drives the in-app editor through
+the real parental gate, saves a correction, reloads, and asserts the Write
+screen guides along the *edited* path rather than the bundled one. That tier is
+invisible from anywhere else, because the bundled path is still in the bundle,
+unchanged.
+
+Both end on the case that will only happen months from now: serve a
+`glyphs.json` baked from a different font, and every letter must fall back to
+colouring in. A stroke is a centreline through one typeface's outlines, so
+against another it sits beside the letter — and a guide beside the letter
+teaches a child to write it wrongly, which is worse than not teaching them at
+all.
 
 If you touched recording, storage or the export format, run the whole loop:
 

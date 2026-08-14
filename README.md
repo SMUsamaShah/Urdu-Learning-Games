@@ -83,12 +83,17 @@ finger goes. Ink only lands inside the letter, so a stroke that wanders off does
 nothing at all — nothing is marked wrong, there is simply nothing there. The
 round is won by covering enough of the shape.
 
-There is deliberately **no stroke-order guide**. Doing it properly would mean
-hand-authoring a start point, direction and stroke sequence for all 38 letters
-before a single one became playable, and it would score a three-year-old on
-something they cannot do yet. At three the job is fine-motor control and
-learning what the shape is; stroke order matters when a child starts writing
-properly, and can be layered on later without changing any of this.
+Where a letter's pen path has been drawn, Write instead **follows the pen**: a
+dot marks where the stroke starts, an arrow says which way it goes, and ink
+appears along the line as the finger keeps to it. Wandering off does nothing
+rather than punishing anything, and lifting mid-stroke keeps what was written.
+
+The two modes coexist letter by letter, and that is deliberate. A guide is an
+instruction — *this is how the letter is written* — so a wrong one teaches a
+child to write it wrongly, which is worse than not teaching them at all. Only
+letters whose path a person has confirmed are guided; everything else is
+colouring in, which needs no authoring and cannot be wrong. Ten of thirty-eight
+so far.
 
 No game has a fail state. A wrong answer nudges, keeps the round, and lets the
 child try again.
@@ -183,6 +188,44 @@ recorded on this device  →  public/audio/recorded/  →  public/audio/tts/  �
 
 Your own recording always wins, and a hand recording always beats a generated
 one — so if a generator is ever added, nothing already recorded is affected.
+
+## Correcting the letters a child traces
+
+The pen paths in `content/strokes.json` were seeded by a machine: the outlines
+are thinned to a skeleton and cut into strokes. That gets the shape roughly
+right and can get no further — thinning knows nothing about writing, so it
+cannot say which end a stroke starts from, what order the strokes come in, or
+that the three teeth of س are one movement. Somebody who writes Urdu has to
+say. Ten letters have been through that; the rest are waiting.
+
+There are two places to do it, running the same editor:
+
+```sh
+npm run trace-studio   # http://localhost:5175, writes to content/strokes.json
+```
+
+or **Settings → Letter traces** in the app itself, which writes to the device.
+That one exists because ھ is far easier to fix on a sofa with a tablet than at
+a desk, and because a save there is playable immediately — open Write and
+follow the path you just drew. A stroke order reads fine as a numbered diagram
+and is obviously wrong the moment a finger follows it.
+
+Drag a point to move it, tap the line to add one, press and hold a point to
+remove it. The buttons on each stroke reorder it, flip which end it starts
+from, and switch between a drag and a dot. **Play** runs a marker along the
+whole letter at about the speed a child draws, which is the only honest test of
+an order.
+
+To get corrections made on a tablet into the repo: **Export…** writes
+`urdu-traces-<date>.json`, and the desktop studio's *Import a tablet export*
+merges it. Or send it to me and I will.
+
+**Paths belong to the font they were drawn against.** A stroke is a centreline
+through one typeface's outlines; against another it sits beside the letter
+rather than on it. Both files record a fingerprint of the font, and if they
+disagree the app turns every guide off and falls back to colouring in, `npm
+test` fails, and the studio refuses the import outright. Changing the font
+means `npm run bake && npm run seed:strokes -- --force` and drawing them again.
 
 ## Deploying
 
