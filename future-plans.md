@@ -1,0 +1,56 @@
+# Future plans
+
+Ideas worth doing, written down so they are not re-remembered from scratch every
+few weeks. Nothing here is committed to or scheduled. Anything actually being
+built has a task and a branch instead.
+
+## Rescue phone recordings in the studio
+
+The recording studio already trims silence and evens the level. The ambition is
+larger: take a clip recorded on a phone in a normal room and make it sound like
+it was recorded properly — noise removed, room reverb reduced, sibilance tamed,
+level and tone matched across every clip so a hundred and twenty of them sound
+like one person in one session rather than a hundred and twenty separate
+attempts.
+
+This matters more than it sounds. The voice is the one asset that cannot be
+generated, so it will always be recorded by whoever is nearest, in whatever room
+they are in, and the difference between clips is what makes an app sound
+amateur.
+
+## Tracing joined letters, not only isolated ones
+
+Guided tracing currently covers the 38 isolated forms. A child who can write
+ب and ی still cannot write بی, and joining is most of what writing Urdu is.
+The pipeline already bakes every positional form and every word as outlines, so
+the seeder and the studio need no new geometry — what they need is stroke paths
+across a join, and an opinion about whether a joined pair is written as one
+continuous stroke (it usually is).
+
+## More combinations and more words
+
+More two- and three-letter combinations to read and trace, and more words behind
+them. Each word needs a picture and a recording, which is what makes this a
+steady drip rather than a batch.
+
+## Game controller support
+
+This may well be opened in a browser on a smart TV, and a TV that has games on
+it usually has a controller paired already. A child who cannot yet aim at a
+tablet can absolutely press a big button on a pad.
+
+What that needs:
+
+- **A visible selection.** Everything the app does today is a direct tap, so
+  nothing is ever "the current thing". Every screen would need a highlighted
+  target and a sensible order to move through, drawn boldly enough to read from
+  across a room.
+- **Gamepad API polling**, mapped so the stick or d-pad moves the highlight and
+  one button confirms — the same two verbs everywhere, no per-game controls.
+- **Honesty about what cannot be played.** Tracing and colouring are a finger on
+  a path; there is no controller version of them worth having. Those should show
+  as unavailable rather than opening into something that cannot be finished, and
+  they should say why.
+
+Worth checking on the TV before building any of it: a browser there may report a
+pad the child cannot actually use, and TV browsers vary far more than phone ones.
