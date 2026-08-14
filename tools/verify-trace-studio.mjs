@@ -104,17 +104,18 @@ if (strokeRows !== 1) fail(`${LETTER} shows ${strokeRows} strokes, expected 1`);
 /**
  * Where a point's grab target is on screen.
  *
- * Through the invisible `.ste-hit` circle rather than the visible ring, because
- * the hit circle is what the person's finger actually lands on and it is new
- * code. If these ever come apart, the handles look fine and nothing moves.
+ * The centre of the visible ring. What can actually be grabbed is a good deal
+ * wider than that — proximity in font units rather than a hit test, see GRAB in
+ * the editor — but the ring is what a person aims at, so it is what this aims
+ * at too.
  */
 const targetAt = async (index) => {
-  const box = await page.locator(`.ste-hit[data-point="${index}"]`).boundingBox();
+  const box = await page.locator(`.ste-handle[data-point="${index}"]`).boundingBox();
   if (!box) throw new Error(`no grab target for point ${index}`);
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 };
 
-const handles = await page.$$eval('.ste-hit', (els) => els.length);
+const handles = await page.$$eval('.ste-handle', (els) => els.length);
 if (handles !== before.strokes[0].points.length) {
   fail(`${handles} grab targets for ${before.strokes[0].points.length} points`);
 }
@@ -161,7 +162,7 @@ await page.mouse.down();
 await page.waitForTimeout(900);
 await page.mouse.up();
 await page.waitForFunction(
-  (want) => document.querySelectorAll('.ste-hit').length === want,
+  (want) => document.querySelectorAll('.ste-handle').length === want,
   before.strokes[0].points.length - 1,
   { timeout: 5000 }
 );

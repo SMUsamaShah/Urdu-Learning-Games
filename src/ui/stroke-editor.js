@@ -98,6 +98,16 @@ export function buildStrokeEditor({
   let mode = 'edit';
   let dirty = false;
   let disposed = false;
+  /**
+   * Snapshots to step back through, newest last.
+   *
+   * A mis-tap used to mean deleting the whole stroke and drawing it again,
+   * which is a punishing thing to do to somebody correcting thirty-eight
+   * letters on a sofa. A stroke is a few hundred numbers, so keeping thirty
+   * copies costs nothing worth counting.
+   */
+  const history = [];
+  const HISTORY = 30;
 
   const root = el(`
     <div class="ste-root">
@@ -109,10 +119,14 @@ export function buildStrokeEditor({
       </div>
       <nav class="ste-letters" aria-label="Letters"></nav>
       <div class="ste-body">
-        <svg class="ste-board" tabindex="0"></svg>
+        <!-- The SVG is wrapped because touch-action on an SVG element is not
+             reliably honoured — WebKit in particular — and without it a drag
+             downwards scrolls the settings page instead of moving the point. -->
+        <div class="ste-stage"><svg class="ste-board" tabindex="0"></svg></div>
         <div class="ste-side">
           <p class="ste-hint">
-            Drag a point · tap the line to add one · press and hold a point to remove it
+            Drag a point to move it · tap a stroke to work on it · tap its line
+            to add a point · press and hold a point to remove it
           </p>
           <ol class="ste-strokes"></ol>
         </div>
@@ -120,7 +134,8 @@ export function buildStrokeEditor({
       <div class="ste-controls">
         <button type="button" class="ste-btn" data-act="play">▶ Play</button>
         <button type="button" class="ste-btn" data-act="add">+ Stroke</button>
-        <button type="button" class="ste-btn" data-act="revert">Undo edits</button>
+        <button type="button" class="ste-btn" data-act="undo" disabled>↩ Undo</button>
+        <button type="button" class="ste-btn" data-act="revert">Start over</button>
         <button type="button" class="ste-btn ste-primary" data-act="save">Save</button>
       </div>
     </div>`);
@@ -153,7 +168,44 @@ export function buildStrokeEditor({
    */
   const nib = () => em() * 0.032;
 
+  /**
+   * How near a finger has to land, in nibs, to count as touching something.
+   *
+   * These are the whole reason the editor is usable with a finger. Everything
+   * used to be decided by SVG hit-testing — which element was under the
+   * pointer — and the things worth hitting are a 36px circle and a **5.8px
+   * line** on a phone-width board. A line that thin is not a target: on a
+   * phone you could not select another stroke, could not add a point, and so
+   * could not fix a mistake except by deleting the stroke and starting it
+   * again.
+   *
+   * So nothing is hit-tested any more. A tap is compared against the geometry
+   * in font units, and the nearest thing within these distances wins. The marks
+   * on screen stay small enough to see the letter through; what you can hit is
+   * a separate question from what you can see, and it should be.
+   */
+  const GRAB = 2.6;
+  const NEAR_LINE = 2.2;
+  /**
+   * How far a finger may wander and still count as held, in screen pixels.
+   *
+   * Any movement at all used to cancel a press, and a finger resting on glass
+   * never stops moving — so "press and hold to remove a point" did nothing on a
+   * phone, which is where it is the only way to remove one.
+   */
+  const HOLD_SLOP = 12;
+
   // ----------------------------------------------------------------- render
+
+  /**
+   * The nodes of the selected stroke, so a drag can move them without
+   * rebuilding the board.
+   *
+   * `render()` calls `replaceChildren`, which on a 22-point stroke is dozens of
+   * elements thrown away and remade — for every pointermove, on a phone. The
+   * drag nudges these instead and renders once on release.
+   */
+  let live = { line: null, handles: [], number: null };
 
   function render() {
     const [bx, by, bw, bh] = glyph().bbox;
@@ -161,6 +213,7 @@ export function buildStrokeEditor({
     board.setAttribute('viewBox', `${bx - pad} ${by - pad} ${bw + pad * 2} ${bh + pad * 2}`);
     board.replaceChildren();
     board.append(svgNode('path', { d: glyph().d, fill: '#d9d2c0' }));
+    live = { line: null, handles: [], number: null };
 
     strokes.forEach((stroke, s) => {
       const colour = COLOURS[s % COLOURS.length];
@@ -169,7 +222,7 @@ export function buildStrokeEditor({
       if (!points.length) return;
 
       if (stroke.kind === 'dab') {
-        board.append(
+        const dot = board.appendChild(
           svgNode('circle', {
             cx: points[0][0],
             cy: points[0][1],
@@ -179,8 +232,9 @@ export function buildStrokeEditor({
             'stroke-width': nib() * (chosen ? 0.55 : 0.35),
           })
         );
+        if (chosen) live.line = dot;
       } else {
-        board.append(
+        const line = board.appendChild(
           svgNode('polyline', {
             points: points.map((p) => p.join(',')).join(' '),
             fill: 'none',
@@ -192,6 +246,7 @@ export function buildStrokeEditor({
             'data-line': s,
           })
         );
+        if (chosen) live.line = line;
         if (points.length > 1) arrow(points[0], points[1], colour);
       }
 
@@ -205,10 +260,15 @@ export function buildStrokeEditor({
       });
       number.textContent = String(s + 1);
       board.append(number);
+      if (chosen) live.number = number;
 
       if (!chosen) return;
-      points.forEach(([px, py], p) => {
-        board.append(
+      // Only what you can see. What you can *hit* is decided by GRAB, in
+      // font units, against the numbers rather than against the DOM — a ring
+      // big enough for a fingertip would bury the letter under a 25-point
+      // path, and the letter is the whole reason the board is there.
+      live.handles = points.map(([px, py], p) =>
+        board.appendChild(
           svgNode('circle', {
             cx: px,
             cy: py,
@@ -217,25 +277,10 @@ export function buildStrokeEditor({
             stroke: colour,
             'stroke-width': nib() * 0.22,
             class: 'ste-handle',
-          })
-        );
-      });
-      // The targets, over the top of every ring rather than each beside its
-      // own, so a handle is always grabbable even where the path doubles back
-      // and two of them overlap. Invisible and three times the size: a ring big
-      // enough for a fingertip would bury the letter under a 25-point path, and
-      // the letter is the whole reason the board is there. See ste-hit.
-      points.forEach(([px, py], p) => {
-        board.append(
-          svgNode('circle', {
-            cx: px,
-            cy: py,
-            r: nib() * 1.4,
             'data-point': p,
-            class: 'ste-hit',
           })
-        );
-      });
+        )
+      );
     });
 
     renderList();
@@ -314,6 +359,7 @@ export function buildStrokeEditor({
     selected = 0;
     mode = 'edit';
     dirty = false;
+    history.length = 0;
     // The Urdu name, not the roman id twice over: this is a screen for somebody
     // who reads Urdu, and the name is what tells them which letter this is.
     title.textContent = `${current().name} · ${current().id}`;
@@ -325,25 +371,50 @@ export function buildStrokeEditor({
 
   // ------------------------------------------------------------------ edits
 
+  /**
+   * Puts the current shape aside before something changes it.
+   *
+   * Called at the *start* of every edit rather than after, so Undo goes back to
+   * what was on screen a moment ago. A drag remembers once, on the way down —
+   * pulling a point across the board is one edit, not forty.
+   */
+  function remember() {
+    history.push(structuredClone(strokes));
+    if (history.length > HISTORY) history.shift();
+    root.querySelector('[data-act="undo"]').disabled = false;
+  }
+
   const change = () => {
     dirty = true;
     render();
   };
 
+  function undoEdit() {
+    if (!history.length) return;
+    strokes = history.pop();
+    selected = Math.max(0, Math.min(selected, strokes.length - 1));
+    root.querySelector('[data-act="undo"]').disabled = history.length === 0;
+    change();
+    say('Undone');
+  }
+
   function move(s, by) {
     const to = s + by;
     if (to < 0 || to >= strokes.length) return;
+    remember();
     [strokes[s], strokes[to]] = [strokes[to], strokes[s]];
     selected = to;
     change();
   }
 
   function flip(s) {
+    remember();
     strokes[s].points.reverse();
     change();
   }
 
   function toggleKind(s) {
+    remember();
     const stroke = strokes[s];
     if (stroke.kind === 'dab') {
       stroke.kind = 'drag';
@@ -365,6 +436,7 @@ export function buildStrokeEditor({
   }
 
   function remove(s) {
+    remember();
     strokes.splice(s, 1);
     selected = Math.max(0, Math.min(selected, strokes.length - 1));
     change();
@@ -387,85 +459,168 @@ export function buildStrokeEditor({
     return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
   }
 
+  /** The nearest point of a stroke to a place on the board, and how far. */
+  function nearestPoint(stroke, at) {
+    let best = { index: -1, distance: Infinity };
+    stroke?.points.forEach((p, i) => {
+      const d = Math.hypot(at[0] - p[0], at[1] - p[1]);
+      if (d < best.distance) best = { index: i, distance: d };
+    });
+    return best;
+  }
+
+  /**
+   * Which stroke a tap is nearest to, measured against the ink rather than
+   * against the DOM.
+   *
+   * A dab is a dot, so it is judged by distance to that dot; a drag is judged
+   * by distance to its nearest segment, and where it passes near the segment
+   * *and* near a point the shorter one wins.
+   */
+  function nearestStroke(at) {
+    let best = { index: -1, distance: Infinity, segment: 1 };
+    strokes.forEach((stroke, s) => {
+      const points = stroke.points;
+      if (!points.length) return;
+      if (stroke.kind === 'dab' || points.length < 2) {
+        const d = Math.hypot(at[0] - points[0][0], at[1] - points[0][1]);
+        if (d < best.distance) best = { index: s, distance: d, segment: 0 };
+        return;
+      }
+      for (let i = 1; i < points.length; i++) {
+        const d = distanceToSegment(at, points[i - 1], points[i]);
+        if (d < best.distance) best = { index: s, distance: d, segment: i };
+      }
+    });
+    return best;
+  }
+
   let holdTimer = null;
   const cancelHold = () => {
     if (holdTimer) window.clearTimeout(holdTimer);
     holdTimer = null;
   };
 
+  /**
+   * Moves one point of the selected stroke without redrawing the board.
+   *
+   * The arrow and the neighbouring geometry lag until the finger lifts, which
+   * is not worth a rebuild per frame — everything settles on the release.
+   */
+  function nudge(p, to) {
+    strokes[selected].points[p] = to;
+    const points = strokes[selected].points;
+    if (live.line?.tagName === 'polyline') {
+      live.line.setAttribute('points', points.map((q) => q.join(',')).join(' '));
+    } else if (live.line) {
+      live.line.setAttribute('cx', to[0]);
+      live.line.setAttribute('cy', to[1]);
+    }
+    live.handles[p]?.setAttribute('cx', to[0]);
+    live.handles[p]?.setAttribute('cy', to[1]);
+    if (p === 0 && live.number) {
+      live.number.setAttribute('x', to[0]);
+      live.number.setAttribute('y', to[1] - nib() * 1.6);
+    }
+    dirty = true;
+  }
+
   const onPointerDown = (event) => {
     const point = toBoard(event);
 
     if (mode === 'draw') {
       if (!strokes[selected] || strokes[selected].kind !== 'drag') return;
+      remember();
       strokes[selected].points.push(point);
       change();
       return;
     }
 
-    const handle = event.target.dataset?.point;
-    if (handle !== undefined) {
-      const p = Number(handle);
-      board.setPointerCapture(event.pointerId);
+    const grab = nearestPoint(strokes[selected], point);
+    if (grab.index >= 0 && grab.distance <= nib() * GRAB) {
+      // Everything below this line assumes it owns the gesture, so stop the
+      // page taking it for a scroll.
+      event.preventDefault();
+      const p = grab.index;
+      let dragged = false;
 
-      // Press and hold removes the point. The desktop gesture for this is a
-      // right-click, which a tablet does not have, and this works on both.
-      let moved = false;
+      // Press and hold removes the point — the desktop gesture is a
+      // right-click, which a tablet does not have. Cancelled by *travel*, not
+      // by movement: a finger resting on glass never stops moving, so
+      // cancelling on the first pointermove meant this never fired on the one
+      // device where it is the only way to remove a point.
       cancelHold();
       holdTimer = window.setTimeout(() => {
-        if (moved) return;
+        if (dragged) return;
         if (strokes[selected].points.length <= 2) return say('A stroke needs two points', false);
+        remember();
         strokes[selected].points.splice(p, 1);
         change();
         say('Point removed');
       }, LONG_PRESS);
 
+      const from = { x: event.clientX, y: event.clientY };
       const drag = (moveEvent) => {
-        moved = true;
-        cancelHold();
-        strokes[selected].points[p] = toBoard(moveEvent);
-        dirty = true;
-        render();
+        if (!dragged) {
+          if (Math.hypot(moveEvent.clientX - from.x, moveEvent.clientY - from.y) < HOLD_SLOP) {
+            return;
+          }
+          // One snapshot for the whole drag: pulling a point across the board
+          // is one edit to undo, not forty.
+          dragged = true;
+          cancelHold();
+          remember();
+        }
+        moveEvent.preventDefault();
+        nudge(p, toBoard(moveEvent));
       };
       const drop = () => {
         cancelHold();
-        board.removeEventListener('pointermove', drag);
-        board.removeEventListener('pointerup', drop);
-        board.removeEventListener('pointercancel', drop);
+        window.removeEventListener('pointermove', drag);
+        window.removeEventListener('pointerup', drop);
+        // A cancel ends the drag where it got to rather than throwing it away:
+        // the browser can cancel a pointer for reasons that have nothing to do
+        // with what the person meant, and losing their edit to one is worse
+        // than keeping a slightly short drag.
+        window.removeEventListener('pointercancel', drop);
+        if (dragged) render();
       };
-      board.addEventListener('pointermove', drag);
-      board.addEventListener('pointerup', drop);
-      board.addEventListener('pointercancel', drop);
+      // On window rather than on the board, so a finger that strays off the
+      // SVG keeps dragging instead of silently letting go.
+      window.addEventListener('pointermove', drag, { passive: false });
+      window.addEventListener('pointerup', drop);
+      window.addEventListener('pointercancel', drop);
       return;
     }
 
-    // A tap on a stroke inserts a point into its nearest segment.
-    const line = event.target.dataset?.line;
-    if (line !== undefined) {
-      const s = Number(line);
-      selected = s;
-      const points = strokes[s].points;
-      let best = 1;
-      let closest = Infinity;
-      for (let i = 1; i < points.length; i++) {
-        const d = distanceToSegment(point, points[i - 1], points[i]);
-        if (d < closest) {
-          closest = d;
-          best = i;
-        }
-      }
-      points.splice(best, 0, point);
-      change();
+    const near = nearestStroke(point);
+    if (near.index < 0 || near.distance > nib() * NEAR_LINE) return;
+
+    // A tap on a stroke you are not working on selects it, and does nothing
+    // else. It used to select *and* insert a point in one go, so the first tap
+    // on the stroke you wanted to fix damaged it — and with the line 6px wide
+    // on a phone, that was most taps.
+    if (near.index !== selected) {
+      selected = near.index;
+      render();
+      return;
     }
+
+    if (strokes[selected].kind !== 'drag') return;
+    remember();
+    strokes[selected].points.splice(near.segment, 0, point);
+    change();
   };
 
   const onContextMenu = (event) => {
-    const handle = event.target.dataset?.point;
-    if (handle === undefined) return;
+    const at = toBoard(event);
+    const grab = nearestPoint(strokes[selected], at);
+    if (grab.index < 0 || grab.distance > nib() * GRAB) return;
     event.preventDefault();
     const points = strokes[selected].points;
     if (points.length <= 2) return say('A stroke needs two points', false);
-    points.splice(Number(handle), 1);
+    remember();
+    points.splice(grab.index, 1);
     change();
   };
 
@@ -589,8 +744,10 @@ export function buildStrokeEditor({
     if (act === 'prev') return show(index - 1);
     if (act === 'save') return void commit();
     if (act === 'play') return play();
+    if (act === 'undo') return undoEdit();
     if (act === 'revert') return void undo();
     if (act === 'add') {
+      remember();
       strokes.push({ kind: 'drag', points: [] });
       selected = strokes.length - 1;
       mode = 'draw';

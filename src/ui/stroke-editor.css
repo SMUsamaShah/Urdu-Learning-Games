@@ -126,6 +126,21 @@
   min-height: 0;
 }
 
+/*
+ * The board is wrapped, and the wrapper is what carries `touch-action`.
+ *
+ * Without it a drag scrolls the page instead of moving the point, which is the
+ * single most annoying thing a touch editor can do. It is on an HTML div rather
+ * than only on the `<svg>` because touch-action on SVG elements is not reliably
+ * honoured — WebKit especially — and the page underneath (`.set-body`) scrolls.
+ */
+.ste-stage {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  touch-action: none;
+}
+
 .ste-board {
   flex: 1;
   min-width: 0;
@@ -134,8 +149,6 @@
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
-  /* Without this a drag on a handle scrolls the page instead of moving the
-     point, which is the single most annoying thing a touch editor can do. */
   touch-action: none;
   cursor: crosshair;
 }
@@ -160,22 +173,16 @@
 }
 
 /*
- * The handle you see and the handle you can hit are different sizes.
+ * The handle you see and the handle you can hit are different sizes, and the
+ * one you can hit is not a DOM element at all.
  *
- * A visible ring big enough for a fingertip would cover the letter on a
- * 25-point path, so the ring stays small and an invisible circle around it
- * takes the taps. `pointer-events: all` rather than leaning on the default:
- * SVG's `visiblePainted` does count a `transparent` fill as painted, so this
- * works either way today, and stops working silently the day somebody
- * "tidies" the fill to `none`.
+ * There used to be an invisible circle over each ring to take the taps. It was
+ * still a hit test, and hit tests were the problem: the other thing worth
+ * touching is a stroke's line, which is under 6px wide on a phone. Both are now
+ * decided by distance in font units — see GRAB and NEAR_LINE — so nothing on
+ * the board needs to receive a pointer event at all, and the marks can stay
+ * small enough to see the letter through.
  */
-.ste-hit {
-  fill: transparent;
-  stroke: none;
-  pointer-events: all;
-  cursor: grab;
-}
-
 .ste-handle {
   pointer-events: none;
 }
@@ -306,11 +313,23 @@
   line-height: 1;
 }
 
+/*
+ * Pinned to the bottom of the scrolling page.
+ *
+ * Five buttons wrap to two rows on a phone, which put Save below the fold —
+ * the same way the board once did. Save is the one control that must never
+ * need hunting for: everything else can be found again, an unsaved letter
+ * cannot.
+ */
 .ste-controls {
+  position: sticky;
+  bottom: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 0 16px 16px;
+  padding: 12px 16px 16px;
+  background: var(--bg);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .ste-controls .ste-primary {

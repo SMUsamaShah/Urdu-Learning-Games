@@ -28,11 +28,13 @@ import { fail, homeIsUp, openApp, step } from './harness.mjs';
 /** A letter with a bundled guide, so "device beats bundled" is a real contest. */
 const LETTER = 'alif';
 
-const { page, finish, url } = await openApp({
+const { context, page, finish, url } = await openApp({
   name: 'traces',
   waitForHome: false,
   open: false,
-  context: { acceptDownloads: true },
+  // hasTouch for the second half: the editor's gestures are the thing being
+  // checked, and a context without touch cannot produce them.
+  context: { acceptDownloads: true, hasTouch: true },
 });
 
 const openHome = async () => {
@@ -108,7 +110,7 @@ const pathNow = () =>
 const before = await pathNow();
 
 step('dragging a point and saving');
-const box = await page.locator('.ste-hit[data-point="2"]').boundingBox();
+const box = await page.locator('.ste-handle[data-point="2"]').boundingBox();
 await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 await page.mouse.down();
 for (let i = 1; i <= 6; i++) {
@@ -287,4 +289,214 @@ if (stale.guided) fail(`${LETTER} is still guided by a path drawn for another fo
 else if (!stale.colouring) fail(`${LETTER} has no guide and nothing to colour in either`);
 else step(`${LETTER} opened as colouring in, which needs no authoring and cannot go stale`);
 
+// --- 7. The same editor, with a finger ------------------------------------
+//
+// Everything above drives the editor with a mouse, and every one of those
+// checks passed while the editor was close to unusable on a phone — which is
+// the device it was built for. Mouse and touch are different input paths, and
+// only one of them was ever exercised.
+//
+// So: a second pass in a touch context, using real browser-level touch input
+// through CDP rather than synthesised events. Playwright's touchscreen can tap
+// and nothing else, and a tap is not the gesture that was broken.
+
+step('--- the same page, driven by a finger');
+const phone = await context.newPage();
+await phone.setViewportSize({ width: 412, height: 890 });
+const cdp = await context.newCDPSession(phone);
+
+const finger = {
+  async send(type, x, y) {
+    await cdp.send('Input.dispatchTouchEvent', {
+      type,
+      touchPoints: type === 'touchEnd' ? [] : [{ x, y, radiusX: 20, radiusY: 20, force: 1 }],
+    });
+  },
+  async tap(at) {
+    await this.send('touchStart', at.x, at.y);
+    await phone.waitForTimeout(60);
+    await this.send('touchEnd', at.x, at.y);
+    await phone.waitForTimeout(150);
+  },
+  async drag(from, to, steps = 8) {
+    await this.send('touchStart', from.x, from.y);
+    for (let i = 1; i <= steps; i++) {
+      await phone.waitForTimeout(16);
+      await this.send(
+        'touchMove',
+        from.x + ((to.x - from.x) * i) / steps,
+        from.y + ((to.y - from.y) * i) / steps
+      );
+    }
+    await this.send('touchEnd', to.x, to.y);
+    await phone.waitForTimeout(200);
+  },
+  /** Held still, which for a real finger means wobbling by a pixel. */
+  async hold(at, ms) {
+    await this.send('touchStart', at.x, at.y);
+    const until = Date.now() + ms;
+    while (Date.now() < until) {
+      await phone.waitForTimeout(40);
+      await this.send('touchMove', at.x + (Math.random() - 0.5) * 2, at.y + (Math.random() - 0.5) * 2);
+    }
+    await this.send('touchEnd', at.x, at.y);
+    await phone.waitForTimeout(200);
+  },
+};
+
+// The poisoned device record from the checks above is still in IndexedDB, and
+// is left there deliberately: it is dropped on read, so this page sees the
+// bundled paths, which is what the letter below is edited from. Deleting the
+// database instead would block on the page above still holding it open, and the
+// app would wait on that open forever rather than reaching the menu.
+await phone.goto(url, { waitUntil: 'domcontentloaded' });
+await homeIsUp(phone);
+await phone.evaluate(() => {
+  window.__game.scene.getScene('Home').settingsButton.emit('pointerdown');
+});
+await phone.waitForSelector('.gate', { timeout: 10000 });
+const sum = await phone.textContent('#gate-q');
+const [, x, y] = sum.match(/What is (\d+) × (\d+)\?/) ?? [];
+await phone.fill('.gate-input', String(Number(x) * Number(y)));
+await phone.click('.gate-ok');
+await phone.waitForSelector('.set-root', { timeout: 10000 });
+await phone.click('[data-page="traces"]');
+await phone.waitForSelector('.ste-board', { timeout: 20000 });
+
+// A letter with three separate strokes, so "select another stroke" is a real
+// thing to do rather than a no-op.
+const TOUCH_LETTER = 'Te';
+await phone.$$eval(
+  '.ste-letters button',
+  (els, id) => els.find((el) => el.textContent === id)?.click(),
+  TOUCH_LETTER
+);
+await phone.waitForFunction(
+  (id) => document.querySelector('.ste-title')?.textContent.includes(id),
+  TOUCH_LETTER,
+  { timeout: 5000 }
+);
+
+const shape = () => phone.$$eval('.ste-strokes li .ste-grow', (els) => els.map((e) => e.textContent));
+
+/** The selected stroke as drawn, in font units: `[[x, y], …]`. */
+const points = () =>
+  phone.$eval('.ste-board polyline', (el) =>
+    el
+      .getAttribute('points')
+      .split(' ')
+      .map((pair) => pair.split(',').map(Number))
+  );
+
+/**
+ * Where on the screen a point of the selected stroke is.
+ *
+ * Through the visible handle, which is all there is now — the invisible hit
+ * circles are gone, because hit-testing is what made this unusable.
+ */
+async function handleAt(i) {
+  const handle = phone.locator(`.ste-handle[data-point="${i}"]`);
+  await handle.scrollIntoViewIfNeeded();
+  const box = await handle.boundingBox();
+  if (!box) throw new Error(`no handle for point ${i}`);
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+const scrollTop = () => phone.$eval('.set-body', (el) => el.scrollTop);
+
+// 7a. A finger drag moves a point. This is the case that was reported, and it
+// is the one every mouse-driven check above sailed past.
+//
+// Grabbed from *beside* the point rather than dead centre on it. A mouse lands
+// where it is pointed and a finger does not, and a check that taps the exact
+// centre of the ring passes however small the target is — which is the whole
+// thing that was wrong. Offset perpendicular to the stroke so the nearest point
+// is still the one being aimed at.
+step('finger: dragging a point');
+const beforeDrag = await points();
+const restedAt = await scrollTop();
+const [near1, at2, near3] = [await handleAt(1), await handleAt(2), await handleAt(3)];
+const along = Math.hypot(near3.x - near1.x, near3.y - near1.y) || 1;
+const OFF_CENTRE = 20;
+const grabbed = {
+  x: at2.x - ((near3.y - near1.y) / along) * OFF_CENTRE,
+  y: at2.y + ((near3.x - near1.x) / along) * OFF_CENTRE,
+};
+step(`  grabbing ${OFF_CENTRE}px off the middle of the ring`);
+await finger.drag(grabbed, { x: grabbed.x + 34, y: grabbed.y + 52 });
+const afterDrag = await points();
+const apart = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const shifted = apart(afterDrag[2], beforeDrag[2]);
+step(`  point 2 moved ${shifted.toFixed(0)} font units`);
+if (shifted < 20) fail('a finger cannot move a point');
+if (afterDrag.length !== beforeDrag.length) fail('the drag changed how many points there are');
+// The neighbours staying put is the difference between dragging a point and
+// dragging the whole stroke.
+for (const i of [0, 3]) {
+  if (apart(afterDrag[i], beforeDrag[i]) > 0.5) fail(`the drag also moved point ${i}`);
+}
+
+// 7b. And the page stayed put while it happened — a drag that scrolls the page
+// instead is the other way this fails.
+//
+// Worth being straight about what this proves: Chromium honours `touch-action`
+// on the `<svg>` itself, so removing it from the wrapper does not make this
+// fail here. The wrapper is there for WebKit, which historically ignores it on
+// SVG, and no WebKit is installed to check against. This catches the case where
+// it goes missing from both.
+if ((await scrollTop()) !== restedAt) {
+  fail(`the page scrolled ${(await scrollTop()) - restedAt}px during the drag`);
+} else {
+  step('  the page did not scroll under the finger');
+}
+
+// 7c. Undo puts it back.
+step('finger: undo');
+await phone.click('[data-act="undo"]');
+await phone.waitForTimeout(150);
+const undone = await points();
+if (apart(undone[2], beforeDrag[2]) > 0.5) {
+  fail(`undo left point 2 at ${undone[2]}, not back at ${beforeDrag[2]}`);
+} else {
+  step('  the point went back where it was');
+}
+
+// 7d. A tap on another stroke selects it and changes nothing. This used to
+// select *and* insert a point in one gesture, so the first tap on the stroke
+// you wanted to fix damaged it — the reported "I have to delete the stroke and
+// redo it".
+step('finger: tapping another stroke');
+const beforeTap = await shape();
+const other = await phone.$eval('polyline[data-line="2"]', (el) => {
+  // The middle *point* of the line, not the middle of its bounding box, which
+  // for a curve is usually not on the line at all.
+  const list = el.getAttribute('points').split(' ');
+  const [px, py] = list[Math.floor(list.length / 2)].split(',').map(Number);
+  const ctm = el.getScreenCTM();
+  const at = new DOMPoint(px, py).matrixTransform(ctm);
+  return { x: at.x, y: at.y };
+});
+await finger.tap(other);
+const selectedNow = await phone.$$eval('.ste-strokes li', (els) =>
+  els.findIndex((el) => el.dataset.selected === 'true')
+);
+const afterTap = await shape();
+if (selectedNow !== 2) fail(`tapping stroke 3 selected stroke ${selectedNow + 1}`);
+else if (afterTap.join() !== beforeTap.join()) {
+  fail(`the tap that selected a stroke also changed it: ${beforeTap.join(' | ')} -> ${afterTap.join(' | ')}`);
+} else {
+  step('  it selected the stroke and left it alone');
+}
+
+// 7e. Press and hold removes a point, with a finger that never holds quite
+// still. Any movement at all used to cancel it, which meant the only way to
+// remove a point on a phone did not work on a phone.
+step('finger: pressing and holding a point');
+const held = await handleAt(1);
+await finger.hold(held, 900);
+const pruned = await shape();
+step(`  ${beforeTap[2]} -> ${pruned[2]}`);
+if (pruned[2] === beforeTap[2]) fail('press and hold did not remove a point');
+
+await phone.close();
 await finish();
