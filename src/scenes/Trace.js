@@ -7,29 +7,33 @@ import { finished } from '../lib/flourish.js';
 import { confetti } from '../lib/celebrate.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
+import { createGuide } from '../lib/guided-trace.js';
+import { hasStrokes } from '../lib/strokes.js';
 import { sayLetter } from '../lib/say.js';
 import { sparkleTrail, sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
- * Colour the letter in with a finger.
+ * Writing the letter with a finger. Two games, depending on the letter.
  *
- * ## Why there is no stroke-order data
+ * ## Guided, where there is a pen path to follow
  *
- * The obvious way to build tracing is to author a guide path per letter — start
- * dot, direction, stroke order — and score how closely the finger follows it.
- * That needs 38 letters of hand-authored paths before a single one is playable,
- * and it scores a three-year-old on something they cannot yet do. Stroke order
- * matters when a child starts writing properly; at three the job is fine-motor
- * control and learning what the shape *is*.
+ * A letter whose strokes have been corrected in tools/trace-studio is *traced*:
+ * start dot, arrow, one stroke at a time in the order it is written. The
+ * mechanic is in lib/guided-trace.js — the short version is that the ink
+ * follows the path rather than the finger, and never goes backwards.
  *
- * So the target here is the letter's own outline, which already exists for every
- * letter and needs no authoring at all: ink lands only inside the glyph, and the
- * round is won by covering enough of it. A child scribbles, the letter fills in,
- * and the shape they have filled is the shape of the letter.
+ * ## Colouring in, where there is not
  *
- * Stroke guides can be layered on later without changing any of this — they
- * would add ordering to a game that already works.
+ * Everything else is the game this screen has always been: the letter's own
+ * outline is the target, ink lands only inside it, and the round is won by
+ * covering enough. It needs no authoring at all, which is why it was built
+ * first and why it is still the fallback rather than a placeholder.
+ *
+ * Both are worth having. Colouring is fine-motor control and learning what the
+ * shape *is*; tracing is how it is written. A child who cannot yet do the
+ * second is not stuck, because the letters without guides simply give them the
+ * first.
  *
  * ## How coverage is measured
  *
@@ -98,9 +102,13 @@ export default class Trace extends Phaser.Scene {
     this.banner = this.stage.banner;
     this.mascot = this.stage.mascot;
 
+    // Along the bottom, either side of the progress bar, rather than in the
+    // top-right corner where they used to be: that corner now holds the
+    // progress ring on every screen in the app, and two things in one place is
+    // one of them being unreachable.
     makeButton(this, {
-      x: DESIGN.width - 250,
-      y: 56,
+      x: 250,
+      y: DESIGN.height - 49,
       width: 150,
       height: 64,
       color: COLORS.panel,
@@ -108,8 +116,8 @@ export default class Trace extends Phaser.Scene {
     }).add(label(this, 0, 0, 'Start again', { size: 15, color: COLORS.ink }));
 
     makeButton(this, {
-      x: DESIGN.width - 90,
-      y: 56,
+      x: DESIGN.width - 250,
+      y: DESIGN.height - 49,
       width: 130,
       height: 64,
       color: COLORS.accent,
@@ -140,6 +148,7 @@ export default class Trace extends Phaser.Scene {
     this.layer.removeAll(true);
     this.locked = false;
     this.drawing = false;
+    this.cover = null;
 
     const id = this.letterId;
     const glyph = letterGlyph(id, 'isolated');
@@ -152,6 +161,15 @@ export default class Trace extends Phaser.Scene {
     const centreY = 380;
     const left = centreX - width / 2;
     const top = centreY - GLYPH_HEIGHT / 2;
+
+    // Where the glyph's own bounding box lands on screen, and how big a font
+    // unit is there. glyphTexture insets the ink by `padding` of the height and
+    // scales it to fill what is left; a guide has to be placed against exactly
+    // the same numbers or it sits beside its letter instead of on it.
+    const inset = GLYPH_HEIGHT * 0.06;
+    this.glyphScale = (GLYPH_HEIGHT - inset * 2) / glyph.bbox[3];
+    this.glyphOrigin = { x: left + inset, y: top + inset };
+    this.guided = hasStrokes(id);
 
     // Three layers, bottom to top:
     //
@@ -172,25 +190,33 @@ export default class Trace extends Phaser.Scene {
     glyphTexture(this, filledKey, glyph, { height: GLYPH_HEIGHT, color: tintCss });
     this.layer.add(this.add.image(centreX, centreY, filledKey).setScale(1 / SUPER));
 
-    // Opaque, and only a shade off the background: it has to hide the coloured
-    // letter completely or the round starts already finished, while still
-    // showing the letter's body as something to fill rather than a blank.
-    const coverKey = `trace:cover:${id}:${GLYPH_HEIGHT}`;
-    glyphTexture(this, coverKey, glyph, {
-      height: GLYPH_HEIGHT,
-      color: '#f6ead2',
-    });
-    const source = this.textures.get(coverKey).getSourceImage();
+    // Guided mode does not cover the letter up: the child needs to see the whole
+    // shape to know where the stroke is going, and the ink is drawn *on* it
+    // rather than revealed out of it. So the pale cover is opaque here and a
+    // faint wash there.
+    if (this.guided) {
+      this.layer.list[this.layer.list.length - 1].setAlpha(0.22);
+    } else {
+      // Opaque, and only a shade off the background: it has to hide the coloured
+      // letter completely or the round starts already finished, while still
+      // showing the letter's body as something to fill rather than a blank.
+      const coverKey = `trace:cover:${id}:${GLYPH_HEIGHT}`;
+      glyphTexture(this, coverKey, glyph, {
+        height: GLYPH_HEIGHT,
+        color: '#f6ead2',
+      });
+      const source = this.textures.get(coverKey).getSourceImage();
 
-    // A fresh canvas per letter, seeded with the pale shape and then eaten away.
-    const liveKey = 'trace:live';
-    if (this.textures.exists(liveKey)) this.textures.remove(liveKey);
-    const live = this.textures.createCanvas(liveKey, source.width, source.height);
-    live.context.drawImage(source, 0, 0);
-    live.refresh();
-    this.cover = live;
-    this.coverDirty = false;
-    this.layer.add(this.add.image(centreX, centreY, liveKey).setScale(1 / SUPER));
+      // A fresh canvas per letter, seeded with the pale shape and then eaten away.
+      const liveKey = 'trace:live';
+      if (this.textures.exists(liveKey)) this.textures.remove(liveKey);
+      const live = this.textures.createCanvas(liveKey, source.width, source.height);
+      live.context.drawImage(source, 0, 0);
+      live.refresh();
+      this.cover = live;
+      this.coverDirty = false;
+      this.layer.add(this.add.image(centreX, centreY, liveKey).setScale(1 / SUPER));
+    }
 
     const outlineKey = `trace:outline:${id}:${GLYPH_HEIGHT}`;
     glyphTexture(this, outlineKey, glyph, {
@@ -204,9 +230,26 @@ export default class Trace extends Phaser.Scene {
     this.inkOrigin = { x: left, y: top };
     this.inkSize = { width, height: GLYPH_HEIGHT };
 
-    // Read from the opaque fill, not the pale cover: the cover's alpha is a
-    // tenth, which no sane ink threshold would accept.
-    this.buildGrid(filledKey, width);
+    this.guide?.destroy();
+    this.guide = null;
+    if (this.guided) {
+      // Added after the outline so the ink sits over the letter's edge, which
+      // is what makes a finished stroke look drawn rather than filled.
+      this.guide = createGuide(this, {
+        letterId: id,
+        scale: this.glyphScale,
+        origin: this.glyphOrigin,
+        bbox: glyph.bbox,
+        colour: tintCss,
+        onFinished: () => this.finishLetter(),
+      });
+      this.banner.setInstruction('trace-letter', 'Follow the line');
+    } else {
+      // Read from the opaque fill, not the pale cover: the cover's alpha is a
+      // tenth, which no sane ink threshold would accept.
+      this.buildGrid(filledKey, width);
+      this.banner.setInstruction('fill-letter', 'Fill the letter');
+    }
     this.drawProgress(0);
 
     this.layer.add(
@@ -270,6 +313,9 @@ export default class Trace extends Phaser.Scene {
     const lift = () => {
       this.drawing = false;
       this.trail?.stop();
+      // Whatever was drawn stays, and the start dot moves to where they got to.
+      // Lifting a finger mid-stroke is not a mistake, it is what small hands do.
+      this.guide?.lift();
     };
     this.input.on('pointerup', lift);
     this.input.on('pointerupoutside', lift);
@@ -293,6 +339,16 @@ export default class Trace extends Phaser.Scene {
 
   startStroke(pointer) {
     if (this.locked) return;
+    if (this.guide) {
+      // Nothing at all unless the finger lands on the start dot. That is the
+      // instruction: a stroke begins *here*.
+      if (!this.guide.begin(pointer.worldX, pointer.worldY)) return;
+      this.drawing = true;
+      this.trail?.setPosition(pointer.worldX, pointer.worldY);
+      this.trail?.start();
+      this.checkDone();
+      return;
+    }
     const point = this.toInk(pointer);
     if (!point) return;
     this.drawing = true;
@@ -308,6 +364,19 @@ export default class Trace extends Phaser.Scene {
 
   continueStroke(pointer) {
     if (!this.drawing || this.locked) return;
+    if (this.guide) {
+      // The trail follows the ink, not the finger: it appears only while the
+      // stroke is actually advancing, which is how a child who cannot read a
+      // progress bar can tell they are on the line.
+      if (this.guide.move(pointer.worldX, pointer.worldY)) {
+        this.trail?.setPosition(pointer.worldX, pointer.worldY);
+        this.trail?.start();
+      } else {
+        this.trail?.stop();
+      }
+      this.checkDone();
+      return;
+    }
     const point = this.toInk(pointer);
     // Outside the letter, so no ink and no sparkles. The trail stopping is the
     // feedback: a child scribbling on the background can see that nothing is
@@ -363,7 +432,7 @@ export default class Trace extends Phaser.Scene {
   }
 
   update() {
-    if (this.coverDirty) {
+    if (this.coverDirty && this.cover) {
       this.cover.refresh();
       this.coverDirty = false;
     }
@@ -390,6 +459,7 @@ export default class Trace extends Phaser.Scene {
   }
 
   get coverage() {
+    if (this.guide) return this.guide.progress;
     return this.insideCount ? this.coveredCount / this.insideCount : 0;
   }
 
@@ -402,14 +472,24 @@ export default class Trace extends Phaser.Scene {
     this.progressBar.fillRoundedRect(x, y, w, 18, 9);
     if (fraction > 0) {
       this.progressBar.fillStyle(COLORS.correct, 1);
-      this.progressBar.fillRoundedRect(x, y, Math.max(18, w * Math.min(1, fraction / DONE_AT)), 18, 9);
+      // Guided mode is finished when every stroke is written, so its bar is
+      // the fraction itself rather than a fraction of the coverage target.
+      const full = this.guide ? fraction : Math.min(1, fraction / DONE_AT);
+      this.progressBar.fillRoundedRect(x, y, Math.max(18, w * full), 18, 9);
     }
   }
 
   checkDone() {
     this.drawProgress(this.coverage);
+    // Guided mode calls finishLetter() itself, from the moment the last stroke
+    // lands, because "every stroke written" is a fact rather than a threshold.
+    if (this.guide) return;
     if (this.locked || this.coverage < DONE_AT) return;
+    this.finishLetter();
+  }
 
+  finishLetter() {
+    if (this.locked) return;
     this.locked = true;
     this.drawing = false;
     this.trail?.stop();
@@ -425,9 +505,14 @@ export default class Trace extends Phaser.Scene {
     wellDone(this, this.stage, { duration: 2400 });
 
     // Clear the rest of the cover, so the reward is seeing the letter complete
-    // rather than the patchy version they happened to stop at.
-    this.cover.context.clearRect(0, 0, this.cover.width, this.cover.height);
-    this.cover.refresh();
+    // rather than the patchy version they happened to stop at. Guided mode has
+    // no cover — the letter was visible all along and the ink is already the
+    // whole shape.
+    if (this.cover) {
+      this.cover.context.clearRect(0, 0, this.cover.width, this.cover.height);
+      this.cover.refresh();
+    }
+    this.guide?.complete();
 
     this.time.delayedCall(1600, () => this.nextLetter());
   }
@@ -442,8 +527,9 @@ export default class Trace extends Phaser.Scene {
   nextLetter() {
     sfx.swoosh();
     stopAll();
-    this.banner.setInstruction('fill-letter', 'Fill the letter');
     this.index = (this.index + 1) % this.sequence.length;
+    // The ribbon is set by buildLetter, because which instruction is right
+    // depends on whether the next letter has a guide.
     this.buildLetter();
   }
 }
