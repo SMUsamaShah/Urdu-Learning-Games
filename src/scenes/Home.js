@@ -5,6 +5,7 @@ import { canInstall, onInstallAvailability, promptInstall } from '../lib/install
 import { addMascot } from '../lib/mascot.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { lockLandscape, releaseOrientation } from '../lib/orientation.js';
+import { dropScreen, pushScreen, replaceScreen } from '../lib/history.js';
 import { addScenery } from '../lib/scenery.js';
 import { gridPlaces, tileMaker } from '../lib/game-tile.js';
 import { openGamesPanel } from '../lib/games-panel.js';
@@ -104,7 +105,7 @@ export default class Home extends Phaser.Scene {
         // to react. Leaving instantly makes the tap feel like it went to the
         // next screen rather than to the thing that was pressed.
         this.time.delayedCall(150, () =>
-          game.scene ? this.scene.start(game.scene) : this.openMore()
+          game.scene ? this.openGame(game.scene) : this.openMore()
         );
       })
     );
@@ -158,10 +159,37 @@ export default class Home extends Phaser.Scene {
     });
   }
 
+  /**
+   * Opens a game, and says what leaving it means.
+   *
+   * The back action rather than the ⌂ button is where the swoosh lives now, so
+   * a game sounds the same however it is left — by the button in the corner or
+   * by the phone's own back key, which are the same path anyway. See
+   * src/lib/history.js.
+   */
+  openGame(key, how = pushScreen) {
+    how(`game:${key}`, () => {
+      sfx.swoosh();
+      // Stopped explicitly, then Home started. `this.scene.start('Home')` would
+      // not do it: that stops *the scene it is called on*, and this runs on
+      // Home, so the game would keep running underneath a restarted menu —
+      // updating, playing sounds and handling taps it should not. The ⌂ used to
+      // be called from inside the game, where Phaser stopped it for free.
+      this.game.scene.stop(key);
+      this.game.scene.start('Home');
+    });
+    this.scene.start(key);
+  }
+
   /** The other fifteen, over the menu. */
   openMore() {
     if (this.morePanel?.active) return;
-    this.morePanel = openGamesPanel(this, MORE, (game) => this.scene.start(game.scene));
+    // Picking a game from the panel *replaces* it: the panel is on its way out
+    // in the same gesture, and leaving it in the history would make back from
+    // the game reopen the panel rather than land on the menu.
+    this.morePanel = openGamesPanel(this, MORE, (game) =>
+      this.openGame(game.scene, replaceScreen)
+    );
   }
 
   /**
@@ -264,8 +292,13 @@ export default class Home extends Phaser.Scene {
     // particular wants a tall window and a finger, and a phone that cannot be
     // turned is a phone where ھ cannot be fixed.
     releaseOrientation();
-    openSettings({
+    const close = openSettings({
       onClose: () => {
+        // Whatever closed it — the ×, the arrow, or the phone's back button —
+        // the entry has to go with it, or the next back would try to close a
+        // screen that is not there. Dropping rather than navigating, because by
+        // the time onClose runs the history has already moved.
+        dropScreen('settings');
         lockLandscape();
         this.input.keyboard.enabled = true;
         // Restarted rather than resumed: the music switch and the recordings
@@ -273,6 +306,11 @@ export default class Home extends Phaser.Scene {
         this.scene.restart();
       },
     });
+    // Pushed after the screen exists, so the back action has something to call.
+    // The gate that got us here has already unwound its own entry — it settles
+    // its promise from inside that unwind for exactly this reason — so this
+    // lands at the right depth rather than on top of a dying one.
+    pushScreen('settings', close);
   }
 
   /**

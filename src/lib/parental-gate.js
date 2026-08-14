@@ -19,6 +19,7 @@
  */
 
 import './parental-gate.css';
+import { goBack, pushScreen } from './history.js';
 
 const HOLD_MS = 900;
 
@@ -49,22 +50,44 @@ export function askParentalQuestion(parent = document.body) {
         </div>
       </div>`;
 
-    const close = (result) => {
+    /**
+     * The answer, held until the dialog's history entry is unwound.
+     *
+     * Every way out of here — Cancel, the backdrop, Escape, a right answer, the
+     * phone's back button — goes through `goBack()`, and the promise is settled
+     * by the entry's own handler rather than by whichever control was used.
+     *
+     * One settling point rather than four, and it is the one that runs last.
+     * `history.back()` is asynchronous, so a version that resolved from the
+     * button would hand control back to the caller with this dialog's entry
+     * still on the stack, and the caller's first act is to push a screen of its
+     * own on top of it. In practice the unwind wins that race every time it was
+     * tried — the caller reaches its push through a dynamic import — so this is
+     * ordering discipline rather than a fix for an observed bug. It costs a
+     * variable.
+     */
+    let answer = false;
+    const settle = (result) => {
       document.removeEventListener('keydown', onKey);
       backdrop.remove();
       resolve(result);
     };
-    const submit = () => close(Number(input.value) === a * b);
+    pushScreen('gate', () => settle(answer));
+    const close = () => goBack();
+    const submit = () => {
+      answer = Number(input.value) === a * b;
+      goBack();
+    };
     const onKey = (event) => {
-      if (event.key === 'Escape') close(false);
+      if (event.key === 'Escape') close();
       if (event.key === 'Enter') submit();
     };
 
     parent.appendChild(backdrop);
     const input = backdrop.querySelector('.gate-input');
     backdrop.querySelector('.gate-ok').onclick = submit;
-    backdrop.querySelector('.gate-cancel').onclick = () => close(false);
-    backdrop.onclick = (event) => event.target === backdrop && close(false);
+    backdrop.querySelector('.gate-cancel').onclick = () => close();
+    backdrop.onclick = (event) => event.target === backdrop && close();
     document.addEventListener('keydown', onKey);
     input.focus();
   });

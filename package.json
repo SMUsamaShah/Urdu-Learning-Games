@@ -37,7 +37,8 @@
     "verify:trace-studio": "node tools/verify-trace-studio.mjs",
     "verify:traces": "node tools/verify-traces.mjs",
     "verify:orientation": "node tools/verify-orientation.mjs",
-    "verify:volume": "node tools/verify-volume.mjs"
+    "verify:volume": "node tools/verify-volume.mjs",
+    "verify:back": "node tools/verify-back.mjs"
   },
   "dependencies": {
     "@fontsource/noto-nastaliq-urdu": "^5.3.0",

@@ -36,6 +36,7 @@ import { checkForUpdate } from '../lib/updates.js';
 import { currentTune, musicOn, setMusicOn, setTune, tuneNames } from '../lib/music.js';
 import { stopAll } from '../lib/audio.js';
 import { setVolume, volume } from '../lib/volume.js';
+import { goBack, goBackTo, pushScreen } from '../lib/history.js';
 import * as sfx from '../lib/sfx.js';
 import { summaries } from '../lib/clip-store.js';
 import { expectedClips } from '../lib/clip-list.js';
@@ -221,6 +222,9 @@ export function openSettings({ onClose } = {}) {
   };
 
   async function openPage(id) {
+    // A page is a screen, so it gets its own history entry and the arrow out of
+    // it is the phone's back button. See src/lib/history.js.
+    pushScreen(`settings:${id}`, () => showList());
     clearBody();
     current = id;
     titleEl.textContent = PAGE_TITLES[id] ?? 'Settings';
@@ -371,8 +375,12 @@ export function openSettings({ onClose } = {}) {
     // Switch rows are labels wrapping a checkbox; their clicks are handled by
     // the change listener below, and reading data-act here would fire twice.
     const act = event.target.closest('button[data-act]')?.dataset.act;
-    if (act === 'close') return close();
-    if (act === 'back') return back();
+    // Both go through the history rather than closing anything themselves: the
+    // × shuts the whole screen from whatever depth it is at, the arrow steps
+    // out one, and the phone's back button does the same as the arrow because
+    // it is the same path.
+    if (act === 'close') return goBackTo('settings');
+    if (act === 'back') return goBack();
     if (act === 'update') return checkUpdate();
     if (act === 'reset-progress') return resetProgress();
   });
@@ -400,8 +408,7 @@ export function openSettings({ onClose } = {}) {
    * list of a hundred and twenty clips, which is why this is not just close().
    */
   function back() {
-    if (current) showList();
-    else close();
+    goBack();
   }
 
   function onKey(event) {

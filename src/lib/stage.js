@@ -25,7 +25,7 @@
  */
 
 import { stopAll } from './audio.js';
-import * as sfx from './sfx.js';
+import { goBack } from './history.js';
 import { addBanner } from './banner.js';
 import { paperFall } from './celebrate.js';
 import { jig } from './liveliness.js';
@@ -72,10 +72,10 @@ export function addStage(scene, options = {}) {
     height: 68,
     color: COLORS.panel,
     rim: false,
-    onTap: () => {
-      sfx.swoosh();
-      scene.scene.start('Home');
-    },
+    // Through the history rather than starting Home directly, so this button
+    // and the phone's back button are the same single path. See
+    // src/lib/history.js.
+    onTap: () => goBack(),
   }).add(
     scene.add.text(0, 0, '⌂', { fontSize: '34px', color: COLORS.ink }).setOrigin(0.5)
   );

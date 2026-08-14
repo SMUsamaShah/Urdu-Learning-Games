@@ -34,6 +34,7 @@ import * as flourish from './lib/flourish.js';
 import * as progress from './lib/progress.js';
 import * as strokes from './lib/strokes.js';
 import * as orientation from './lib/orientation.js';
+import * as backHistory from './lib/history.js';
 import * as volumeControl from './lib/volume.js';
 import * as sfx from './lib/sfx.js';
 import { useAudioContext } from './lib/tone-setup.js';
@@ -133,11 +134,17 @@ window.__orientation = orientation;
 // the speakers rather than trusting that it was wired up.
 window.__volume = volumeControl;
 window.__sfx = sfx;
+window.__history = backHistory;
 
 // Asks to be held sideways — and where that is refused, does nothing at all
 // rather than blocking the view. Released while the grown-ups screens are open.
 // See src/lib/orientation.js.
 orientation.watchOrientation();
+
+// What the phone's back button means. Started before anything can open a screen,
+// because the entry it replaces is the one the app sits on at the menu — see
+// src/lib/history.js.
+backHistory.initHistory();
 window.__progress = progress;
 window.__flourish = flourish;
 window.__updates = updates;

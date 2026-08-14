@@ -31,6 +31,8 @@ import { COLORS, DESIGN, makeButton } from './theme.js';
  * Two big arrows have neither problem.
  */
 
+import { goBack, pushScreen } from './history.js';
+
 const COLUMNS = 4;
 const ROWS = 2;
 const PER_PAGE = COLUMNS * ROWS;
@@ -54,10 +56,13 @@ const ROW_GAP = 22;
  */
 export function openGamesPanel(scene, games, onPick) {
   const layer = scene.add.container(0, 0).setDepth(60);
-  const close = () => {
+  // Everything that dismisses the panel goes through the history, so the phone's
+  // back button and the ← in the corner are one path. See src/lib/history.js.
+  const close = () => goBack();
+  pushScreen('games-panel', () => {
     sfx.swoosh();
     layer.destroy(true);
-  };
+  });
 
   // A dim sheet that also swallows taps. Without it a finger landing between
   // two tiles would reach the menu underneath and start a game nobody chose.
