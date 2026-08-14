@@ -439,11 +439,10 @@ for (const i of [0, 3]) {
 // 7b. And the page stayed put while it happened — a drag that scrolls the page
 // instead is the other way this fails.
 //
-// Worth being straight about what this proves: Chromium honours `touch-action`
-// on the `<svg>` itself, so removing it from the wrapper does not make this
-// fail here. The wrapper is there for WebKit, which historically ignores it on
-// SVG, and no WebKit is installed to check against. This catches the case where
-// it goes missing from both.
+// Worth being straight about what this proves: `touch-action` is set on both
+// the wrapper and the `<svg>`, and this browser honours the one on the svg, so
+// removing it from the wrapper alone does not make this fail. What it catches
+// is it going missing from both, which is the case that actually breaks a drag.
 if ((await scrollTop()) !== restedAt) {
   fail(`the page scrolled ${(await scrollTop()) - restedAt}px during the drag`);
 } else {

@@ -1,135 +1,119 @@
-import './orientation.css';
-
 /**
  * Which way up the app is held.
  *
- * The games are drawn at 1280×720 and scaled to fit, so upright they would
- * letterbox into a strip across the middle of the phone — unplayable for a
- * three-year-old aiming at balloons. The installed app therefore asks to be
- * held sideways.
+ * The games are drawn at 1280×720, so held upright they letterbox into a band
+ * across the middle of the phone — too small for a three-year-old aiming at
+ * balloons. So the app asks to be held sideways, the way a mobile web game
+ * does: opening it turns the screen, and you hold the phone that way.
  *
- * ## Why this is not just a line in the manifest
+ * ## Why this is not a line in the manifest
  *
- * It was: `orientation: 'landscape'`. That works, and it is absolute — an
+ * It was: `orientation: 'landscape'`. That works and it is absolute — an
  * installed app locked that way can never turn, including on the grown-ups
- * screens, where the tracing editor wants a tall window and a finger. So the
- * manifest asks for nothing, and the lock is applied here instead and
- * *released* while Settings is open.
+ * screens, and the tracing editor wants a tall window and a finger. So the
+ * manifest asks for nothing, the lock is applied here, and it is *released*
+ * while Settings is open.
  *
- * ## Where the lock does not exist
+ * ## Fullscreen is what makes it work in a tab
  *
- * `screen.orientation.lock` is Android and desktop. iOS Safari has never
- * shipped it, so on an iPhone or iPad nothing below can hold the app sideways
- * and a child could open a game upright.
+ * `screen.orientation.lock()` is granted to an installed app outright. In a
+ * browser tab it is refused unless the document is fullscreen — so the tab gets
+ * the pair every mobile web game uses: `requestFullscreen()`, then the lock,
+ * both from the tap that starts the app.
  *
- * Rather than pretend otherwise, that case gets a card asking for the phone to
- * be turned — no text, because the person looking at it cannot read yet, just
- * a phone that tips over and back. It only ever covers a game; the grown-ups
- * screens are meant to be usable either way round, which is the whole point of
- * releasing the lock.
+ * ## And where none of that is allowed, nothing happens
+ *
+ * No card, no overlay, no "please rotate". Somebody holding the phone upright,
+ * or with rotation switched off in the system settings, still gets the app —
+ * letterboxed and small, but there. Blocking the view to enforce a preference
+ * is worse than the preference going unmet, and there used to be a card here
+ * doing exactly that.
  */
-
-/** Whether this browser can hold the app in one orientation at all. */
-export const canLock = () => typeof screen !== 'undefined' && typeof screen.orientation?.lock === 'function';
-
-const isPortrait = () =>
-  typeof window !== 'undefined' && window.matchMedia?.('(orientation: portrait)').matches;
-
-/**
- * Whether asking for the device to be turned makes any sense.
- *
- * A desktop Chrome refuses `lock()` outside fullscreen, so without this a
- * window dragged taller than it is wide would be covered by a card telling
- * somebody to rotate their monitor. A coarse pointer means a finger, and a
- * finger means a device that can actually be turned.
- */
-const isTurnable = () =>
-  typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
 
 /** True while a grown-up has the settings screen open. */
 let released = false;
-/** Whether the last lock attempt was accepted. */
-let locked = false;
-let card = null;
+
+const coarse = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+
+/** The plain lock: granted to an installed app, refused in a tab. */
+async function lockDirect() {
+  if (typeof screen === 'undefined' || typeof screen.orientation?.lock !== 'function') {
+    return false;
+  }
+  try {
+    await screen.orientation.lock('landscape');
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
- * Asks to be held sideways.
+ * Asks to be held sideways, and takes the app fullscreen if that is what it
+ * costs.
  *
- * Rejections are swallowed and are not a fault: a browser tab refuses unless
- * the page is fullscreen, and iOS has no such method at all. Both end up
- * showing the card instead.
+ * Must be called from a user gesture — both APIs require one — which is why the
+ * caller hangs it off the first tap.
+ *
+ * Fullscreen is only attempted where there is a finger: on a desktop it would
+ * throw the browser into fullscreen to hold a window sideways nobody was going
+ * to turn.
+ *
+ * @returns {Promise<boolean>} whether the app is now held in landscape
  */
 export async function lockLandscape() {
   released = false;
-  if (canLock()) {
-    try {
-      await screen.orientation.lock('landscape');
-      locked = true;
-      update();
-      return true;
-    } catch {
-      locked = false;
+  if (await lockDirect()) return true;
+  if (!coarse()) return false;
+
+  try {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen?.();
     }
+  } catch {
+    // Refused, which happens outside a gesture. The lock below will refuse too
+    // and the app carries on in whatever shape the window is.
+    return false;
   }
-  update();
-  return false;
+  return lockDirect();
 }
 
 /**
  * Lets the phone turn again, for as long as the grown-ups screens are open.
  *
- * The card goes away with it — on a screen that is meant to work upright,
- * "please turn your phone" would be telling somebody off for doing the right
- * thing.
+ * Fullscreen is *not* left: dropping out of it would resize everything under a
+ * screen somebody is reading, and the point here is only that the phone may be
+ * turned.
  */
 export function releaseOrientation() {
   released = true;
-  locked = false;
   try {
     screen.orientation?.unlock?.();
   } catch {
-    // Unlocking a lock that was never granted throws in some builds, and there
-    // is nothing to do about it.
+    // Unlocking something that was never locked throws in some builds, and
+    // there is nothing to do about it.
   }
-  update();
 }
 
-function build() {
-  if (card) return card;
-  card = document.createElement('div');
-  card.className = 'turn-card';
-  card.setAttribute('role', 'img');
-  card.setAttribute('aria-label', 'Turn your phone sideways');
-  card.innerHTML = `
-    <div class="turn-phone">
-      <span class="turn-screen"></span>
-    </div>
-    <div class="turn-arrow" aria-hidden="true">⟳</div>`;
-  document.body.appendChild(card);
-  return card;
-}
-
-/** Shows or hides the card. Cheap enough to call on every orientation change. */
-function update() {
-  const wanted = !released && !locked && isTurnable() && isPortrait();
-  if (!wanted) {
-    card?.classList.remove('is-on');
-    return;
-  }
-  build().classList.add('is-on');
-}
+/** Whether the lock is currently released for the grown-ups screens. */
+export const isReleased = () => released;
 
 /**
- * Starts watching. Called once at startup.
+ * Starts asking. Called once at startup.
  *
- * The lock is attempted here and again after the first tap: Chrome grants it
- * to an installed app immediately, but a browser tab wants a user gesture, and
- * trying twice costs nothing.
+ * Twice, because the two paths want different moments: an installed app grants
+ * the lock immediately, and a tab needs the gesture. Trying at load and again
+ * on the first tap covers both and costs nothing.
  */
 export function watchOrientation() {
   if (typeof window === 'undefined') return;
-  window.matchMedia('(orientation: portrait)').addEventListener('change', update);
-  window.addEventListener('resize', update);
   lockLandscape();
-  window.addEventListener('pointerdown', () => !released && lockLandscape(), { once: true });
+  window.addEventListener(
+    'pointerdown',
+    () => {
+      if (!released) lockLandscape();
+    },
+    { once: true }
+  );
 }

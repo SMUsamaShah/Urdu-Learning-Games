@@ -130,9 +130,10 @@
  * The board is wrapped, and the wrapper is what carries `touch-action`.
  *
  * Without it a drag scrolls the page instead of moving the point, which is the
- * single most annoying thing a touch editor can do. It is on an HTML div rather
- * than only on the `<svg>` because touch-action on SVG elements is not reliably
- * honoured — WebKit especially — and the page underneath (`.set-body`) scrolls.
+ * single most annoying thing a touch editor can do. On an HTML div as well as
+ * on the `<svg>`, because `touch-action` is specified to apply to elements that
+ * take a width and a height, which SVG children do not — and the page
+ * underneath (`.set-body`) scrolls.
  */
 .ste-stage {
   flex: 1;

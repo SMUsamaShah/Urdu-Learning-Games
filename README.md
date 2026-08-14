@@ -109,11 +109,17 @@ lock is absolute, and it pinned the grown-ups screens too. The tracing editor
 wants a tall window and a finger, so the lock is **released while Settings is
 open** and taken back on the way out.
 
-`screen.orientation.lock` is Android and desktop; iOS Safari has never shipped
-it. There, nothing can hold the app sideways, so a game opened upright shows a
-card of a phone tipping over instead — no words, since the person holding it
-cannot read yet. It never covers the grown-ups screens, and never appears on a
-device with a mouse.
+An installed app is granted the lock outright. A browser tab is refused it
+unless the document is fullscreen, so a tab gets the pair every mobile web game
+uses: fullscreen first, then the lock, both off the tap that starts the app.
+
+**Where none of that is allowed, nothing happens.** Held upright with rotation
+switched off, you get the app letterboxed into the window — small, but there and
+playable. There was briefly a card saying "turn your phone" and it covered
+everything; blocking the view to enforce a preference is worse than the
+preference going unmet.
+
+The target is Android and desktop. See [CLAUDE.md](CLAUDE.md).
 
 ## Installing it on a phone
 

@@ -69,6 +69,7 @@ const BROWSER = {
   getSelection: 'readonly',
   caches: 'readonly',
   MutationObserver: 'readonly',
+  Element: 'readonly',
   ErrorEvent: 'readonly',
 };
 
