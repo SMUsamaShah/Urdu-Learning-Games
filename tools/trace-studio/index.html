@@ -5,44 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tracing studio</title>
     <link rel="stylesheet" href="/style.css" />
+    <!-- The editor's own styles, from src/ui, served over /lib/ alongside the
+         module they belong to. Linked rather than imported because this page
+         has no bundler. -->
+    <link rel="stylesheet" href="/lib/stroke-editor.css" />
   </head>
   <body>
     <header>
       <h1>Tracing studio</h1>
       <p class="hint">
-        Drag a point to move it · click the line to add one · right-click a point to remove it
+        Saving writes straight into <code>content/strokes.json</code>. Commit it when you are done.
       </p>
-      <output id="status"></output>
+      <output id="count"></output>
     </header>
 
-    <main>
-      <nav id="letters" aria-label="Letters"></nav>
-
-      <section class="stage">
-        <div class="stage-head">
-          <button type="button" data-act="prev">‹ Previous</button>
-          <h2 id="title"></h2>
-          <button type="button" data-act="next">Next ›</button>
-        </div>
-
-        <svg id="board" tabindex="0"></svg>
-
-        <div class="controls">
-          <button type="button" data-act="play">▶ Play it back</button>
-          <button type="button" data-act="add">+ New stroke</button>
-          <button type="button" data-act="reseed">Undo my edits</button>
-          <button type="button" data-act="save" class="primary">Save</button>
-        </div>
-      </section>
-
-      <aside>
-        <h3>Strokes</h3>
-        <p class="hint">
-          In the order they are written. Number one is the first thing the child draws.
-        </p>
-        <ol id="strokes"></ol>
-      </aside>
-    </main>
+    <main id="editor"></main>
 
     <script type="module" src="/app.js"></script>
   </body>

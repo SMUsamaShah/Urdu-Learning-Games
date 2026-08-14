@@ -1,3 +1,4 @@
+import glyphs from '../../content/glyphs.json';
 import manifest from '../../content/strokes.json';
 
 /**
@@ -23,8 +24,24 @@ import manifest from '../../content/strokes.json';
 
 const upem = manifest.upem ?? 2048;
 
-/** Whether a letter has a hand-corrected guide. */
+/**
+ * Whether these paths were drawn against the font the app is shipping.
+ *
+ * A stroke is a centreline through one typeface's outlines. Against a different
+ * face it sits beside the letter rather than on it, and a guide that sits beside
+ * the letter teaches a child to write it wrongly — worse than not teaching them
+ * at all. So a mismatch turns *every* guide off and the Write screen falls back
+ * to colouring in, which needs no authoring and cannot be stale.
+ *
+ * The fingerprint is written by tools/font.mjs into both files. Swapping the
+ * font and re-baking changes glyphs.json and not strokes.json, so this goes
+ * false the moment it should — and `npm test` fails on it before anyone plays.
+ */
+export const strokesMatchFont = manifest.font?.sha === glyphs.font?.sha;
+
+/** Whether a letter has a hand-corrected guide drawn for the current font. */
 export function hasStrokes(letterId) {
+  if (!strokesMatchFont) return false;
   return Boolean(manifest.letters?.[letterId]?.corrected);
 }
 
@@ -50,7 +67,7 @@ export function guidedLetters() {
  */
 export function strokesFor(letterId, { scale, origin, bbox }) {
   const entry = manifest.letters?.[letterId];
-  if (!entry?.corrected) return [];
+  if (!entry?.corrected || !strokesMatchFont) return [];
 
   return entry.strokes.map((stroke) => {
     const points = stroke.points.map(([x, y]) => ({

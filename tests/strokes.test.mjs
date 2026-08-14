@@ -39,6 +39,20 @@ describe('stroke paths', () => {
     );
   });
 
+  test('the paths were drawn against the font that is shipping', () => {
+    // The one check that catches a font swap. A stroke is a centreline through
+    // one typeface's outlines; against another it sits beside the letter, and
+    // the app would keep guiding a child along a line that is in the wrong
+    // place. src/lib/strokes.js turns every guide off when these disagree —
+    // this is so it never gets that far.
+    assert.deepEqual(
+      strokes.font,
+      glyphs.font,
+      'strokes.json was drawn for a different font: re-run `npm run seed:strokes --force` ' +
+        'and redo the corrections in the tracing studio'
+    );
+  });
+
   test('every letter with strokes has a glyph to put them on', () => {
     for (const [id] of entries) {
       assert.ok(

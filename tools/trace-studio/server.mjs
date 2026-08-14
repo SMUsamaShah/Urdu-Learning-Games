@@ -10,10 +10,10 @@
  * a browser is the only sane place to draw, and the result has to land in the
  * repo. Dependency-free and bound to localhost, because it writes files.
  *
- * Unlike the recording studio this serves nothing out of src/lib. It draws the
- * letter from the baked `d` string in glyphs.json, and an SVG path and a canvas
- * Path2D take that same string — so there is no rendering code to share and no
- * reason to expose src/ over HTTP.
+ * The editing itself is not here: it is src/ui/stroke-editor.js, served over
+ * `/lib/` and shared with the app's settings screen, the same way this server's
+ * sibling shares the microphone code. This process is the half that is
+ * different — reading and writing content/strokes.json.
  *
  * Usage: npm run trace-studio
  */
@@ -22,9 +22,10 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CONTENT_DIR } from '../audio-keys.mjs';
+import { CONTENT_DIR, ROOT } from '../audio-keys.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const UI_DIR = path.join(ROOT, 'src', 'ui');
 const STROKES_FILE = path.join(CONTENT_DIR, 'strokes.json');
 const PORT = Number(process.env.PORT) || 5175;
 
@@ -32,6 +33,18 @@ const STATIC = {
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
+};
+
+/**
+ * The editor, shared with the app so the studio and the tablet run the same
+ * code rather than two copies that drift apart.
+ *
+ * Allow-listed by name rather than resolved from the URL: this serves files out
+ * of src/, and a path that came from a request must never reach the filesystem.
+ */
+const SHARED_UI = {
+  'stroke-editor.js': 'text/javascript; charset=utf-8',
+  'stroke-editor.css': 'text/css; charset=utf-8',
 };
 
 function send(res, status, body, type = 'text/plain; charset=utf-8') {
@@ -99,6 +112,13 @@ const server = http.createServer(async (req, res) => {
     // Browsers ask for this unprompted; answering keeps a spurious 404 out of
     // the console.
     if (route === '/favicon.ico') return send(res, 204, '');
+
+    if (req.method === 'GET' && route.startsWith('/lib/')) {
+      const name = route.slice('/lib/'.length);
+      const type = SHARED_UI[name];
+      if (!type) return send(res, 404, 'not found');
+      return send(res, 200, fs.readFileSync(path.join(UI_DIR, name)), type);
+    }
 
     // The same baked outlines the game draws from, so a path corrected here
     // sits on exactly the letter the child will see.

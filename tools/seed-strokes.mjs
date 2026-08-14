@@ -39,6 +39,7 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 import { launchOptions } from './browser.mjs';
 import { CONTENT_DIR } from './audio-keys.mjs';
+import { fontFingerprint } from './font.mjs';
 
 const OUT_FILE = path.join(CONTENT_DIR, 'strokes.json');
 
@@ -577,6 +578,10 @@ fs.writeFileSync(
         'that has been corrected — the tool will not, unless asked with --force.',
       ],
       upem: glyphs.upem,
+      // Which font these paths were drawn against. A centreline belongs to the
+      // outlines it came from; see src/lib/strokes.js, which refuses the lot
+      // when this stops matching glyphs.json.
+      font: fontFingerprint(),
       letters: ordered,
     },
     null,

@@ -1,10 +1,17 @@
+/*
+ * The page around the editor, and nothing else.
+ *
+ * Everything that is the editor is styled by src/ui/stroke-editor.css, which
+ * this page links alongside the module. What is left is the header and the
+ * frame it sits in — the part the app does not have, because there the editor
+ * drops into the settings screen instead.
+ */
+
 :root {
   --paper: #fdf3e3;
-  --card: #fff;
   --ink: #2b3047;
   --dim: #767f9c;
   --line: #e6dcc8;
-  --accent: #e98a1f;
   --good: #2fae74;
   color-scheme: light;
 }
@@ -13,37 +20,32 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 header {
-  padding: 14px 20px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: baseline;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 6px 16px;
 }
 
 h1 {
   font-size: 18px;
   margin: 0;
-}
-
-h2 {
-  font-size: 20px;
-  margin: 0;
-}
-
-h3 {
-  font-size: 14px;
-  margin: 0 0 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--dim);
 }
 
 .hint {
@@ -52,157 +54,26 @@ h3 {
   margin: 0;
 }
 
-output {
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+}
+
+#count {
   margin-left: auto;
   font-size: 13px;
   color: var(--good);
-  min-height: 1.4em;
 }
 
+/* The editor fills what is left and scrolls its own panels, so the page itself
+   never scrolls the board out from under a drag. */
 main {
-  display: grid;
-  grid-template-columns: 190px minmax(0, 1fr) 260px;
-  gap: 18px;
-  padding: 18px 20px;
-  align-items: start;
-}
-
-/* --- the list of letters */
-
-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  position: sticky;
-  top: 12px;
-}
-
-nav button {
-  width: 54px;
-  padding: 5px 2px;
-  font-size: 11px;
-  border-radius: 7px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--dim);
-  cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-nav button[data-corrected='true'] {
-  border-color: var(--good);
-  color: var(--good);
-  font-weight: 600;
-}
-
-nav button[aria-current='true'] {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: #fff;
-}
-
-/* --- the board */
-
-.stage {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 12px;
-}
-
-.stage-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding-bottom: 8px;
-}
-
-#board {
-  display: block;
-  width: 100%;
-  height: 60vh;
-  min-height: 380px;
-  background: #fbfaf6;
-  border-radius: 10px;
-  touch-action: none;
-  cursor: crosshair;
-}
-
-#board:focus-visible {
-  outline: 2px solid var(--accent);
-}
-
-.controls {
-  display: flex;
-  gap: 8px;
-  padding-top: 10px;
-}
-
-button {
-  padding: 7px 12px;
-  border-radius: 9px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--ink);
-  font: inherit;
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: var(--dim);
-}
-
-button.primary {
-  margin-left: auto;
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  font-weight: 600;
-}
-
-/* --- the stroke list */
-
-#strokes {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-#strokes li {
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--card);
-  padding: 7px 9px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-}
-
-#strokes li[data-selected='true'] {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgb(233 138 31 / 18%);
-}
-
-.swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  flex: none;
-}
-
-#strokes .grow {
   flex: 1;
-  cursor: pointer;
+  min-height: 0;
+  display: flex;
 }
 
-#strokes button {
-  padding: 2px 6px;
-  font-size: 12px;
-  border-radius: 6px;
+main > * {
+  flex: 1;
+  min-width: 0;
 }

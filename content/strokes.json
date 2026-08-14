@@ -10,6 +10,10 @@
     "that has been corrected — the tool will not, unless asked with --force."
   ],
   "upem": 2048,
+  "font": {
+    "file": "alqalam-taj-nastaliq.woff2",
+    "sha": "444828821d0d"
+  },
   "letters": {
     "alif": {
       "strokes": [

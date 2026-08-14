@@ -33,7 +33,8 @@
     "lint": "eslint .",
     "backgrounds": "node tools/make-backgrounds.mjs",
     "tiles": "node tools/make-tile-art.mjs",
-    "forms": "node tools/preview-forms.mjs"
+    "forms": "node tools/preview-forms.mjs",
+    "verify:trace-studio": "node tools/verify-trace-studio.mjs"
   },
   "dependencies": {
     "@fontsource/noto-nastaliq-urdu": "^5.3.0",

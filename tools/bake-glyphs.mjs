@@ -25,6 +25,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as hb from 'harfbuzzjs';
 import wawoff2 from 'wawoff2';
+import { FONT_WOFF2, fontFingerprint } from './font.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT = path.join(ROOT, 'content');
@@ -35,27 +36,6 @@ const CONTENT = path.join(ROOT, 'content');
  * service worker exactly one asset to cache for offline play.
  */
 const OUT_FILE = path.join(CONTENT, 'glyphs.json');
-
-/**
- * The typeface, and the only thing in the app that names one.
- *
- * Nothing under src/ loads a font: every Urdu shape in the game comes out of
- * content/glyphs.json, and all the sizing derives from the `upem` and the
- * per-glyph bounding boxes recorded in there. So changing the typeface is
- * changing this path and running `npm run bake` — the whole app follows,
- * tracing included, because the tracing paths are these same outlines.
- *
- * AlQalam Taj Nastaleeq, chosen over Noto Nastaliq for its heavier, rounder
- * pen: Noto is a text face and thins out at the sizes a three-year-old reads
- * at, where this holds its stroke. Both shape every one of the 272 runs the
- * bake asks for with a real outline. This one is 2048 units per em against
- * Noto's 1000, which changes nothing downstream — every fitter in glyph.js
- * works in ems and reads `upem` out of the file rather than assuming one.
- */
-const FONT_WOFF2 = path.join(
-  ROOT,
-  'node_modules/alqalam-taj-nastaliq/fonts/alqalam-taj-nastaliq.woff2'
-);
 
 /** Zero-width joiner. Forces a letter into a joined positional form. */
 const ZWJ = '‍';
@@ -204,7 +184,15 @@ async function main() {
   const { words } = readJson('words.json');
   const { strings } = readJson('ui.json');
 
-  const out = { upem: 0, letters: {}, names: {}, numbers: {}, words: {}, ui: {} };
+  const out = {
+    upem: 0,
+    font: fontFingerprint(),
+    letters: {},
+    names: {},
+    numbers: {},
+    words: {},
+    ui: {},
+  };
   let written = 0;
   const empties = [];
 
