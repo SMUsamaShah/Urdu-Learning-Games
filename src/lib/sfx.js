@@ -10,17 +10,29 @@
  * Kept deliberately soft. This is played at a child's ear, often repeatedly.
  */
 
+import { masterOut } from './volume.js';
+
 /** @type {AudioContext|null} */
 let ctx = null;
 /** @type {GainNode|null} */
 let master = null;
 
+/**
+ * How loud the effects are, before the app's own volume.
+ *
+ * The individual `gain` values below run 0.3 to 0.7, so this sets the peak at
+ * roughly 0.5 × 0.7 ≈ −9 dBFS. Effects are transient — a pop, a whoosh — and
+ * can sit above the tune, which is continuous and measured at −33 dBFS peak
+ * before it was raised. See src/lib/volume.js.
+ */
+const SFX_LEVEL = 0.5;
+
 export function initSfx(game) {
   ctx = game?.sound?.context ?? null;
   if (!ctx) return;
   master = ctx.createGain();
-  master.gain.value = 0.32;
-  master.connect(ctx.destination);
+  master.gain.value = SFX_LEVEL;
+  master.connect(masterOut() ?? ctx.destination);
 }
 
 /**

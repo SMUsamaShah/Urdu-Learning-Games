@@ -4,6 +4,7 @@ import { audioStats, initAudio } from '../lib/audio.js';
 import { queueMascot } from '../lib/mascot.js';
 import { initSfx } from '../lib/sfx.js';
 import { initStrokes } from '../lib/strokes.js';
+import { initVolume } from '../lib/volume.js';
 import { initMusic, startMusic } from '../lib/music.js';
 import { COLORS, DESIGN, label } from '../lib/theme.js';
 
@@ -55,6 +56,10 @@ export default class Preload extends Phaser.Scene {
       // corrections made on this device out of IndexedDB. The Write screen then
       // consults both synchronously when it decides whether to draw a guide.
       await initStrokes();
+      // Before the things that connect to it: the effects and the tune both
+      // reach for masterOut() as they build, and a null there sends them
+      // straight to the speakers where no volume setting can reach them.
+      initVolume(this.game);
       initSfx(this.game);
       initMusic(this.game);
       // The context is almost certainly still locked here — nothing has been

@@ -34,6 +34,8 @@ import * as flourish from './lib/flourish.js';
 import * as progress from './lib/progress.js';
 import * as strokes from './lib/strokes.js';
 import * as orientation from './lib/orientation.js';
+import * as volumeControl from './lib/volume.js';
+import * as sfx from './lib/sfx.js';
 import { useAudioContext } from './lib/tone-setup.js';
 import { DESIGN } from './lib/theme.js';
 
@@ -127,10 +129,14 @@ window.__music = music;
 // cache-busting query string.
 window.__strokes = strokes;
 window.__orientation = orientation;
+// The master gain and the effects, so a check can measure what actually reaches
+// the speakers rather than trusting that it was wired up.
+window.__volume = volumeControl;
+window.__sfx = sfx;
 
-// Asks to be held sideways, and puts up a "turn your phone" card where the
-// browser has no way to be told. Released while the grown-ups screens are open
-// — see src/lib/orientation.js.
+// Asks to be held sideways — and where that is refused, does nothing at all
+// rather than blocking the view. Released while the grown-ups screens are open.
+// See src/lib/orientation.js.
 orientation.watchOrientation();
 window.__progress = progress;
 window.__flourish = flourish;

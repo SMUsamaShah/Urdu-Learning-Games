@@ -41,6 +41,8 @@
  * chime instead. Nothing here is allowed to make a right answer silent.
  */
 
+import { masterOut } from './volume.js';
+
 import { loadTone, renderedChannels } from './tone-setup.js';
 import * as progress from './progress.js';
 import * as sfx from './sfx.js';
@@ -73,7 +75,11 @@ let voice = null;
 function prepare() {
   ready ??= (async () => {
     const T = await loadTone();
-    voice = { T, ...(await buildVoice(T, T.getDestination())) };
+    // Into the app's master rather than Tone's own destination, so the volume
+    // setting reaches the celebrations too. Tone connects to a native node
+    // happily. The offline render below keeps Tone's destination, because it is
+    // measuring the instrument rather than playing it.
+    voice = { T, ...(await buildVoice(T, masterOut() ?? T.getDestination())) };
     return voice;
   })().catch(() => {
     // Kept null, so every call falls through to the synthesised version rather
@@ -270,4 +276,17 @@ export async function renderFlourishes() {
  */
 export function prepareFlourishes() {
   prepare();
+}
+
+/**
+ * Whether the sampled voice came up, or everything is falling back to the
+ * synthesised chime.
+ *
+ * Exported for the volume check, which measures what reaches the speakers and
+ * would otherwise report the fallback as though it were the sampler — two very
+ * different signal paths that sound alike enough to be mistaken for each other.
+ * A check that cannot tell which one it measured proves less than it claims.
+ */
+export function flourishVoiceReady() {
+  return Boolean(voice);
 }

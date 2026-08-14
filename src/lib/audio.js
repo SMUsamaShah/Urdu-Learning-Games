@@ -28,6 +28,7 @@
 
 import { allKeys, getClip } from './clip-store.js';
 import { duck } from './music.js';
+import { masterOut } from './volume.js';
 
 const BASE = import.meta.env.BASE_URL ?? '/';
 const MANIFEST_URL = new URL('../../content/audio.json', import.meta.url).href;
@@ -234,7 +235,7 @@ export async function play(key, options = {}) {
   return new Promise((resolve) => {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    source.connect(ctx.destination);
+    source.connect(masterOut() ?? ctx.destination);
     source.onended = () => {
       playing.delete(source);
       resolve(true);

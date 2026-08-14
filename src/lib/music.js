@@ -40,14 +40,32 @@
  * see src/lib/audio.js.
  */
 
+import { masterOut } from './volume.js';
+
 import { DEFAULT_TUNE, TUNES } from './tunes.js';
 import { loadTone, renderedChannels } from './tone-setup.js';
 
 const KEY = 'urdu:music';
 const TUNE_KEY = 'urdu:tune';
 
-/** How loud the tune sits under everything else, in decibels. */
-const VOLUME_DB = -19;
+/**
+ * How loud the tune sits under everything else, in decibels.
+ *
+ * Measured, not chosen. At the old −19 dB the tune rendered at **peak −33 dBFS,
+ * RMS −52** — inaudible under any room, which is what "the main screen is too
+ * quiet" turned out to mean. At −2 dB it renders at **peak −16.6, RMS −35.3**,
+ * which puts its peaks level with the reward flourishes (−16.3) and its body a
+ * few dB above them, as a continuous sound under an occasional one should be.
+ *
+ * A music box is a sparse instrument — 17 dB between its peaks and its average
+ * — so it needs more level than a pad would to reach the same loudness. The
+ * band's own limiter sits at −2 dB and the app's master limiter below that, so
+ * this cannot be what clips.
+ *
+ * Re-measure before changing it: `window.__music.renderMusic(12)` hands back
+ * the channels, and peak and RMS off that buffer are the whole story.
+ */
+const VOLUME_DB = -2;
 /** How far it drops while a voice clip is playing, and how fast it moves. */
 const DUCK_DB = -14;
 const DUCK_FADE = 0.12;
@@ -378,7 +396,9 @@ async function build() {
   if (Tone.getContext().rawContext !== ctx) Tone.setContext(ctx);
 
   tap = ctx.createGain();
-  tap.connect(ctx.destination);
+  // Through the app's master, so the volume slider reaches the tune and the
+  // limiter catches it when a celebration lands on top of it.
+  tap.connect(masterOut() ?? ctx.destination);
 
   // Read once here, so a change part-way through building cannot leave the
   // band half one tune and half another.

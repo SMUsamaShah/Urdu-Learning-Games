@@ -35,6 +35,8 @@ import { setShowFps, showFps } from '../lib/fps.js';
 import { checkForUpdate } from '../lib/updates.js';
 import { currentTune, musicOn, setMusicOn, setTune, tuneNames } from '../lib/music.js';
 import { stopAll } from '../lib/audio.js';
+import { setVolume, volume } from '../lib/volume.js';
+import * as sfx from '../lib/sfx.js';
 import { summaries } from '../lib/clip-store.js';
 import { expectedClips } from '../lib/clip-list.js';
 import { letters, numbers, words } from '../lib/content.js';
@@ -106,6 +108,20 @@ export function openSettings({ onClose } = {}) {
       <span class="set-row-chevron" aria-hidden="true">›</span>
     </button>`;
 
+  /**
+   * `label ————— [———o———]`
+   *
+   * The one control here that is worth dragging rather than tapping, so it gets
+   * a real range input rather than a list of three loudnesses.
+   */
+  const sliderRow = (act, label, value) => `
+    <label class="set-row set-row-slider">
+      <span class="set-row-label">${escapeHtml(label)}</span>
+      <input type="range" class="set-slider" data-act="${act}"
+        min="0" max="100" step="1" value="${Math.round(value * 100)}"
+        aria-label="${escapeHtml(label)}" />
+    </label>`;
+
   /** A row that does something rather than going somewhere. */
   const actionRow = (act, label, value = '') => `
     <button type="button" class="set-row" data-act="${act}">
@@ -127,6 +143,7 @@ export function openSettings({ onClose } = {}) {
     bodyEl.append(
       el(`<div class="set-list">
         ${group('Sound', [
+          sliderRow('volume', 'Volume', volume()),
           switchRow('music', 'Background music', musicOn()),
           pageRow('tune', 'Tune', tuneName(currentTune())),
           pageRow('check', 'Sound check'),
@@ -364,6 +381,16 @@ export function openSettings({ onClose } = {}) {
     const act = event.target.dataset?.act;
     if (act === 'fps') return setShowFps(event.target.checked);
     if (act === 'music') return setMusicOn(event.target.checked);
+    // `change` fires when the drag ends, so this is the moment to let somebody
+    // hear what they picked. A level you can only judge by looking at a slider
+    // is one you have to guess at.
+    if (act === 'volume') return sfx.correct();
+  });
+
+  // Live while dragging, not only on release: the tune is playing underneath
+  // and the whole point is to hear it move.
+  root.addEventListener('input', (event) => {
+    if (event.target.dataset?.act === 'volume') setVolume(event.target.value / 100);
   });
 
   /**
