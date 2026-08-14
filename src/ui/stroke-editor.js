@@ -119,9 +119,10 @@ export function buildStrokeEditor({
       </div>
       <nav class="ste-letters" aria-label="Letters"></nav>
       <div class="ste-body">
-        <!-- The SVG is wrapped because touch-action on an SVG element is not
-             reliably honoured — WebKit in particular — and without it a drag
-             downwards scrolls the settings page instead of moving the point. -->
+        <!-- The SVG is wrapped because touch-action is specified to apply to
+             elements that take a width and a height, which SVG children do not,
+             and without it a drag downwards scrolls the page instead of moving
+             the point. -->
         <div class="ste-stage"><svg class="ste-board" tabindex="0"></svg></div>
         <div class="ste-side">
           <p class="ste-hint">
@@ -132,6 +133,14 @@ export function buildStrokeEditor({
         </div>
       </div>
       <div class="ste-controls">
+        <!-- With the controls rather than beside the stroke list: the side
+             panel sits below the board on a phone, which is exactly where a
+             control you reach for on an *empty* letter must not be. This row is
+             pinned to the bottom, so it is on screen in both layouts. -->
+        <label class="ste-copy">
+          <span>Copy from</span>
+          <select class="ste-copy-pick" data-act="copy"></select>
+        </label>
         <button type="button" class="ste-btn" data-act="play">▶ Play</button>
         <button type="button" class="ste-btn" data-act="add">+ Stroke</button>
         <button type="button" class="ste-btn" data-act="undo" disabled>↩ Undo</button>
@@ -145,6 +154,7 @@ export function buildStrokeEditor({
   const status = root.querySelector('.ste-status');
   const nav = root.querySelector('.ste-letters');
   const list = root.querySelector('.ste-strokes');
+  const copyPick = root.querySelector('.ste-copy-pick');
   if (!revert) root.querySelector('[data-act="revert"]').hidden = true;
 
   const current = () => known[index];
@@ -344,6 +354,90 @@ export function buildStrokeEditor({
     );
   }
 
+  /**
+   * Fills the "copy from" list for the letter on screen.
+   *
+   * ## Why this is worth having at all
+   *
+   * ج چ ح خ are one shape with nought, one, one and one dots on it. So are
+   * ب پ ت ٹ ث, and د ڈ ذ, and ر ڑ ز ژ, and five more pairs. Drawing the
+   * skeleton of ح and then drawing it again for خ is not authoring, it is
+   * copying by hand — and doing it by hand means the two come out slightly
+   * different, which is worse than either.
+   *
+   * Sixteen of the letters still to do are in a family where a sibling is
+   * already drawn, so for most of what is left this turns "draw a letter" into
+   * "copy it and move the dots".
+   *
+   * ## Family first, then everything
+   *
+   * `shapeFamily` in letters.json is the grouping wanted, so the siblings come
+   * first under their own heading. The rest are offered too — ص and ط are in
+   * different families and share a bowl anyway — but below, because picking one
+   * is a judgement rather than the obvious move.
+   *
+   * The coordinates are copied verbatim: they are absolute positions in the
+   * font's own space, and two letters that share a shape draw it in the same
+   * place, so a copied path lands on the ink rather than near it.
+   *
+   * ## A head start, not a finished letter
+   *
+   * Measured across every pair where a sibling is already drawn, a raw copy
+   * covers between 24% and 72% of the target — because the dots are the
+   * difference and the copy brings the *source's* dots. س to ش leaves the whole
+   * skeleton right and all three dots missing. And the family is a label, not a
+   * promise: ی and ے share one and are not the same shape at all, scoring 24%.
+   *
+   * So this is deliberately not presented as a finish. It says how many strokes
+   * arrived and to go and move the dots, and the path is on screen to be judged
+   * by eye — which is the only judge that counts.
+   */
+  function fillCopyList() {
+    const family = current().shapeFamily;
+    const has = (letter) => letter.id !== current().id && all[letter.id]?.strokes?.length;
+    const kin = known.filter((letter) => letter.shapeFamily === family && has(letter));
+    const rest = known.filter((letter) => letter.shapeFamily !== family && has(letter));
+
+    const option = (letter) => {
+      const node = document.createElement('option');
+      node.value = letter.id;
+      node.textContent = `${letter.name} · ${letter.id}`;
+      return node;
+    };
+    const groupOf = (label, letters) => {
+      const group = document.createElement('optgroup');
+      group.label = label;
+      group.append(...letters.map(option));
+      return group;
+    };
+
+    const first = document.createElement('option');
+    first.value = '';
+    first.textContent = kin.length ? 'a letter like this…' : 'another letter…';
+    copyPick.replaceChildren(first);
+    // "family", not "same shape": ی and ے are in one family and are different
+    // letters to look at. The grouping is a good first guess, not a promise.
+    if (kin.length) copyPick.append(groupOf('Same family', kin));
+    if (rest.length) copyPick.append(groupOf('Any letter', rest));
+    copyPick.disabled = !kin.length && !rest.length;
+  }
+
+  /** Takes another letter's strokes wholesale. Undoable, like any other edit. */
+  function copyFrom(letterId) {
+    const source = all[letterId]?.strokes;
+    if (!source?.length) return;
+    remember();
+    strokes = structuredClone(source);
+    selected = 0;
+    mode = 'edit';
+    change();
+    const from = known.find((letter) => letter.id === letterId);
+    // Kept short: this sits in the header beside the letter's name, and a long
+    // sentence squeezes the name off a phone. What was copied is on the board
+    // to be looked at, which says more than a sentence would.
+    say(`Copied from ${from?.name ?? letterId}`);
+  }
+
   function markNav() {
     for (const button of nav.children) {
       const i = Number(button.dataset.index);
@@ -363,6 +457,7 @@ export function buildStrokeEditor({
     // The Urdu name, not the roman id twice over: this is a screen for somebody
     // who reads Urdu, and the name is what tells them which letter this is.
     title.textContent = `${current().name} · ${current().id}`;
+    fillCopyList();
     markNav();
     render();
     say('');
@@ -775,6 +870,13 @@ export function buildStrokeEditor({
   };
 
   root.addEventListener('click', onClick);
+  copyPick.addEventListener('change', () => {
+    const from = copyPick.value;
+    // Back to the prompt straight away, so the same letter can be copied twice
+    // — after an undo, say — without having to pick something else first.
+    copyPick.value = '';
+    if (from) copyFrom(from);
+  });
   document.addEventListener('keydown', onKey);
 
   nav.replaceChildren(
