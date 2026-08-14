@@ -34,7 +34,8 @@
     "backgrounds": "node tools/make-backgrounds.mjs",
     "tiles": "node tools/make-tile-art.mjs",
     "forms": "node tools/preview-forms.mjs",
-    "verify:trace-studio": "node tools/verify-trace-studio.mjs"
+    "verify:trace-studio": "node tools/verify-trace-studio.mjs",
+    "verify:traces": "node tools/verify-traces.mjs"
   },
   "dependencies": {
     "@fontsource/noto-nastaliq-urdu": "^5.3.0",

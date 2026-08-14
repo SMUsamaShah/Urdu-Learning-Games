@@ -126,6 +126,29 @@ export function glyphUpem() {
   return glyphs?.upem ?? 1000;
 }
 
+/**
+ * The whole baked sheet, for the two things that want it entire rather than a
+ * glyph at a time: the stroke editor, which draws any letter's outline straight
+ * into an SVG, and anything comparing what was baked against what it was baked
+ * from. Everything else should ask for the one glyph it needs.
+ */
+export function glyphSheet() {
+  return glyphs;
+}
+
+/**
+ * Which typeface these outlines were baked from, as `{file, sha}`.
+ *
+ * Read from the fetched file rather than imported, because importing
+ * glyphs.json to reach one field puts all 500 KB of it in the bundle as well as
+ * on the network. Anything derived from a glyph belongs to the font that drew
+ * it, and the tracing paths are the case where getting that wrong is visible to
+ * a child — see src/lib/strokes.js.
+ */
+export function glyphFont() {
+  return glyphs?.font ?? null;
+}
+
 /** A baked Urdu UI string (menu labels, headings). See content/ui.json. */
 export function uiGlyph(stringId) {
   return glyphs?.ui[stringId] ?? null;

@@ -38,6 +38,7 @@ import { stopAll } from '../lib/audio.js';
 import { summaries } from '../lib/clip-store.js';
 import { expectedClips } from '../lib/clip-list.js';
 import { letters, numbers, words } from '../lib/content.js';
+import { guidedLetters, strokesMatchFont } from '../lib/strokes.js';
 import { reset as resetProgressTotal, state as progressState } from '../lib/progress.js';
 
 const el = (html) => {
@@ -131,6 +132,7 @@ export function openSettings({ onClose } = {}) {
           pageRow('check', 'Sound check'),
         ])}
         ${group('Voice', [pageRow('recordings', 'Your recordings', '…')])}
+        ${group('Writing', [pageRow('traces', 'Letter traces', traceSummary())])}
         ${group('Progress', [
           actionRow('progress', 'Level reached', progressSummary()),
           actionRow('reset-progress', 'Start again from level 1'),
@@ -145,6 +147,17 @@ export function openSettings({ onClose } = {}) {
     // Filled in after the list is on screen: it reads IndexedDB, and waiting on
     // it would leave the whole list blank for as long as that takes.
     countRecordings();
+  }
+
+  /**
+   * How many letters a child can be guided through, out of the alphabet.
+   *
+   * Synchronous, unlike the recordings count: the device's corrections were
+   * loaded at startup, so this is already in memory.
+   */
+  function traceSummary() {
+    if (!strokesMatchFont()) return 'Unavailable';
+    return `${guidedLetters().length} of ${letters.length}`;
   }
 
   /** How far the child has got, for the row above the reset. */
@@ -187,6 +200,7 @@ export function openSettings({ onClose } = {}) {
     tune: 'Tune',
     check: 'Sound check',
     recordings: 'Your recordings',
+    traces: 'Letter traces',
   };
 
   async function openPage(id) {
@@ -208,6 +222,19 @@ export function openSettings({ onClose } = {}) {
       // Closed or navigated away while it was loading.
       if (closed || current !== id) return;
       const built = buildRecorderPage();
+      disposePage = built.dispose;
+      holder.replaceWith(built.el);
+      return;
+    }
+
+    if (id === 'traces') {
+      // Same reasoning as the recorder: an SVG editor and its stylesheet are
+      // not something somebody who came to change the tune should download.
+      const holder = el('<div class="set-page set-loading">Loading…</div>');
+      bodyEl.append(holder);
+      const { buildTracesPage } = await import('./traces.js');
+      if (closed || current !== id) return;
+      const built = buildTracesPage();
       disposePage = built.dispose;
       holder.replaceWith(built.el);
     }

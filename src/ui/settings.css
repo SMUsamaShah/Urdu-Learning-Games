@@ -247,3 +247,62 @@
   color: #8a90a8;
   font-size: 14px;
 }
+
+/* ---------------------------------------------------------- letter traces */
+
+/*
+ * The page is mostly the shared stroke editor, which brings its own styles.
+ * What is here is the strip above it: what is guided, where the open letter's
+ * path came from, and the way out to a file.
+ */
+.set-traces-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  color: #4a5170;
+}
+
+.set-traces-count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.set-traces-where {
+  color: #8a90a8;
+}
+
+/* Pushes Export to the far end, and stays put when the line wraps on a phone. */
+.set-traces-bar .set-btn {
+  margin-left: auto;
+}
+
+.set-btn {
+  font: inherit;
+  font-size: 14px;
+  color: #2b3047;
+  background: #f4eee1;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 8px;
+  padding: 7px 13px;
+  cursor: pointer;
+}
+
+.set-btn:hover {
+  background: #eae3d4;
+}
+
+/* The editor fills what is left of the page and scrolls its own panels. */
+.set-traces-editor {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.set-traces-editor > * {
+  flex: 1;
+  min-width: 0;
+}

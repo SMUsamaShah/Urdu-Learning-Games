@@ -1,5 +1,6 @@
-import glyphs from '../../content/glyphs.json';
 import manifest from '../../content/strokes.json';
+import { glyphFont } from './content.js';
+import { deviceStrokes } from './stroke-store.js';
 
 /**
  * The pen path for a letter: where each stroke starts, which way it goes, and
@@ -20,9 +21,29 @@ import manifest from '../../content/strokes.json';
  *
  * It also means this ships letter by letter: correct five in the studio and
  * those five are guided, with no half-built state on screen.
+ *
+ * ## Device first, then bundled
+ *
+ * A path corrected on this device beats the one shipped with the app, exactly
+ * as a recording made on this device beats the bundled clip in audio.js. The
+ * person who fixed ھ on their tablet gets to see it in the game immediately,
+ * which is most of what makes fixing it worth doing at all.
+ *
+ * Held in memory and read synchronously, because the Write screen decides in
+ * `create()` whether to draw a guide, and IndexedDB is not available to answer
+ * that. `initStrokes()` fills it once at startup, next to initAudio().
  */
 
 const upem = manifest.upem ?? 2048;
+
+/**
+ * The letters corrected on this device, loaded once.
+ *
+ * Empty until initStrokes() resolves, and empty forever where IndexedDB is
+ * unavailable — in both cases the bundled paths answer instead, which is the
+ * behaviour there was before any of this existed.
+ */
+let device = { letters: {} };
 
 /**
  * Whether these paths were drawn against the font the app is shipping.
@@ -36,18 +57,87 @@ const upem = manifest.upem ?? 2048;
  * The fingerprint is written by tools/font.mjs into both files. Swapping the
  * font and re-baking changes glyphs.json and not strokes.json, so this goes
  * false the moment it should — and `npm test` fails on it before anyone plays.
+ *
+ * False until initStrokes() has run, because the outlines are fetched and there
+ * is nothing to compare against before then. Erring towards colouring in is the
+ * right way round for a value that says whether a guide can be trusted.
  */
-export const strokesMatchFont = manifest.font?.sha === glyphs.font?.sha;
+let matchesFont = false;
+
+export const strokesMatchFont = () => matchesFont;
+
+/**
+ * Loads the device's corrections and settles which paths can be trusted.
+ *
+ * Call once at startup, *after* loadGlyphs(): the font fingerprint it compares
+ * against comes out of the fetched outlines.
+ */
+export async function initStrokes() {
+  matchesFont = Boolean(manifest.font?.sha) && manifest.font?.sha === glyphFont()?.sha;
+  device = await deviceStrokes();
+  return Object.keys(device.letters).length;
+}
+
+/**
+ * Called by the editor when a letter is saved or cleared, so the change reaches
+ * the game without a reload — the point of editing on the device is being able
+ * to walk straight into the Write screen and try it.
+ */
+export function noteDeviceStrokes(letterId, strokes) {
+  if (strokes) device.letters[letterId] = { strokes, editedAt: Date.now() };
+  else delete device.letters[letterId];
+}
+
+/** Where a letter's guide comes from: 'device', 'bundled', or 'none'. */
+export function strokeSource(letterId) {
+  if (!matchesFont) return 'none';
+  if (device.letters?.[letterId]) return 'device';
+  return manifest.letters?.[letterId]?.corrected ? 'bundled' : 'none';
+}
+
+/** The strokes to draw for a letter, in font units, or null. */
+function entryFor(letterId) {
+  const source = strokeSource(letterId);
+  if (source === 'device') return device.letters[letterId].strokes;
+  if (source === 'bundled') return manifest.letters[letterId].strokes;
+  return null;
+}
 
 /** Whether a letter has a hand-corrected guide drawn for the current font. */
 export function hasStrokes(letterId) {
-  if (!strokesMatchFont) return false;
-  return Boolean(manifest.letters?.[letterId]?.corrected);
+  return strokeSource(letterId) !== 'none';
+}
+
+/**
+ * What the editor opens with: this device's corrections over what shipped.
+ *
+ * Includes the letters the seeder guessed at and nobody has fixed yet, which
+ * `hasStrokes` deliberately refuses to guide with. Correcting a rough path is a
+ * far smaller job than drawing one from nothing, and rough paths are exactly
+ * what the editor exists to fix.
+ *
+ * Empty on a font mismatch: those paths belong to another typeface, and
+ * starting from them would be worse than starting from nothing.
+ */
+export function editableStrokes() {
+  if (!matchesFont) return {};
+  const out = {};
+  for (const [id, entry] of Object.entries(manifest.letters ?? {})) {
+    out[id] = { strokes: entry.strokes, corrected: Boolean(entry.corrected) };
+  }
+  for (const [id, entry] of Object.entries(device.letters ?? {})) {
+    out[id] = { strokes: entry.strokes, corrected: true };
+  }
+  return out;
 }
 
 /** Every letter with a guide, for the verifiers and the settings count. */
 export function guidedLetters() {
-  return Object.keys(manifest.letters ?? {}).filter(hasStrokes);
+  const ids = new Set([
+    ...Object.keys(manifest.letters ?? {}),
+    ...Object.keys(device.letters ?? {}),
+  ]);
+  return [...ids].filter(hasStrokes);
 }
 
 /**
@@ -66,10 +156,10 @@ export function guidedLetters() {
  * @returns {{kind: string, points: {x: number, y: number}[], length: number}[]}
  */
 export function strokesFor(letterId, { scale, origin, bbox }) {
-  const entry = manifest.letters?.[letterId];
-  if (!entry?.corrected || !strokesMatchFont) return [];
+  const entry = entryFor(letterId);
+  if (!entry) return [];
 
-  return entry.strokes.map((stroke) => {
+  return entry.map((stroke) => {
     const points = stroke.points.map(([x, y]) => ({
       x: origin.x + (x - bbox[0]) * scale,
       y: origin.y + (y - bbox[1]) * scale,

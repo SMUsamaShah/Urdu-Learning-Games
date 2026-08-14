@@ -32,6 +32,7 @@ import * as updates from './lib/updates.js';
 import * as music from './lib/music.js';
 import * as flourish from './lib/flourish.js';
 import * as progress from './lib/progress.js';
+import * as strokes from './lib/strokes.js';
 import { useAudioContext } from './lib/tone-setup.js';
 import { DESIGN } from './lib/theme.js';
 
@@ -119,6 +120,11 @@ useAudioContext(game.sound?.context ?? audioContext);
 
 window.__game = game;
 window.__music = music;
+// Which pen paths the app believes in, and where each came from. Held at module
+// scope and filled from IndexedDB at startup, so a check cannot import it
+// afresh and see the same thing — see the note above about the dev server's
+// cache-busting query string.
+window.__strokes = strokes;
 window.__progress = progress;
 window.__flourish = flourish;
 window.__updates = updates;

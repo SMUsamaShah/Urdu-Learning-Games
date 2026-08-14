@@ -279,12 +279,17 @@ tests/              content and audio integrity checks
 2. ~~Audio: recording studio, playback, override chain~~ done
 3. ~~Find the letter, using shape-family siblings as distractors~~ done
 4. ~~Balloon pop~~ done
-5. ~~Letter tracing~~ done (from the baked outlines; no stroke editor needed)
+5. ~~Letter tracing~~ done — colouring in for every letter, and following the pen
+   where the strokes have been drawn
 6. ~~Numbers and words as their own games~~ done
 7. ~~Installable, offline PWA, parental gate~~ done
 8. ~~Deploy to GitHub Pages~~ done
 9. ~~Record inside the app, stored per-device, with export and import~~ done
 10. ~~Background music, particles and animation~~ done
+
+Ideas past that — joined-letter tracing, controller support for a smart TV,
+rescuing phone recordings — are in [future-plans.md](future-plans.md). Nothing
+there is scheduled.
 
 ## Contributing
 

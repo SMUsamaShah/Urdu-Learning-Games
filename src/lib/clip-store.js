@@ -134,13 +134,34 @@ export function deleteClip(key) {
 
 // -------------------------------------------------------------------- meta
 
-async function getLastExport() {
-  const value = await run(META, 'readonly', (s) => s.get('lastExportedAt'));
+/**
+ * The plain key-value half of the database, open to anything small.
+ *
+ * Exported because the hand-corrected pen paths live here too — see
+ * stroke-store.js. All 38 letters of them come to tens of kilobytes, which is
+ * nothing beside one recording, so they need no store of their own and no
+ * version bump. Sharing the database also means one `openDb`, one failure path
+ * and one thing to clear.
+ *
+ * @param {string} key namespaced by its owner, e.g. `strokes`
+ */
+export async function getMeta(key) {
+  const value = await run(META, 'readonly', (s) => s.get(key));
   return value ?? null;
 }
 
+export function putMeta(key, value) {
+  return run(META, 'readwrite', (s) => s.put(value, key));
+}
+
+export function deleteMeta(key) {
+  return run(META, 'readwrite', (s) => s.delete(key));
+}
+
+const getLastExport = () => getMeta('lastExportedAt');
+
 export function setLastExport(when = Date.now()) {
-  return run(META, 'readwrite', (s) => s.put(when, 'lastExportedAt'));
+  return putMeta('lastExportedAt', when);
 }
 
 // ------------------------------------------------------------- persistence
@@ -152,9 +173,13 @@ export function setLastExport(when = Date.now()) {
  * installed web apps. Calling it repeatedly is harmless — it resolves with the
  * current state once already granted.
  *
+ * Exported for stroke-store.js rather than copied into it: hand-drawn pen paths
+ * are somebody's evening's work and deserve the same protection from eviction
+ * as a recording of their voice.
+ *
  * @returns {Promise<boolean>}
  */
-async function requestPersistence() {
+export async function requestPersistence() {
   if (!navigator.storage?.persist) return false;
   try {
     if (await navigator.storage.persisted()) return true;

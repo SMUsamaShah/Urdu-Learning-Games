@@ -3,6 +3,7 @@ import { loadGlyphs } from '../lib/content.js';
 import { audioStats, initAudio } from '../lib/audio.js';
 import { queueMascot } from '../lib/mascot.js';
 import { initSfx } from '../lib/sfx.js';
+import { initStrokes } from '../lib/strokes.js';
 import { initMusic, startMusic } from '../lib/music.js';
 import { COLORS, DESIGN, label } from '../lib/theme.js';
 
@@ -49,6 +50,11 @@ export default class Preload extends Phaser.Scene {
       // Both are small and independent. Audio only fetches its manifest here;
       // the clips themselves load lazily on first use.
       await Promise.all([loadGlyphs(), initAudio(this.game)]);
+      // After the outlines, not alongside them: this compares the tracing paths
+      // against the font fingerprint recorded in glyphs.json, and reads the
+      // corrections made on this device out of IndexedDB. The Write screen then
+      // consults both synchronously when it decides whether to draw a guide.
+      await initStrokes();
       initSfx(this.game);
       initMusic(this.game);
       // The context is almost certainly still locked here — nothing has been

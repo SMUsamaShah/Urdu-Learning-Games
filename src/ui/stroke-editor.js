@@ -71,10 +71,21 @@ function svgNode(tag, attrs) {
  * @param {(letterId: string, strokes: object[]) => Promise<void>} config.save
  * @param {(letterId: string) => Promise<void>} [config.revert] back to what
  *   shipped, where that means something (the app; the studio has no such thing)
+ * @param {(letterId: string) => void} [config.onLetter] which letter is open
+ *   now. The app's page shows where the open letter's guide came from, and it
+ *   cannot know that from outside.
  * @param {string} [config.startAt] letter id to open on
  * @returns {{el: HTMLElement, dispose: () => void, current: () => string}}
  */
-export function buildStrokeEditor({ glyphs, letters, initial, save, revert, startAt }) {
+export function buildStrokeEditor({
+  glyphs,
+  letters,
+  initial,
+  save,
+  revert,
+  onLetter,
+  startAt,
+}) {
   const known = letters.filter((letter) => glyphs.letters[letter.id]?.isolated);
   /** letterId -> { strokes, corrected }. The saved state, as far as we know. */
   const all = structuredClone(initial ?? {});
@@ -309,6 +320,7 @@ export function buildStrokeEditor({ glyphs, letters, initial, save, revert, star
     markNav();
     render();
     say('');
+    onLetter?.(current().id);
   }
 
   // ------------------------------------------------------------------ edits

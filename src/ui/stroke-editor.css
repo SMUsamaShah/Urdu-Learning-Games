@@ -145,11 +145,17 @@
   outline-offset: 2px;
 }
 
-/* The stroke numbers and direction arrows are labels, not targets: a tap that
-   lands on one should still reach the line underneath. */
+/*
+ * The stroke numbers and direction arrows are labels, not targets: a tap that
+ * lands on one should still reach the line underneath.
+ *
+ * No `font` shorthand here, however tempting. Inside an SVG the font size is
+ * set in *user units* — the numbers are sized as a fraction of the em so they
+ * scale with the letter — and a CSS shorthand beats the presentation attribute,
+ * which turns a 154-unit number into a 16-unit one and makes it vanish.
+ */
 .ste-number {
   pointer-events: none;
-  font: inherit;
   font-weight: 700;
 }
 
@@ -202,8 +208,16 @@
   min-height: 0;
 }
 
+/*
+ * Label on its own line, buttons under it.
+ *
+ * Five 28px buttons and a swatch leave about fifty pixels for the label in a
+ * 250px panel, which turns "3. 22 points" into "3. 2…" — and the point count is
+ * the one thing the row is there to tell you.
+ */
 .ste-strokes li {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 5px;
   padding: 6px 8px;
@@ -211,6 +225,10 @@
   border: 1px solid var(--line);
   border-radius: 9px;
   font-size: 13px;
+}
+
+.ste-strokes li .ste-grow {
+  flex: 1 0 calc(100% - 20px);
 }
 
 .ste-strokes li[data-selected='true'] {
@@ -308,7 +326,17 @@
     flex-direction: column;
   }
 
+  .ste-letters {
+    /* Two and a bit rows, so it is visibly a scrolling strip rather than the
+       whole alphabet eating the board. */
+    max-height: 96px;
+  }
+
   .ste-board {
+    /* `flex: 1` means width in a row and *height* in a column, so without this
+       the board grows to fit the letter and pushes Save off the bottom of the
+       screen — where nothing says it is there. */
+    flex: none;
     height: 44vh;
     min-height: 240px;
   }
