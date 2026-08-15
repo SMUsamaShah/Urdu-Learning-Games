@@ -92,8 +92,12 @@ The two modes coexist letter by letter, and that is deliberate. A guide is an
 instruction — *this is how the letter is written* — so a wrong one teaches a
 child to write it wrongly, which is worse than not teaching them at all. Only
 letters whose path a person has confirmed are guided; everything else is
-colouring in, which needs no authoring and cannot be wrong. Ten of thirty-eight
-so far.
+colouring in, which needs no authoring and cannot be wrong.
+
+**All thirty-eight are now drawn**, so every letter is guided. Colouring in is
+still there and still matters: it is what the whole alphabet falls back to if
+the font ever changes, since a path drawn for one typeface sits beside the
+letter in another.
 
 No game has a fail state. A wrong answer nudges, keeps the round, and lets the
 child try again.
@@ -219,7 +223,7 @@ are thinned to a skeleton and cut into strokes. That gets the shape roughly
 right and can get no further — thinning knows nothing about writing, so it
 cannot say which end a stroke starts from, what order the strokes come in, or
 that the three teeth of س are one movement. Somebody who writes Urdu has to
-say. Ten letters have been through that; the rest are waiting.
+say. All thirty-eight have now been through it.
 
 There are two places to do it, running the same editor:
 

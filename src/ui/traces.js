@@ -78,7 +78,7 @@ export function buildTracesPage() {
   // nothing to trace.
   const known = letters.filter((letter) => letterGlyph(letter.id));
 
-  /** `10 of 38 guided · 2 edited here` */
+  /** `38 of 38 guided · 2 edited here` */
   async function tally() {
     const stored = await deviceStrokes();
     const guided = known.filter((l) => strokeSource(l.id) !== 'none').length;

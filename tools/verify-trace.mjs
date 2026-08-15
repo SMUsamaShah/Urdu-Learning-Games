@@ -345,15 +345,33 @@ const movedOn = await page
   .catch(() => false);
 if (!movedOn) fail(`finishing ${guidedId} did not move on to the next letter`);
 
-// --- 7. Colouring still works where there is no guide -----------------------
+// --- 7. Colouring still works ----------------------------------------------
+//
+// Colouring in is what the Write screen falls back to, and every one of the 38
+// letters is guided now — so there is no letter left that reaches it by simply
+// not having a path. That does not make the code dead: it is what runs after a
+// font change, when every path is thrown out at once.
+//
+// So it is reached the way the app really reaches it. A glyphs.json served with
+// a different font fingerprint makes src/lib/strokes.js refuse every guide, and
+// the mechanics below are then checked on a letter that does have one — which
+// is a better test than the old one, because it was only ever checking the
+// letters nobody had got round to.
 
-const plainId = await page.evaluate(
-  (ids) => window.__game.scene.getScene('Trace').sequence.find((id) => !ids.includes(id)),
-  guided
-);
-if (!plainId) {
-  step('every letter is guided, so there is no colouring mode left to check');
-} else {
+step('serving a glyphs.json baked from a different font, to reach colouring');
+await page.route('**/glyphs.json*', async (route) => {
+  const response = await route.fetch();
+  const sheet = await response.json();
+  sheet.font = { file: 'another.woff2', sha: 'deadbeefcafe' };
+  await route.fulfill({ response, json: sheet });
+});
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, { timeout: 30000 });
+await startScene(page, 'Trace');
+await page.waitForTimeout(500);
+
+const plainId = await page.evaluate(() => window.__game.scene.getScene('Trace').letterId);
+{
   await openLetter(plainId);
   const plain = await state();
   if (plain.guided) fail(`${plainId} has no guide but opened in guided mode`);

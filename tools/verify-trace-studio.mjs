@@ -15,7 +15,7 @@
  * Usage: node tools/verify-trace-studio.mjs [screenshot.png]
  */
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -208,18 +208,37 @@ if (!knobs.includes('rasterHeight=320')) {
 }
 
 const shapeNow = () => page.$$eval('.ste-strokes li .ste-grow', (els) => els.map((e) => e.textContent));
-const seeded = await shapeNow();
+const wasShowing = await shapeNow();
 await page.click('[data-act="reseed"]');
 await page.waitForTimeout(400);
 const traced = await shapeNow();
-step(`  ${seeded.length} stroke(s) -> ${traced.length}`);
-// The letter's committed path came from this same code at these same numbers,
-// so tracing it again has to reproduce it. If it does not, the extraction from
-// the seeder changed the geometry.
-if (traced.join() !== seeded.join()) {
-  fail(`tracing at the seeded numbers gave ${traced.join(' | ')}, not ${seeded.join(' | ')}`);
+step(`  ${wasShowing.length} stroke(s) -> ${traced.length}`);
+
+// The property worth protecting: the button in the editor and the command line
+// run one implementation. So the seeder is actually run, for this one letter,
+// and its answer compared with the editor's.
+//
+// This used to compare against the letter's *committed* path instead, on the
+// reasoning that it had come from the seeder — true until somebody corrected
+// every letter by hand, at which point the check started failing for the best
+// possible reason. Running the seeder says the same thing and keeps saying it.
+// Safe to --force: the cleanup above restores strokes.json byte for byte.
+step('  running the seeder for the same letter');
+const seedRun = spawnSync(process.execPath, ['tools/seed-strokes.mjs', '--force', '--only', 'khe'], {
+  cwd: ROOT,
+  encoding: 'utf8',
+});
+if (seedRun.status !== 0) fail(`the seeder exited ${seedRun.status}: ${seedRun.stderr?.slice(0, 200)}`);
+const fromSeeder = JSON.parse(fs.readFileSync(STROKES_FILE, 'utf8')).letters.khe.strokes;
+const asShape = (strokes) =>
+  strokes.map((stroke, i) =>
+    stroke.kind === 'dab' ? `${i + 1}. dot` : `${i + 1}. ${stroke.points.length} points`
+  );
+step(`  seeder: ${asShape(fromSeeder).join(' | ')}`);
+if (traced.join() !== asShape(fromSeeder).join()) {
+  fail(`the editor traced ${traced.join(' | ')}, the seeder ${asShape(fromSeeder).join(' | ')}`);
 } else {
-  step('  at the seeded numbers it reproduces the committed path exactly');
+  step('  the editor and the command line agree exactly');
 }
 
 // And the knobs have to do something, or they are decoration.
@@ -237,8 +256,8 @@ if (smoothed.join() === traced.join()) fail('the smoothing knob changed nothing'
 await page.click('[data-act="undo"]');
 await page.waitForTimeout(250);
 const undone = await shapeNow();
-if (undone.join() !== seeded.join()) {
-  fail(`undo after tracing gave ${undone.join(' | ')}, not the ${seeded.join(' | ')} before`);
+if (undone.join() !== wasShowing.join()) {
+  fail(`undo after tracing gave ${undone.join(' | ')}, not the ${wasShowing.join(' | ')} before`);
 } else {
   step('  and one undo puts back what was there before any of it');
 }
