@@ -6,9 +6,10 @@ built has a task and a branch instead.
 
 ## Rescue phone recordings in the studio
 
-The recording studio already trims silence and evens the level. The ambition is
-larger: take a clip recorded on a phone in a normal room and make it sound like
-it was recorded properly — noise removed, room reverb reduced, sibilance tamed,
+The recording studio now trims silence, softly pushes down room hiss,
+removes low rumble, and evens the level. The ambition is larger: take a clip
+recorded on a phone in a normal room and make it sound like it was recorded
+properly — broadband noise profiled out, room reverb reduced, sibilance tamed,
 level and tone matched across every clip so a hundred and twenty of them sound
 like one person in one session rather than a hundred and twenty separate
 attempts.

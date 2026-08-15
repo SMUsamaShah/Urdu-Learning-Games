@@ -218,7 +218,7 @@ export function buildRecorderPage() {
              </label>
              <label class="rec-toggle rec-tidy">
                <input type="checkbox" data-act="tidy" ${tidy ? 'checked' : ''} />
-               Trim silence and even the level
+               Trim silence, reduce hiss, even the level
              </label>`
           : ''
       }
@@ -302,8 +302,8 @@ export function buildRecorderPage() {
 
       const clip = clips[index];
 
-      // Trim the silence and bring the level up. Returns null if it could not
-      // usefully do either, in which case the take is kept exactly as recorded:
+      // Trim silence, soften room hiss and bring the level up. Returns null if it
+      // could not usefully do that, in which case the take is kept exactly as recorded:
       // a slightly long clip is a small problem, a lost one is the parent's
       // voice gone.
       let blob = take.blob;
@@ -314,6 +314,7 @@ export function buildRecorderPage() {
         if (polished) {
           blob = polished.blob;
           note = `trimmed ${(polished.removedMs / 1000).toFixed(1)}s`;
+          if (polished.noiseReductionDb) note += `, hiss −${polished.noiseReductionDb} dB`;
           if (polished.gain > 1.15) note += `, level +${polished.gain.toFixed(1)}×`;
         }
       }
