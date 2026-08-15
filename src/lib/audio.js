@@ -188,8 +188,21 @@ async function bufferFor(key) {
   return task;
 }
 
-/** Cuts off anything currently speaking. */
+/**
+ * Which era of speech we are in, bumped by every stopAll().
+ *
+ * A clip is a fetch — or an IndexedDB read — and a decode before any sound
+ * exists, and on a phone that is long enough for a child to have tapped twice
+ * more. Stopping the sources that are *playing* does nothing about the ones
+ * still loading, so before this a clip that lost the race arrived half a second
+ * later and spoke over whatever had replaced it. Everything that waits checks
+ * that its era is still the current one before making a sound.
+ */
+let era = 0;
+
+/** Cuts off anything currently speaking, and abandons anything still loading. */
 export function stopAll() {
+  era++;
   for (const source of playing) {
     try {
       source.stop();
@@ -210,6 +223,12 @@ export function stopAll() {
  */
 export async function play(key, options = {}) {
   const { interrupt = true } = options;
+  // Before the load rather than after it: interrupting is what a child means by
+  // tapping something else, and waiting for the new clip to arrive first left
+  // the old one talking through the whole load.
+  if (interrupt) stopAll();
+  const mine = era;
+
   const buffer = await bufferFor(key);
   if (!buffer || !ctx) return false;
 
@@ -223,7 +242,9 @@ export async function play(key, options = {}) {
     }
   }
 
-  if (interrupt) stopAll();
+  // Something else was asked for while this was loading. Drop it: arriving late
+  // and speaking over the newer clip is worse than not being heard.
+  if (era !== mine) return false;
 
   // Pull the tune down underneath the voice. This is the entire reason the
   // music module exposes a duck at all: the recorded voice saying a letter is
@@ -256,7 +277,12 @@ export async function play(key, options = {}) {
  */
 export async function playSequence(keys, gapMs = 280) {
   stopAll();
+  const mine = era;
   for (let i = 0; i < keys.length; i++) {
+    // The gap between "bay" and "bakri" is long enough to tap something else
+    // in, and the word used to arrive on top of whatever that was. A sequence
+    // that has been replaced stops where it got to.
+    if (era !== mine) return;
     const played = await play(keys[i], { interrupt: false });
     if (played && i < keys.length - 1) {
       await new Promise((r) => setTimeout(r, gapMs));

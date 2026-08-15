@@ -363,14 +363,14 @@
       "letterIndex": 0
     },
     {
-      "id": "kaaghaz",
-      "word": "کاغذ",
-      "roman": "kaaghaz",
-      "gloss": "paper",
-      "emoji": "📄",
+      "id": "zakheera",
+      "word": "ذخیرہ",
+      "roman": "zakheera",
+      "gloss": "store of goods",
+      "emoji": "📦",
       "image": null,
       "letter": "zal",
-      "letterIndex": 3
+      "letterIndex": 0
     },
     {
       "id": "hauz",

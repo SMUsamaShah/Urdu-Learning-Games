@@ -75,7 +75,9 @@ const OVERRIDES = {
   ghubara: 'a single bright party balloon on a string',
   footbal: 'a classic black and white football',
   zaroof: 'a neat stack of colourful plates with a teacup and a bowl beside it',
-  kaaghaz: 'a single clean sheet of white paper with one folded corner',
+  zakheera:
+    'a neat pile of stored goods, stacked wooden crates and bulging sacks ' +
+    'of grain with a couple of jars beside them',
   hauz: 'a small round garden pond of blue water with a stone rim',
 };
 

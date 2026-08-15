@@ -40,6 +40,7 @@ const BROWSER = {
   URL: 'readonly',
   Audio: 'readonly',
   AudioContext: 'readonly',
+  AudioBufferSourceNode: 'readonly',
   OfflineAudioContext: 'readonly',
   MediaRecorder: 'readonly',
   MediaStream: 'readonly',

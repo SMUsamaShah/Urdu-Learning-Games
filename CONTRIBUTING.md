@@ -201,6 +201,20 @@ npm run dev & npm run verify:audio   # that file -> manifest -> played in-game
 
 Both delete the clip they recorded when they finish.
 
+If you changed what the app *says* — `src/lib/say.js`, the scheduling in
+`src/lib/audio.js`, or the point in a game where a letter is spoken:
+
+```sh
+npm run dev & npm run verify:speech
+```
+
+The repo ships no recordings, so every other check runs in silence and cannot
+see a speech bug at all. This one serves a full invented set over intercepted
+routes, with a delay it can turn on for one clip, and records every buffer the
+app actually starts. That is what it takes to catch the ordering faults: a clip
+that lost a race arriving late and speaking over its replacement, and a
+name-then-word sequence finishing on top of whatever was tapped during the gap.
+
 If you touched either guessing game:
 
 ```sh

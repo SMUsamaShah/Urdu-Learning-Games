@@ -208,27 +208,49 @@ export default class JoinForms extends Phaser.Scene {
 
   // ------------------------------------------------------------------- play
 
+  /**
+   * Says the letter on a card, and nothing else.
+   *
+   * Every tap on a live card goes through here. Only picking a card up used to
+   * speak, which meant putting one down and getting a pair wrong were both
+   * silent: tapping around the board gave a letter on some tiles and nothing on
+   * others, with nothing on the screen to explain the difference. Hearing the
+   * name of whatever is under the finger is the part of this game that teaches,
+   * and a wrong guess is exactly the moment it is worth hearing.
+   *
+   * The word is withheld — during the round it would name a letter the child is
+   * still looking for on the other row. Joining a pair says the full thing.
+   */
+  sayCard(card) {
+    sayLetter(card.letterId, { word: false });
+  }
+
   tap(card) {
     if (this.locked || card.done) return;
     sfx.tap();
 
     // Tapping the held card again puts it down. Without this the only way out
     // of a mis-tap is to get the next one deliberately wrong.
-    if (card === this.picked) return this.release();
+    if (card === this.picked) {
+      this.release();
+      return this.sayCard(card);
+    }
 
     // Two from the same row cannot be a pair, so treat the second as a change
     // of mind rather than as a wrong answer. Nothing was claimed yet.
-    if (this.picked && this.picked.row === card.row) {
-      this.release();
-      return this.hold(card);
-    }
+    if (this.picked && this.picked.row === card.row) this.release();
 
-    if (!this.picked) return this.hold(card);
+    if (!this.picked) {
+      this.hold(card);
+      return this.sayCard(card);
+    }
 
     const first = this.picked;
     this.picked = null;
-    if (first.letterId === card.letterId) this.join(first, card);
-    else this.reject(first, card);
+    if (first.letterId === card.letterId) return this.join(first, card);
+
+    this.reject(first, card);
+    this.sayCard(card);
   }
 
   hold(card) {
@@ -238,9 +260,6 @@ export default class JoinForms extends Phaser.Scene {
     this.tweens.add({ targets: card, scaleX: 1.12, scaleY: 1.12, duration: 140 });
     card.plate.lineStyle(6, COLORS.accent, 1);
     card.plate.strokeRoundedRect(-CARD.size / 2, -CARD.size / 2, CARD.size, CARD.size, 20);
-    // Say what was picked up. This is the part that teaches: hearing "bay" over
-    // both faces is what tells a child they are the same letter.
-    sayLetter(card.letterId, { word: false });
   }
 
   release() {
