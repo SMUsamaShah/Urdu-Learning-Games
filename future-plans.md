@@ -33,6 +33,50 @@ More two- and three-letter combinations to read and trace, and more words behind
 them. Each word needs a picture and a recording, which is what makes this a
 steady drip rather than a batch.
 
+## Make the progress itself a game
+
+The ring in the corner counts, and counting is the least interesting thing it
+could do. The number in the middle means something to an adult reading a
+dashboard; to a three-year-old it is a shape that changes.
+
+Instead, make the progress *be* something:
+
+- **A climber.** The old typing games had somebody going up a cliff — keep
+  getting it right and they keep climbing, get it wrong and they slip back a
+  little. The height is the score and nobody has to read a number to know how
+  they are doing.
+- **A pet.** It gets fed, or gets a treat, every time an answer lands. The
+  further you get the more it grows and the fancier it becomes — a creature that
+  visibly evolves rather than a bar that visibly fills. A mistake makes it sad,
+  or costs it some of what it had.
+
+Both are the same idea: a character whose state *is* the progress, so the reward
+is watching something happen to somebody rather than watching a number go up.
+There are other shapes this could take — a garden that grows, a tower that gets
+built, a journey along a map — and the right one is probably whichever a
+three-year-old asks to see again.
+
+### The one decision this forces
+
+**It breaks a rule the app currently keeps.** Nothing here has a fail state: a
+wrong answer nudges, keeps the round and lets the child try again, and the
+progress total is explicitly not allowed to go down. That is not an accident of
+implementation — `tools/verify-progress.mjs` asserts it, and calls it *"the
+promise the design is built on and the one a refactor is most likely to break"*.
+
+A climber who slips and a pet who gets sad are both, precisely, a cost for
+getting something wrong. That may well be the right trade: a reward that cannot
+be lost is a weaker reward, and slipping down a cliff is a gentler kind of
+consequence than being told you are wrong. But it is a deliberate change to the
+thing the app is most careful about, so it wants deciding on purpose rather than
+discovered when a check goes red.
+
+A middle path worth considering first: let the *character* react to a mistake
+without the *total* moving. The pet looks disappointed for a second and then
+carries on; the climber wobbles but does not drop. That keeps the promise and
+still gets the feedback, and it is much easier to take further later than to
+take back.
+
 ## Game controller support
 
 This may well be opened in a browser on a smart TV, and a TV that has games on
