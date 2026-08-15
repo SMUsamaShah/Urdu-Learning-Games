@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { letterGlyph, lettersById, sequenceFor } from '../lib/content.js';
 import { glyphTexture, glyphWidth } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
-import { finished, rightAnswer } from '../lib/flourish.js';
+import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
@@ -95,11 +95,11 @@ export default class LetterPuzzle extends Phaser.Scene {
       hills: false,
       instruction: 'build-letter',
       roman: 'Build the letter',
-      // A 300px letter across the middle, so the spider keeps low and small.
-      mascot: { x: 96, y: 690, height: 168 },
+      // A 300px letter across the middle, so the garden keeps low and small.
+      plant: { x: 96, y: 690, height: 168 },
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     this.layer = this.add.container(0, 0);
     this.buildLetter();
@@ -224,7 +224,6 @@ export default class LetterPuzzle extends Phaser.Scene {
     );
 
     sayLetter(id, { word: false });
-    this.mascot?.point();
   }
 
   // ------------------------------------------------------------------ play
@@ -240,8 +239,8 @@ export default class LetterPuzzle extends Phaser.Scene {
     if (!near) {
       // Back to where it was picked up from. Not left where it fell: a scatter
       // of near-misses over the letter makes the ghost impossible to read.
-      sfx.nudge();
-      this.mascot?.wonder();
+      wrongAnswer();
+      this.plant?.wonder();
       this.tweens.add({
         targets: piece,
         x: piece.startX,

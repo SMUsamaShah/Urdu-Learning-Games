@@ -210,6 +210,21 @@ export function tada() {
   noise({ start: 0.3, duration: 0.9, gain: 0.16, from: 9000, to: 2000, q: 0.5 });
 }
 
+/**
+ * Water landing on soil, for a pour into the plant pot.
+ *
+ * Three short filtered bursts rather than one, because a single splash reads as
+ * a splat: what makes it water is that it arrives in drops. The little rising
+ * blip underneath is the note the ear hangs the sound on — noise alone at this
+ * length is indistinguishable from a page turn.
+ */
+export function water() {
+  for (let i = 0; i < 3; i++) {
+    noise({ start: i * 0.06, duration: 0.09, gain: 0.16, from: 2600, to: 700, q: 1.2 });
+  }
+  tone({ freq: 520, endFreq: 760, start: 0.05, duration: 0.16, type: 'sine', gain: 0.22 });
+}
+
 /** A soft whoosh for something crossing the screen. */
 export function whoosh() {
   noise({ duration: 0.32, gain: 0.18, from: 400, to: 3600, q: 0.6 });

@@ -152,8 +152,8 @@ export function openSettings({ onClose } = {}) {
         ${group('Voice', [pageRow('recordings', 'Your recordings', '…')])}
         ${group('Writing', [pageRow('traces', 'Letter traces', traceSummary())])}
         ${group('Progress', [
-          actionRow('progress', 'Level reached', progressSummary()),
-          actionRow('reset-progress', 'Start again from level 1'),
+          actionRow('progress', 'The garden', progressSummary()),
+          actionRow('reset-progress', 'Clear the garden and start again'),
         ])}
         ${group('App', [
           actionRow('update', 'Check for update'),
@@ -178,10 +178,16 @@ export function openSettings({ onClose } = {}) {
     return `${guidedLetters().length} of ${letters.length}`;
   }
 
-  /** How far the child has got, for the row above the reset. */
+  /**
+   * How far the child has got, for the row above the reset.
+   *
+   * Written as trees rather than as a level, because trees are what is on the
+   * screen: a parent reading this has just been shown a garden, not a number.
+   */
   function progressSummary() {
     const { level, step, steps } = progressState();
-    return `Level ${level + 1} · ${step} of ${steps}`;
+    const trees = level === 1 ? '1 tree grown' : `${level} trees grown`;
+    return `${trees} · ${step} of ${steps} to the next`;
   }
 
   /**
@@ -192,7 +198,7 @@ export function openSettings({ onClose } = {}) {
    * could plausibly hit by accident while looking for the tune.
    */
   function resetProgress() {
-    if (!window.confirm('Start again from level 1? This clears all progress on this device.')) {
+    if (!window.confirm('Clear the garden? This removes every tree grown on this device.')) {
       return;
     }
     resetProgressTotal();

@@ -95,12 +95,12 @@ export default class Trace extends Phaser.Scene {
       instruction: 'fill-letter',
       roman: 'Fill the letter',
       // Smaller and lower than on the quiz screens: a traced letter is 400px
-      // tall and some of them are very wide, so the spider has to keep out of
+      // tall and some of them are very wide, so the garden has to keep out of
       // the way of the thing being drawn.
-      mascot: { x: 92, y: 700, height: 176 },
+      plant: { x: 92, y: 700, height: 176 },
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     // Along the bottom, either side of the progress bar, rather than in the
     // top-right corner where they used to be: that corner now holds the
@@ -262,7 +262,6 @@ export default class Trace extends Phaser.Scene {
     // Name, sound, then the word. This is the screen where a child stays with
     // one letter for a while, so it is the one place worth saying all three.
     sayLetter(id, { sound: true });
-    this.mascot?.point();
   }
 
   /**

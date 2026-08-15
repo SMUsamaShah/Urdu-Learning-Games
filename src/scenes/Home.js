@@ -17,7 +17,7 @@ import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { queueTileArt } from '../lib/tiles.js';
-import { addProgressRing } from '../lib/progress-ring.js';
+import { addPlant } from '../lib/plant.js';
 import { FEATURED, GAMES, MORE, MORE_TILE } from '../lib/games.js';
 
 /**
@@ -139,10 +139,11 @@ export default class Home extends Phaser.Scene {
     // button in the corner beneath it.
     addMascot(this, 116, 618, { height: 214 }).point();
 
-    // The same ring the games carry, in the corner the games keep the home
+    // The same garden the games carry, in the corner the games keep the home
     // button in — this screen has no home button, and between games is exactly
-    // when a child wants to see what they have got to.
-    addProgressRing(this, 100, 100);
+    // when a child wants to see what they have got to. Smaller than on a game
+    // screen: here it is being checked on rather than watered.
+    addPlant(this, 118, 292, { height: 244 });
 
     this.buildInstallHint();
     this.buildSettingsButton();

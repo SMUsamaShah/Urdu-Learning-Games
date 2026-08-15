@@ -8,7 +8,7 @@ import {
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
-import { milestone, rightAnswer } from '../lib/flourish.js';
+import { milestone, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { bob } from '../lib/liveliness.js';
@@ -69,10 +69,10 @@ export default class Bounce extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'catch-bounce',
       roman: 'Catch it bouncing',
-      mascot: { x: 116, y: 620, height: 196 },
+      plant: { x: 116, y: 620, height: 196 },
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     this.fit = fitEmAlone(allLetterGlyphs('isolated'), BALL - 40, BALL - 46);
     this.promptLayer = this.add.container(168, 212);
@@ -110,8 +110,6 @@ export default class Bounce extends Phaser.Scene {
     order.forEach((id, i) => {
       this.launch(id, LANE.left + span * (i + 0.5), i);
     });
-
-    this.mascot?.point();
   }
 
   buildPrompt() {
@@ -227,8 +225,8 @@ export default class Bounce extends Phaser.Scene {
     if (this.locked || !ball.active) return;
 
     if (ball.letterId !== this.target) {
-      sfx.nudge();
-      this.mascot?.wonder();
+      wrongAnswer();
+      this.plant?.wonder();
       // It keeps bouncing. Nothing is removed, so the right one is never harder
       // to find because of a wrong guess.
       this.tweens.add({
@@ -250,7 +248,7 @@ export default class Bounce extends Phaser.Scene {
     this.streak++;
     popPuff(this, ball.x, ball.y, familyColor(lettersById.get(this.target).shapeFamily));
     sparkleBurst(this, ball.x, ball.y, { count: 26 });
-    this.mascot?.cheer();
+    this.plant?.cheer();
     this.remove(ball);
     this.updateStreak();
     sayLetter(this.target);

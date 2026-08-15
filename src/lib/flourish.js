@@ -211,6 +211,28 @@ export function rightAnswer() {
   progress.award(1);
 }
 
+/**
+ * One wrong answer.
+ *
+ * The counterpart `rightAnswer` never had: the sound lived in every scene and
+ * nothing central knew a mistake had happened, which was fine while a mistake
+ * cost nothing. It costs two pours of water now, so there has to be one place
+ * that knows.
+ *
+ * Still the nudge and not a buzzer, and still no fail state — see the note in
+ * sfx.nudge and the one at the top of plant.js.
+ *
+ * Not called by the games where a wrong tap is the mechanic rather than a
+ * mistake: turning over two cards that do not match in Pairs is how the game is
+ * played, and charging for it would leave that screen unable to grow anything.
+ */
+export function wrongAnswer(options = {}) {
+  // Balloons pops the balloon it was given, and a nudge on top of the pop is
+  // two sounds for one tap.
+  if (options.sound !== false) sfx.nudge();
+  progress.setback();
+}
+
 /** A run of five. */
 export function milestone() {
   play(FLOURISHES.milestone(), () => sfx.fanfare());

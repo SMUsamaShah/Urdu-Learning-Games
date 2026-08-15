@@ -74,10 +74,10 @@ export default class Paint extends Phaser.Scene {
       hills: false,
       instruction: 'colour-in',
       roman: 'Colour it in',
-      mascot: { x: 92, y: 700, height: 168 },
+      plant: { x: 92, y: 700, height: 168 },
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     makeButton(this, {
       x: DESIGN.width - 250,
@@ -201,7 +201,6 @@ export default class Paint extends Phaser.Scene {
     );
 
     sayLetter(id, { word: false });
-    this.mascot?.point();
   }
 
   // ---------------------------------------------------------------- painting

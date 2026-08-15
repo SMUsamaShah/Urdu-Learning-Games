@@ -8,7 +8,7 @@ import {
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
-import { milestone, rightAnswer } from '../lib/flourish.js';
+import { milestone, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { bob, squash } from '../lib/liveliness.js';
@@ -95,10 +95,10 @@ export default class Whack extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'tap-quick',
       roman: 'Tap it quickly',
-      mascot: { x: 116, y: 620, height: 200 },
+      plant: { x: 116, y: 620, height: 200 },
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     this.fit = fitEmAlone(allLetterGlyphs('isolated'), LETTER_BOX - 24, LETTER_BOX - 30);
     this.promptLayer = this.add.container(170, 210);
@@ -308,8 +308,8 @@ export default class Whack extends Phaser.Scene {
     squash(this, hole.tile);
 
     if (hole.letterId !== this.target) {
-      sfx.nudge();
-      this.mascot?.wonder();
+      wrongAnswer();
+      this.plant?.wonder();
       this.streak = 0;
       // More time, not less. The one thing that must not happen here is a
       // child getting it wrong and the game speeding up in response.
@@ -326,7 +326,7 @@ export default class Whack extends Phaser.Scene {
     this.updateStreak();
     popPuff(this, hole.x, hole.y - 40, familyColor(lettersById.get(this.target).shapeFamily));
     sparkleBurst(this, hole.x, hole.y - 40, { count: 24 });
-    this.mascot?.cheer();
+    this.plant?.cheer();
     this.hide(hole);
 
     if (this.streak % 5 === 0) {

@@ -9,7 +9,7 @@ import {
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
-import { milestone, rightAnswer } from '../lib/flourish.js';
+import { milestone, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { sayLetter } from '../lib/say.js';
@@ -43,7 +43,7 @@ const CROSS_MS = [11000, 10000, 9000, 8000];
 const MAX_BALLOONS = 6;
 const RADIUS = 74;
 /**
- * Where balloons are allowed to be. The left margin is wide because the spider
+ * Where balloons are allowed to be. the left margin is wide because the garden
  * sits there: a balloon rising through its face is not charming, it just looks
  * like two things drawn on top of each other.
  */
@@ -78,12 +78,12 @@ export default class Balloons extends Phaser.Scene {
       hills: false,
       instruction: 'pop-balloon',
       roman: 'Pop the balloon',
-      // The spider watches the balloons go by, above them so one drifting past
+      // The garden sits above the balloons, so one drifting past
       // does not cross its face.
-      mascot: { depth: 12 },
+      plant: { depth: 12 },
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     // A badge holding the letter to look for, in the corner, tappable to hear
     // it again. Taken straight from the reference apps, which all put the
@@ -136,8 +136,6 @@ export default class Balloons extends Phaser.Scene {
       const t = i / (order.length - 1);
       this.launch(id, bottom - t * (bottom - top), columns[i]);
     });
-
-    this.mascot?.point();
   }
 
   /**
@@ -342,11 +340,14 @@ export default class Balloons extends Phaser.Scene {
     this.burst(balloon.x, balloon.y, right, balloon.tint);
 
     if (!right) {
-      // Costs nothing but the balloon. No fail state, no lost turn.
+      // No fail state and no lost turn. It does cost the plant two pours, and
+      // the balloon still pops — popping is the whole pleasure of this screen
+      // and taking it away for a wrong guess would make the game worse.
       sfx.pop();
+      wrongAnswer({ sound: false });
       this.streak = 0;
       this.updateStreak();
-      this.mascot?.wonder();
+      this.plant?.wonder();
       this.remove(balloon);
       this.time.delayedCall(120, () => {
         if (this.scene.isActive() && !this.locked) {
@@ -362,7 +363,7 @@ export default class Balloons extends Phaser.Scene {
     sfx.sparkle();
     this.streak++;
     this.updateStreak();
-    this.mascot?.cheer();
+    this.plant?.cheer();
     this.remove(balloon);
 
     // Every fifth in a row, the whole screen celebrates rather than just the

@@ -33,49 +33,33 @@ More two- and three-letter combinations to read and trace, and more words behind
 them. Each word needs a picture and a recording, which is what makes this a
 steady drip rather than a batch.
 
-## Make the progress itself a game
+## Make the progress itself a game — built, as a garden
 
-The ring in the corner counts, and counting is the least interesting thing it
-could do. The number in the middle means something to an adult reading a
-dashboard; to a three-year-old it is a shape that changes.
+Done, and it is a plant: `src/lib/plant.js`. One right answer is one pour of
+water, a full-grown tree is a level, and the row of finished trees behind the
+pot is every tree grown so far. The ring and its Urdu numeral are gone.
 
-Instead, make the progress *be* something:
+The decision this section used to say needed making has been made. A wrong
+answer now costs two pours against the one a right answer earns and is allowed
+to cross back a level, taking a finished tree out of the row; only the floor at
+zero survives of the old "nothing is ever taken away" rule.
+`tools/verify-progress.mjs` now asserts the reverse of what it used to, and says
+so where it does. It is still not a fail state — nothing locks, no round ends,
+and the plant droops for a second rather than being told off.
 
-- **A climber.** The old typing games had somebody going up a cliff — keep
-  getting it right and they keep climbing, get it wrong and they slip back a
-  little. The height is the score and nobody has to read a number to know how
-  they are doing.
-- **A pet.** It gets fed, or gets a treat, every time an answer lands. The
-  further you get the more it grows and the fancier it becomes — a creature that
-  visibly evolves rather than a bar that visibly fills. A mistake makes it sad,
-  or costs it some of what it had.
+What is left in this idea:
 
-Both are the same idea: a character whose state *is* the progress, so the reward
-is watching something happen to somebody rather than watching a number go up.
-There are other shapes this could take — a garden that grows, a tower that gets
-built, a journey along a map — and the right one is probably whichever a
-three-year-old asks to see again.
-
-### The one decision this forces
-
-**It breaks a rule the app currently keeps.** Nothing here has a fail state: a
-wrong answer nudges, keeps the round and lets the child try again, and the
-progress total is explicitly not allowed to go down. That is not an accident of
-implementation — `tools/verify-progress.mjs` asserts it, and calls it *"the
-promise the design is built on and the one a refactor is most likely to break"*.
-
-A climber who slips and a pet who gets sad are both, precisely, a cost for
-getting something wrong. That may well be the right trade: a reward that cannot
-be lost is a weaker reward, and slipping down a cliff is a gentler kind of
-consequence than being told you are wrong. But it is a deliberate change to the
-thing the app is most careful about, so it wants deciding on purpose rather than
-discovered when a check goes red.
-
-A middle path worth considering first: let the *character* react to a mistake
-without the *total* moving. The pet looks disappointed for a second and then
-carries on; the climber wobbles but does not drop. That keeps the promise and
-still gets the feedback, and it is much easier to take further later than to
-take back.
+- **The row stops at eight trees.** After that a child who has played for a
+  month sees exactly what they saw a fortnight in, which is the same flattening
+  the ring had and the reason the ring was replaced. Options: a second mound, a
+  row that scrolls, trees that mature into bigger ones, or a different garden
+  once the first is full.
+- **The seed is chosen for you.** Six kinds cycle by level. Letting a child pick
+  the next seed is a decision they would enjoy making and the point at which the
+  garden becomes a thing they own rather than a thing they watch.
+- **The other shapes are still unbuilt** — a climber going up a cliff, a pet
+  that evolves, a tower, a journey along a map. The garden may well be enough;
+  it is worth watching whether it is the thing that gets asked for again.
 
 ## Game controller support
 

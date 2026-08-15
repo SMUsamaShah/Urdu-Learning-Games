@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { allLetterGlyphs, letterGlyph, lettersById, wordForLetter } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
-import { finished, rightAnswer } from '../lib/flourish.js';
+import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addWordImage, hasWordImage, queueWordImages } from '../lib/images.js';
@@ -78,10 +78,10 @@ export default class ConnectPairs extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'join-picture',
       roman: 'Join each letter to its picture',
-      mascot: { x: 104, y: 640, height: 176 },
+      plant: { x: 104, y: 640, height: 176 },
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     // Threads under the cards, and the line being drawn above them so it is
     // visible while it crosses one.
@@ -136,8 +136,6 @@ export default class ConnectPairs extends Phaser.Scene {
     right.forEach((id, i) => {
       this.pictures.push(this.addPicture(id, LEFT_X, spread(count, i), i));
     });
-
-    this.mascot?.point();
   }
 
   addLetter(letterId, x, y, em, index) {
@@ -239,8 +237,8 @@ export default class ConnectPairs extends Phaser.Scene {
     if (!onto) return;
 
     if (onto.letterId !== from.letterId) {
-      sfx.nudge();
-      this.mascot?.wonder();
+      wrongAnswer();
+      this.plant?.wonder();
       for (const card of [from, onto]) {
         this.tweens.add({
           targets: card,

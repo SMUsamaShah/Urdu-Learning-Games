@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { allLetterGlyphs, letterGlyph, lettersById, sequenceFor } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
-import { finished, rightAnswer } from '../lib/flourish.js';
+import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
@@ -38,7 +38,7 @@ import { COLORS, DESIGN, familyColor } from '../lib/theme.js';
 const RUN_BY_ROUND = [3, 4, 4, 5, 6];
 
 const BUBBLE = 118;
-/** Where bubbles may sit: clear of the ribbon, the spider and the trail. */
+/** Where bubbles may sit: clear of the ribbon, the garden and the trail. */
 const FIELD = { left: 300, right: DESIGN.width - 90, top: 205, bottom: 500 };
 const TRAIL_Y = DESIGN.height - 96;
 
@@ -67,10 +67,10 @@ export default class InOrder extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'in-order',
       roman: 'Pop them in order',
-      mascot: { x: 116, y: 640, height: 196 },
+      plant: { x: 116, y: 640, height: 196 },
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     this.field = this.add.container(0, 0);
     this.trail = this.add.container(0, 0);
@@ -107,7 +107,6 @@ export default class InOrder extends Phaser.Scene {
     // Said as a run, so the order is heard before it is asked for. This is the
     // only clue the screen gives, and it is the right one.
     sayLetters(this.run);
-    this.mascot?.point();
   }
 
   /** Cells of a grid big enough for the run, shuffled and jittered. */
@@ -173,8 +172,8 @@ export default class InOrder extends Phaser.Scene {
     if (this.locked || bubble.popped) return;
 
     if (bubble.letterId !== this.run[this.next]) {
-      sfx.nudge();
-      this.mascot?.wonder();
+      wrongAnswer();
+      this.plant?.wonder();
       // It stays. Working through the bubbles until one gives is how a child
       // finds out what "next" means, and it must not cost them the board.
       this.tweens.add({

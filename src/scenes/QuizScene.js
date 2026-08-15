@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import * as sfx from '../lib/sfx.js';
-import { milestone, rightAnswer } from '../lib/flourish.js';
+import { milestone, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { confetti, dance, flyStar } from '../lib/celebrate.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { queueBackdrop } from '../lib/backdrops.js';
@@ -58,9 +58,9 @@ export default class QuizScene extends Phaser.Scene {
      */
     this.promptY = 236;
     /**
-     * Answers and prompt sit right of centre, because the spider sits at the
+     * Answers and prompt sit right of centre, because the garden sits at the
      * left of every screen and a four-wide line-up centred on the canvas would
-     * put its last tile through the spider's face.
+     * put its last tile through it.
      */
     this.stageX = DESIGN.width / 2 + 48;
     /** Shape of a choice: 'card', or 'star' for the games whose answers float. */
@@ -137,7 +137,7 @@ export default class QuizScene extends Phaser.Scene {
       roman: this.instructionRoman,
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     this.promptLayer = this.add.container(this.stageX, this.promptY);
     this.choicesLayer = this.add.container(0, 0);
@@ -172,9 +172,6 @@ export default class QuizScene extends Phaser.Scene {
     this.buildPrompt(this.promptLayer, this.target);
     this.buildChoices(ids);
     this.speak();
-    // The spider points at the answers once they are all on screen, which is
-    // the whole of its job during a question: "look over there".
-    this.mascot?.point();
   }
 
   buildChoices(ids) {
@@ -271,11 +268,12 @@ export default class QuizScene extends Phaser.Scene {
     if (this.locked) return;
 
     if (id !== this.target) {
-      sfx.nudge();
+      wrongAnswer();
       this.streak = 0;
-      // A puzzled wobble, never a frown. There is no fail state here and the
-      // spider must not look like there is one.
-      this.mascot?.wonder();
+      // A droop, never a frown. There is no fail state here and the plant must
+      // not look like there is one — it wants watering, which is an invitation
+      // to have another go.
+      this.plant?.wonder();
       // The tile stops bobbing along with the others as it dims, so a dimmed
       // choice reads as set aside rather than as still on offer.
       tile.idle?.stop();
@@ -319,7 +317,7 @@ export default class QuizScene extends Phaser.Scene {
     confetti(this, tile.x, tile.y);
     hop(this, tile);
     dance(this, tile);
-    this.mascot?.cheer();
+    this.plant?.cheer();
 
     // Paper across the whole screen is saved for every fifth in a row. It is
     // the biggest thing this app does, and doing it on every single answer
@@ -334,8 +332,8 @@ export default class QuizScene extends Phaser.Scene {
     flyStar(
       this,
       { x: tile.x, y: tile.y },
-      this.stage.ring.flyTo,
-      () => this.stage.ring.catch()
+      this.stage.plant.flyTo,
+      () => this.stage.plant.catch()
     );
 
     this.time.delayedCall(1500, () => this.newRound());

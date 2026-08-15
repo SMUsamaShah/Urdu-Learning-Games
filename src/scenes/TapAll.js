@@ -8,7 +8,7 @@ import {
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
-import { finished, rightAnswer } from '../lib/flourish.js';
+import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
@@ -58,7 +58,7 @@ const ROUNDS = [
   { tiles: 12, wanted: 5 },
 ];
 
-/** The board's area: clear of the ribbon above and the spider at the left. */
+/** The board's area: clear of the ribbon above and the garden at the left. */
 const BOARD = { left: 300, right: DESIGN.width - 50, top: 190, bottom: DESIGN.height - 40 };
 
 export default class TapAll extends Phaser.Scene {
@@ -89,7 +89,7 @@ export default class TapAll extends Phaser.Scene {
       roman: 'Tap every one',
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     // The letter being hunted for, in the corner, always there and always
     // tappable. Taken from the reference apps, which put the target in the same
@@ -134,7 +134,6 @@ export default class TapAll extends Phaser.Scene {
     this.buildPrompt();
     this.layOut(ids);
     this.speak();
-    this.mascot?.point();
   }
 
   buildPrompt() {
@@ -234,8 +233,8 @@ export default class TapAll extends Phaser.Scene {
     if (this.locked || tile.done) return;
 
     if (tile.letterId !== this.target) {
-      sfx.nudge();
-      this.mascot?.wonder();
+      wrongAnswer();
+      this.plant?.wonder();
       // Dimmed and set aside rather than removed. Removing it would shrink the
       // board towards the answer, which turns "find them all" into "keep
       // tapping until the board is empty".

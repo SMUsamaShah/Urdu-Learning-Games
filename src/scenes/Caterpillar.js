@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { allLetterGlyphs, letterGlyph, sequenceFor } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
-import { finished, rightAnswer } from '../lib/flourish.js';
+import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
@@ -109,7 +109,7 @@ export default class Caterpillar extends Phaser.Scene {
       roman: this.instructionRoman ?? 'Fill the gaps',
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     this.body = this.add.container(0, 0);
     this.tray = this.add.container(0, 0);
@@ -149,7 +149,6 @@ export default class Caterpillar extends Phaser.Scene {
     this.buildBody();
     this.buildTray(Phaser.Utils.Array.Shuffle([...answers, ...nearby]));
     this.markNext();
-    this.mascot?.point();
   }
 
   /** How long the run is and how many holes it has, per round. */
@@ -297,8 +296,8 @@ export default class Caterpillar extends Phaser.Scene {
 
     const wanted = this.run[hole];
     if (tile.letterId !== wanted) {
-      sfx.nudge();
-      this.mascot?.wonder();
+      wrongAnswer();
+      this.plant?.wonder();
       this.tweens.add({
         targets: tile,
         x: tile.x + 8,

@@ -8,7 +8,7 @@ import {
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
-import { finished, rightAnswer } from '../lib/flourish.js';
+import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop } from '../lib/liveliness.js';
@@ -49,7 +49,7 @@ const ROUNDS = [
   { total: 12, wanted: 4 },
 ];
 
-/** Where letters may hide: clear of the ribbon, the badge and the spider. */
+/** Where letters may hide: clear of the ribbon, the badge and the garden. */
 const FIELD = { left: 330, right: DESIGN.width - 60, top: 190, bottom: DESIGN.height - 50 };
 /** Muted, but never near the backdrop's own greens — this is a hunt, not camouflage. */
 const TINTS = [0x3f6f4a, 0x6a4a2f, 0x2f5f7a, 0x7a4a6a, 0x8a6a1f, 0x4a4a6a];
@@ -82,10 +82,10 @@ export default class Hidden extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'find-hidden',
       roman: 'Find them hiding',
-      mascot: { x: 116, y: 640, height: 190 },
+      plant: { x: 116, y: 640, height: 190 },
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     this.promptLayer = this.add.container(160, 215);
     this.field = this.add.container(0, 0);
@@ -126,7 +126,6 @@ export default class Hidden extends Phaser.Scene {
     this.buildPrompt();
     this.scatter(ids);
     sayLetter(this.target, { word: false });
-    this.mascot?.point();
     this.armHint();
   }
 
@@ -254,8 +253,8 @@ export default class Hidden extends Phaser.Scene {
     if (this.locked || letter.found) return;
 
     if (letter.letterId !== this.target) {
-      sfx.nudge();
-      this.mascot?.wonder();
+      wrongAnswer();
+      this.plant?.wonder();
       this.tweens.add({
         targets: letter,
         angle: letter.angle + 10,

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { allLetterGlyphs, letterForms, letterGlyph, lettersById } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
-import { finished, rightAnswer } from '../lib/flourish.js';
+import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
@@ -49,7 +49,7 @@ import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
 /** Pairs on the board, by how many boards have been finished. */
 const PAIRS_BY_ROUND = [3, 3, 4, 4, 5, 5, 6];
 
-/** The space the board gets: clear of the ribbon above and the spider at left. */
+/** The space the board gets: clear of the ribbon above and the garden at left. */
 const BOARD = { left: 280, right: DESIGN.width - 50, top: 150, bottom: DESIGN.height - 40 };
 
 const CARD = { size: 132, gap: 18 };
@@ -85,7 +85,7 @@ export default class JoinForms extends Phaser.Scene {
       roman: 'Join the same letter',
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     // Under the cards, so a line never draws over a letter.
     this.threads = this.add.graphics();
@@ -155,8 +155,6 @@ export default class JoinForms extends Phaser.Scene {
         n++;
       });
     }
-
-    this.mascot?.point();
   }
 
   makeCard(letterId, form, x, y, row) {
@@ -273,8 +271,8 @@ export default class JoinForms extends Phaser.Scene {
   }
 
   reject(first, second) {
-    sfx.nudge();
-    this.mascot?.wonder();
+    wrongAnswer();
+    this.plant?.wonder();
     // A wobble on both, then everything back as it was. No score to lose and
     // nothing removed from the board — the pair they wanted is still there.
     for (const card of [first, second]) {

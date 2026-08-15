@@ -42,7 +42,7 @@ const BACKS = [0xd45f95, 0x5a6bd0, 0x2f9e5f, 0xe0821c, 0x9b5fc9, 0x1a9c96];
 /** How long a mismatched pair stays face up before turning back. */
 const PEEK_MS = 900;
 
-/** The space the board gets: clear of the ribbon above and the spider at left. */
+/** The space the board gets: clear of the ribbon above and the garden at left. */
 const BOARD = { left: 300, right: DESIGN.width - 60, top: 150, bottom: DESIGN.height - 40 };
 
 export default class Memory extends Phaser.Scene {
@@ -80,7 +80,7 @@ export default class Memory extends Phaser.Scene {
       roman: 'Match the pairs',
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
     this.board = this.add.container(0, 0);
 
     this.newBoard();
@@ -119,14 +119,12 @@ export default class Memory extends Phaser.Scene {
       this.cards.push(card);
       this.board.add(card);
     }
-
-    this.mascot?.point();
   }
 
   /**
    * Where the cards go.
    *
-   * Laid out to fill the space left of the spider and below the ribbon, in as
+   * Laid out to fill the space left of the garden and below the ribbon, in as
    * few rows as fit. Cards are sized from the grid rather than fixed, so a
    * six-pair board has smaller cards rather than running off the screen.
    */
@@ -290,7 +288,7 @@ export default class Memory extends Phaser.Scene {
 
     // Not a pair. Both go back, after long enough to have seen them.
     this.locked = true;
-    this.mascot?.wonder();
+    this.plant?.wonder();
     this.time.delayedCall(PEEK_MS, () => {
       this.flip(first, false);
       this.flip(second, false);

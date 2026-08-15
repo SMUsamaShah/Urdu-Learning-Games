@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { allLetterGlyphs, letterGlyph, lettersById, wordsById } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
-import { milestone, rightAnswer } from '../lib/flourish.js';
+import { milestone, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addWordImage, hasWordImage, queueWordImages } from '../lib/images.js';
 import { addStage, wellDone } from '../lib/stage.js';
@@ -80,10 +80,10 @@ export default class Fishing extends Phaser.Scene {
       hills: false,
       instruction: 'catch-letter',
       roman: 'Catch the letter',
-      mascot: { depth: 12 },
+      plant: { depth: 12 },
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     this.fishFit = fitEmAlone(allLetterGlyphs('isolated'), 92, 76);
     // The word being asked about, in the corner where every screen here puts
@@ -116,8 +116,6 @@ export default class Fishing extends Phaser.Scene {
     order.forEach((id, i) => {
       this.launch(id, POND.left + ((POND.right - POND.left) * (i + 0.5)) / order.length);
     });
-
-    this.mascot?.point();
   }
 
   /** The picture of the word, tappable to hear it again. */
@@ -237,8 +235,8 @@ export default class Fishing extends Phaser.Scene {
     if (this.locked || !fish.active) return;
 
     if (fish.letterId !== this.target) {
-      sfx.nudge();
-      this.mascot?.wonder();
+      wrongAnswer();
+      this.plant?.wonder();
       // It wriggles and swims on. Nothing is lost — the streak is only broken
       // by giving up, and there is no way to give up here.
       this.tweens.add({
@@ -260,7 +258,7 @@ export default class Fishing extends Phaser.Scene {
     this.streak++;
     popPuff(this, fish.x, fish.y, familyColor(lettersById.get(fish.letterId).shapeFamily));
     sparkleBurst(this, fish.x, fish.y, { count: 26 });
-    this.mascot?.cheer();
+    this.plant?.cheer();
     this.remove(fish);
     this.updateStreak();
     // Now the letter can be named, next to the word it starts.

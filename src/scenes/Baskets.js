@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { allLetterGlyphs, letterGlyph, lettersById, shapeFamilySiblings } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
-import { finished, rightAnswer } from '../lib/flourish.js';
+import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
@@ -74,10 +74,12 @@ export default class Baskets extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'sort-letters',
       roman: 'Sort the letters',
-      mascot: { x: 104, y: 300, height: 168 },
+      // On the market floor at the left rather than up where the spider used to
+      // stand: a spider can sit on an awning and a garden cannot.
+      plant: { x: 104, y: 706, height: 196 },
     });
     this.banner = this.stage.banner;
-    this.mascot = this.stage.mascot;
+    this.plant = this.stage.plant;
 
     this.baskets = this.add.container(0, 0);
     this.pile = this.add.container(0, 0);
@@ -130,7 +132,6 @@ export default class Baskets extends Phaser.Scene {
 
     this.buildBaskets();
     this.buildPile(ids);
-    this.mascot?.point();
   }
 
   buildBaskets() {
@@ -237,8 +238,8 @@ export default class Baskets extends Phaser.Scene {
     }
 
     if (basket.letterId !== tile.letterId) {
-      sfx.nudge();
-      this.mascot?.wonder();
+      wrongAnswer();
+      this.plant?.wonder();
       // The basket shakes it off. Refused rather than punished: the letter goes
       // home and can be tried again, and nothing is counted against anybody.
       this.tweens.add({

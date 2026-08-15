@@ -9,12 +9,23 @@
  * and the fifth star is as good as it ever gets. A child who plays every day
  * for a week sees exactly what they saw on the first minute of the first day.
  *
- * This is the other thing — a total that only ever goes up, saved on the
- * device, shown as a ring that fills. Wrong answers cost nothing. Coming back
- * tomorrow starts where yesterday stopped. Every level is a small ceremony and
- * the ring immediately starts filling again, which is the loop that makes these
- * apps hard to put down and is worth being deliberate about rather than
- * accidental.
+ * This is the other thing — a running total saved on the device, shown as a
+ * plant that grows (src/lib/plant.js). Coming back tomorrow starts where
+ * yesterday stopped. Every level is a small ceremony and the plant immediately
+ * starts again from a new seed, which is the loop that makes these apps hard to
+ * put down and is worth being deliberate about rather than accidental.
+ *
+ * ## A wrong answer takes some of it back
+ *
+ * It did not, for a long time, and the reasoning was good: a three-year-old who
+ * watches a reward vanish learns that the safe move is to stop playing. What
+ * changed is what the total *looks* like. A number going down is a punishment;
+ * a plant that droops and gets a bit smaller is a plant that wants watering,
+ * which is an invitation to have another go rather than a telling-off.
+ *
+ * So a wrong answer costs `SETBACK` against the one a right answer earns, and
+ * it is allowed to cross back into the previous level. It is bounded at zero
+ * and nothing else in the app is gated on it — no round ends, nothing locks.
  *
  * ## Levels get longer, and that is the whole difficulty curve
  *
@@ -40,26 +51,16 @@ export function stepsForLevel(level) {
 }
 
 /**
- * The look of each level, and it escalates.
+ * What one wrong answer costs.
  *
- * The point of the ring is that it visibly becomes more than it was. Colour
- * alone is too quiet for that — a three-year-old will not notice that teal
- * became purple — so each tier also adds a star orbiting the ring, and the
- * later ones add a crown. Past the end of the list the colours cycle and the
- * crown stays, because a child who has got that far has got the message.
+ * Two, against the one a right answer earns. One would be invisible — the
+ * plant would come back to where it was on the next answer and nothing would
+ * have happened. Three takes a stage off the plant for a single slip, which
+ * over-punishes a child who tapped the wrong thing because their finger
+ * landed badly. Two is the number at which a run of guesses visibly loses
+ * ground and one mistake does not.
  */
-export const TIERS = [
-  { color: 0x3f9ee0, stars: 0, crown: false },
-  { color: 0x2fae74, stars: 1, crown: false },
-  { color: 0x9b5fc9, stars: 2, crown: false },
-  { color: 0xe98a1f, stars: 3, crown: false },
-  { color: 0xd94f8c, stars: 4, crown: true },
-  { color: 0xf2c230, stars: 5, crown: true },
-];
-
-export function tierFor(level) {
-  return TIERS[Math.min(level, TIERS.length - 1)];
-}
+export const SETBACK = 2;
 
 let total = 0;
 /** @type {Set<(state: object) => void>} */
@@ -123,11 +124,36 @@ export function state() {
  * @returns {object} the new state, with `levelledUp` and `gained` on it
  */
 export function award(amount = 1) {
+  return move(Math.max(0, Math.floor(amount)));
+}
+
+/**
+ * Takes some back, for a wrong answer.
+ *
+ * Floored at zero and at nothing else: it may drop a level, which takes a
+ * finished tree out of the row behind the plant. That is the strongest thing
+ * a mistake does and it is the whole reason the setback is visible at all.
+ *
+ * @param {number} [amount]
+ * @returns {object} the new state, with `levelledDown` on it
+ */
+export function setback(amount = SETBACK) {
+  return move(-Math.max(0, Math.floor(amount)));
+}
+
+/** The one place the total changes, so a move can never skip the listeners. */
+function move(delta) {
   const before = unpack(total);
-  total += Math.max(0, Math.floor(amount));
+  total = Math.max(0, total + delta);
   save();
-  const after = { ...unpack(total), gained: amount, levelledUp: false };
+  const after = {
+    ...unpack(total),
+    gained: delta,
+    levelledUp: false,
+    levelledDown: false,
+  };
   after.levelledUp = after.level > before.level;
+  after.levelledDown = after.level < before.level;
   for (const listener of listeners) listener(after);
   return after;
 }
@@ -141,7 +167,13 @@ export function award(amount = 1) {
 export function reset() {
   total = 0;
   save();
-  const after = { ...state(), gained: 0, levelledUp: false, reset: true };
+  const after = {
+    ...state(),
+    gained: 0,
+    levelledUp: false,
+    levelledDown: false,
+    reset: true,
+  };
   for (const listener of listeners) listener(after);
   return after;
 }
