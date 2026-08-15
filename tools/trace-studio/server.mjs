@@ -26,6 +26,7 @@ import { CONTENT_DIR, ROOT } from '../audio-keys.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const UI_DIR = path.join(ROOT, 'src', 'ui');
+const LIB_DIR = path.join(ROOT, 'src', 'lib');
 const STROKES_FILE = path.join(CONTENT_DIR, 'strokes.json');
 const PORT = Number(process.env.PORT) || 5175;
 
@@ -45,6 +46,11 @@ const STATIC = {
 const SHARED_UI = {
   'stroke-editor.js': 'text/javascript; charset=utf-8',
   'stroke-editor.css': 'text/css; charset=utf-8',
+};
+
+/** Shared with the app from src/lib rather than src/ui. */
+const SHARED_LIB = {
+  'skeletonise.js': 'text/javascript; charset=utf-8',
 };
 
 function send(res, status, body, type = 'text/plain; charset=utf-8') {
@@ -180,9 +186,10 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && route.startsWith('/lib/')) {
       const name = route.slice('/lib/'.length);
-      const type = SHARED_UI[name];
-      if (!type) return send(res, 404, 'not found');
-      return send(res, 200, fs.readFileSync(path.join(UI_DIR, name)), type);
+      const dir = SHARED_UI[name] ? UI_DIR : SHARED_LIB[name] ? LIB_DIR : null;
+      const type = SHARED_UI[name] ?? SHARED_LIB[name];
+      if (!dir) return send(res, 404, 'not found');
+      return send(res, 200, fs.readFileSync(path.join(dir, name)), type);
     }
 
     // The same baked outlines the game draws from, so a path corrected here

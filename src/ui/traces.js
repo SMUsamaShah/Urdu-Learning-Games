@@ -1,5 +1,6 @@
 import './stroke-editor.css';
 import { buildStrokeEditor } from './stroke-editor.js';
+import { SEED_DEFAULTS, skeletonise } from '../lib/skeletonise.js';
 import { glyphSheet, letterGlyph, letters } from '../lib/content.js';
 import { editableStrokes, noteDeviceStrokes, strokeSource, strokesMatchFont } from '../lib/strokes.js';
 import { clearLetter, deviceStrokes, exportShape, saveLetter } from '../lib/stroke-store.js';
@@ -94,6 +95,10 @@ export function buildTracesPage() {
     glyphs: glyphSheet(),
     letters: known,
     initial: editableStrokes(),
+    // The tracer that produced every path in the app, handed in so its knobs
+    // can be turned here rather than only from a command line.
+    skeletonise,
+    seedDefaults: SEED_DEFAULTS,
     onLetter: showWhere,
     async save(letterId, strokes) {
       await saveLetter(letterId, strokes);

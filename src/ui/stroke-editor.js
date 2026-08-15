@@ -85,6 +85,8 @@ export function buildStrokeEditor({
   revert,
   onLetter,
   startAt,
+  skeletonise,
+  seedDefaults,
 }) {
   const known = letters.filter((letter) => glyphs.letters[letter.id]?.isolated);
   /** letterId -> { strokes, corrected }. The saved state, as far as we know. */
@@ -125,6 +127,15 @@ export function buildStrokeEditor({
              the point. -->
         <div class="ste-stage"><svg class="ste-board" tabindex="0"></svg></div>
         <div class="ste-side">
+          <details class="ste-seed">
+            <summary>Trace it again</summary>
+            <p class="ste-seed-note">
+              Reads the pen path off the letter's own outline. Every path in the
+              app started here; these are the numbers it used.
+            </p>
+            <div class="ste-knobs"></div>
+            <button type="button" class="ste-btn" data-act="reseed">Trace again</button>
+          </details>
           <p class="ste-hint">
             Drag a point to move it · tap a stroke to work on it · tap its line
             to add a point · press and hold a point to remove it
@@ -155,7 +166,13 @@ export function buildStrokeEditor({
   const nav = root.querySelector('.ste-letters');
   const list = root.querySelector('.ste-strokes');
   const copyPick = root.querySelector('.ste-copy-pick');
+  const seedBox = root.querySelector('.ste-seed');
+  const knobBox = root.querySelector('.ste-knobs');
   if (!revert) root.querySelector('[data-act="revert"]').hidden = true;
+  // Only where the caller handed the tracer in. The app's settings page does;
+  // a caller that has not loaded it gets an editor without the panel rather
+  // than a button that throws.
+  if (!skeletonise) seedBox.hidden = true;
 
   const current = () => known[index];
   const glyph = () => glyphs.letters[current().id].isolated;
@@ -438,6 +455,93 @@ export function buildStrokeEditor({
     say(`Copied from ${from?.name ?? letterId}`);
   }
 
+  /**
+   * The four numbers the tracer runs on, as sliders.
+   *
+   * This is the part worth having. The paths in the app were all produced by
+   * src/lib/skeletonise.js and it got ج right first time — but it only ever ran
+   * from a command line, so a letter it got wrong meant dragging thirty points
+   * by hand instead of turning the knob that was wrong by a little.
+   *
+   * Ranges are wide enough to be worth dragging and stop short of the values
+   * that produce nonsense: under about 120px of raster a Nastaliq hairline is
+   * too thin to have a middle, and over 0.6 the pruning eats real strokes.
+   */
+  const KNOBS = [
+    { key: 'rasterHeight', label: 'Detail', min: 120, max: 640, step: 10 },
+    { key: 'prune', label: 'Trim spurs', min: 0, max: 0.6, step: 0.01 },
+    { key: 'simplify', label: 'Smoothing', min: 0.5, max: 6, step: 0.1 },
+    { key: 'dabSpan', label: 'Dot size', min: 0.1, max: 0.6, step: 0.01 },
+  ];
+
+  /** The live values, starting from what the shipped paths were seeded with. */
+  const seed = {
+    rasterHeight: seedDefaults?.rasterHeight ?? 320,
+    prune: seedDefaults?.prune ?? 0.22,
+    simplify: seedDefaults?.simplify ?? 2.2,
+    dabSpan: seedDefaults?.dab?.maxSpan ?? 0.34,
+  };
+
+  function buildKnobs() {
+    knobBox.replaceChildren(
+      ...KNOBS.map((knob) => {
+        const row = el(`
+          <label class="ste-knob">
+            <span class="ste-knob-name">${knob.label}</span>
+            <input type="range" min="${knob.min}" max="${knob.max}" step="${knob.step}"
+              value="${seed[knob.key]}" data-knob="${knob.key}" />
+            <output class="ste-knob-value">${seed[knob.key]}</output>
+          </label>`);
+        const slider = row.querySelector('input');
+        const shown = row.querySelector('output');
+        // Live while dragging. The whole point is watching the path change: a
+        // number you have to press a button to test is a number you tune by
+        // guessing.
+        slider.addEventListener('input', () => {
+          seed[knob.key] = Number(slider.value);
+          shown.textContent = slider.value;
+          reseed();
+        });
+        return row;
+      })
+    );
+  }
+
+  /**
+   * Re-reads the pen path off the letter's outline.
+   *
+   * One undo step for a whole session of dragging, not one per slider frame:
+   * the snapshot is taken on the first re-trace and the rest overwrite what is
+   * on screen. Otherwise a single drag of a slider would fill the history and
+   * push out the edit somebody actually wants back.
+   */
+  let tracing = false;
+  function reseed() {
+    if (!skeletonise) return;
+    if (!tracing) {
+      remember();
+      tracing = true;
+    }
+    try {
+      strokes = skeletonise(glyph(), {
+        rasterHeight: seed.rasterHeight,
+        prune: seed.prune,
+        simplify: seed.simplify,
+        dab: { ...(seedDefaults?.dab ?? { aspect: 2.2 }), maxSpan: seed.dabSpan },
+      });
+    } catch (error) {
+      return say(`Could not trace it: ${error.message ?? error}`, false);
+    }
+    selected = 0;
+    mode = 'edit';
+    change();
+    // Said on every drag, not only on the button: the count is how you tell a
+    // knob has gone too far — ژ turning into three dots and no letter is a
+    // number changing before it is a shape changing.
+    const dabs = strokes.filter((stroke) => stroke.kind === 'dab').length;
+    say(`Traced: ${strokes.length - dabs} stroke(s), ${dabs} dot(s)`);
+  }
+
   function markNav() {
     for (const button of nav.children) {
       const i = Number(button.dataset.index);
@@ -453,6 +557,7 @@ export function buildStrokeEditor({
     selected = 0;
     mode = 'edit';
     dirty = false;
+    tracing = false;
     history.length = 0;
     // The Urdu name, not the roman id twice over: this is a screen for somebody
     // who reads Urdu, and the name is what tells them which letter this is.
@@ -839,6 +944,7 @@ export function buildStrokeEditor({
     if (act === 'prev') return show(index - 1);
     if (act === 'save') return void commit();
     if (act === 'play') return play();
+    if (act === 'reseed') return void reseed();
     if (act === 'undo') return undoEdit();
     if (act === 'revert') return void undo();
     if (act === 'add') {
@@ -888,6 +994,7 @@ export function buildStrokeEditor({
       return button;
     })
   );
+  buildKnobs();
   show(index);
 
   return {

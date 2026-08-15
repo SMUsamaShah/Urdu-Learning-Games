@@ -13,6 +13,7 @@
  */
 
 import { buildStrokeEditor } from '/lib/stroke-editor.js';
+import { SEED_DEFAULTS, skeletonise } from '/lib/skeletonise.js';
 
 const holder = document.getElementById('editor');
 const count = document.getElementById('count');
@@ -33,6 +34,8 @@ const editor = buildStrokeEditor({
   glyphs,
   letters: letterFile.letters,
   initial: manifest.letters,
+  skeletonise,
+  seedDefaults: SEED_DEFAULTS,
   async save(letterId, strokes) {
     const response = await fetch(`/api/strokes/${encodeURIComponent(letterId)}`, {
       method: 'POST',

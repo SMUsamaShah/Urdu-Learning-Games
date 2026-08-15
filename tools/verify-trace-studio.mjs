@@ -74,6 +74,11 @@ const { page, finish } = await openApp({
   context: { viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 },
 });
 
+// Leaving a letter with unsaved edits asks first, and Playwright dismisses a
+// dialog it is not told about — which reads as the letter picker being broken.
+// Accepting is what a person does when they have finished experimenting.
+page.on('dialog', (dialog) => dialog.accept());
+
 step('navigating');
 await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('.ste-board', { timeout: 15000 });
@@ -177,6 +182,65 @@ const pruned = JSON.parse(fs.readFileSync(STROKES_FILE, 'utf8')).letters[LETTER]
 console.log(`points after the long press: ${pruned.strokes[0].points.length}`);
 if (pruned.strokes[0].points.length !== before.strokes[0].points.length - 1) {
   fail('the long press did not remove a point');
+}
+
+// --- tracing a letter from its own outline ----------------------------------
+//
+// The thing that produced every path in the app, now reachable from the editor
+// instead of only from a command line. Its knobs are what make it worth
+// exposing: a letter it gets wrong is usually one number away from right.
+
+step('tracing a letter from its outline');
+await page.$$eval('.ste-letters button', (els) => els.find((el) => el.textContent === 'khe')?.click());
+await page.waitForFunction(
+  () => document.querySelector('.ste-title')?.textContent.includes('khe'),
+  null,
+  { timeout: 5000 }
+);
+await page.click('.ste-seed > summary');
+const knobs = await page.$$eval('.ste-knob input', (els) =>
+  els.map((el) => `${el.dataset.knob}=${el.value}`)
+);
+step(`  knobs: ${knobs.join(' ')}`);
+if (knobs.length !== 4) fail(`${knobs.length} knobs, expected 4`);
+if (!knobs.includes('rasterHeight=320')) {
+  fail(`the knobs do not start at what the shipped paths were seeded with: ${knobs.join()}`);
+}
+
+const shapeNow = () => page.$$eval('.ste-strokes li .ste-grow', (els) => els.map((e) => e.textContent));
+const seeded = await shapeNow();
+await page.click('[data-act="reseed"]');
+await page.waitForTimeout(400);
+const traced = await shapeNow();
+step(`  ${seeded.length} stroke(s) -> ${traced.length}`);
+// The letter's committed path came from this same code at these same numbers,
+// so tracing it again has to reproduce it. If it does not, the extraction from
+// the seeder changed the geometry.
+if (traced.join() !== seeded.join()) {
+  fail(`tracing at the seeded numbers gave ${traced.join(' | ')}, not ${seeded.join(' | ')}`);
+} else {
+  step('  at the seeded numbers it reproduces the committed path exactly');
+}
+
+// And the knobs have to do something, or they are decoration.
+step('  turning the smoothing up');
+await page.$eval('.ste-knob input[data-knob="simplify"]', (el) => {
+  el.value = '6';
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await page.waitForTimeout(400);
+const smoothed = await shapeNow();
+step(`  ${traced.join(' | ')} -> ${smoothed.join(' | ')}`);
+if (smoothed.join() === traced.join()) fail('the smoothing knob changed nothing');
+
+// One undo for the whole session of dragging, not one per slider frame.
+await page.click('[data-act="undo"]');
+await page.waitForTimeout(250);
+const undone = await shapeNow();
+if (undone.join() !== seeded.join()) {
+  fail(`undo after tracing gave ${undone.join(' | ')}, not the ${seeded.join(' | ')} before`);
+} else {
+  step('  and one undo puts back what was there before any of it');
 }
 
 // --- copying another letter's strokes ---------------------------------------

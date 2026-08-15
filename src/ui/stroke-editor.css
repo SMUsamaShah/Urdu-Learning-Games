@@ -510,3 +510,67 @@
 .ste-copy-pick:disabled {
   opacity: 0.5;
 }
+
+/* ------------------------------------------------------------ trace again */
+
+/*
+ * The knobs the tracer runs on.
+ *
+ * Every path in the app came out of src/lib/skeletonise.js, and it only ever
+ * ran from a command line — so a letter it got wrong meant dragging thirty
+ * points by hand rather than turning the one knob that was wrong. Folded away
+ * by default because most letters do not need it, and one tap from open.
+ */
+.ste-seed {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.ste-seed > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ink);
+  /* A 36px target when folded, like every other control here. */
+  padding: 4px 0;
+}
+
+.ste-seed-note {
+  margin: 6px 0 10px;
+  color: var(--dim);
+  font-size: 12.5px;
+}
+
+.ste-knobs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ste-knob {
+  display: grid;
+  /* Name, slider, value — the value in a fixed column so the slider does not
+     jump about as the number gets wider. */
+  grid-template-columns: 68px 1fr 42px;
+  align-items: center;
+  gap: 8px;
+  color: var(--dim);
+  font-size: 12.5px;
+}
+
+.ste-knob input {
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.ste-knob-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
