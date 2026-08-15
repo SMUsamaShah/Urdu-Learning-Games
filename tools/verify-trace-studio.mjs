@@ -243,53 +243,6 @@ if (undone.join() !== seeded.join()) {
   step('  and one undo puts back what was there before any of it');
 }
 
-// --- copying another letter's strokes ---------------------------------------
-//
-// ج چ ح خ are one shape with a different number of dots, and so are eight other
-// families. Drawing the skeleton twice by hand gives two skeletons that differ
-// slightly, which is worse than either.
-
-step('copying a sibling’s strokes');
-await page.$$eval('.ste-letters button', (els) => els.find((el) => el.textContent === 'che')?.click());
-await page.waitForFunction(
-  () => document.querySelector('.ste-title')?.textContent.includes('che'),
-  null,
-  { timeout: 5000 }
-);
-const beforeCopy = await page.$$eval('.ste-strokes li', (els) => els.length);
-
-// The family goes first in the list, so this is what somebody would reach for.
-const offered = await page.$$eval('.ste-copy-pick optgroup', (groups) =>
-  groups.map((g) => `${g.label}: ${[...g.children].map((o) => o.value).join(' ')}`)
-);
-step(`  offered — ${offered.join(' | ')}`);
-if (!offered[0]?.startsWith('Same family')) fail('the shape family is not offered first');
-if (!offered[0].includes('jim')) fail(`che was not offered jim to copy from: ${offered[0]}`);
-
-await page.selectOption('.ste-copy-pick', 'jim');
-await page.waitForTimeout(300);
-const afterCopy = await page.$$eval('.ste-strokes li', (els) => els.length);
-const jim = JSON.parse(fs.readFileSync(STROKES_FILE, 'utf8')).letters.jim.strokes;
-step(`  ${beforeCopy} stroke(s) -> ${afterCopy}, jim has ${jim.length}`);
-if (afterCopy !== jim.length) fail(`copying from jim left ${afterCopy} strokes, not ${jim.length}`);
-
-const landed = await page.$eval('.ste-board polyline', (el) =>
-  el.getAttribute('points').split(' ')[0]
-);
-if (landed !== jim[0].points[0].join(',')) {
-  fail(`the copied path starts at ${landed}, jim's starts at ${jim[0].points[0]}`);
-} else {
-  step('  the points arrived verbatim, so the path sits where the shared shape is');
-}
-
-// It is an edit like any other, which matters: copying the wrong letter is the
-// easiest mistake this control makes possible.
-await page.click('[data-act="undo"]');
-await page.waitForTimeout(200);
-const afterUndo = await page.$$eval('.ste-strokes li', (els) => els.length);
-if (afterUndo !== beforeCopy) fail(`undo left ${afterUndo} strokes, not the ${beforeCopy} before`);
-else step('  and undo puts back what was there');
-
 // --- importing a tablet export ---------------------------------------------
 //
 // The far end of the loop: fix a letter on the sofa, export, send it over,

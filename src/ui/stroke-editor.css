@@ -472,45 +472,6 @@
   }
 }
 
-/* -------------------------------------------------------------- copy from */
-
-/*
- * Taking another letter's strokes wholesale.
- *
- * ج چ ح خ are one shape with a different number of dots on it, and so are
- * eight other families. Drawing the skeleton twice by hand gives two slightly
- * different skeletons, which is worse than either — so this sits directly above
- * the stroke list, where somebody looking at an empty letter will see it.
- */
-.ste-copy {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--dim);
-  /* Left of the buttons, and first to keep its width when the row wraps: on a
-     letter with nothing drawn yet this is the control that matters. */
-  flex: 0 1 260px;
-  min-width: 190px;
-}
-
-.ste-copy-pick {
-  flex: 1;
-  min-width: 0;
-  font: inherit;
-  font-size: 13px;
-  /* A fingertip target, like everything else here. */
-  padding: 7px 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  color: var(--ink);
-}
-
-.ste-copy-pick:disabled {
-  opacity: 0.5;
-}
-
 /* ------------------------------------------------------------ trace again */
 
 /*
