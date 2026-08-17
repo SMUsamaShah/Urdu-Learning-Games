@@ -265,6 +265,16 @@
   border: 1px solid rgba(0, 0, 0, 0.10);
   border-radius: 10px;
   display: block;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.rec-analysis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 .rec-analysis-note {

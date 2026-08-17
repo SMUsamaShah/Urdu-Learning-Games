@@ -323,7 +323,7 @@ function trimAndLevel(ctx, buffer, bounds) {
  * Real time, because that is the only route to the browser's own encoder. It is
  * one clip long, which is why this is worth doing at all.
  */
-function encode(ctx, buffer, mime) {
+export function encodeAudioBuffer(ctx, buffer, mime) {
   return new Promise((resolve) => {
     let recorder;
     try {
@@ -379,7 +379,7 @@ export async function polishTake(ctx, blob, mime) {
     const trimmed = trimAndLevel(ctx, decoded, bounds);
     if (!trimmed) return null;
 
-    const encoded = await encode(ctx, trimmed.buffer, mime);
+    const encoded = await encodeAudioBuffer(ctx, trimmed.buffer, mime);
     if (!encoded?.size) return null;
 
     return {
