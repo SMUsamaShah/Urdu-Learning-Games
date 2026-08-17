@@ -35,7 +35,7 @@ import {
   createRecorder,
   isRecordingSupported,
 } from '../lib/recorder.js';
-import { encodeAudioBuffer, polishTake } from '../lib/take-polish.js';
+import { polishTake } from '../lib/take-polish.js';
 import { buildArchive, readArchive } from '../lib/clip-archive.js';
 import * as store from '../lib/clip-store.js';
 import {
@@ -88,6 +88,48 @@ const selectionLength = (selection) =>
 
 function emptyAnalysis() {
   return { key: null, buffer: null, blob: null, mime: '', ext: '', selection: null, playhead: null };
+}
+
+function writeAscii(view, offset, text) {
+  for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
+}
+
+function encodeWavBuffer(buffer) {
+  // Waveform edits need sample-accurate boundaries. MediaRecorder can miss a
+  // little audio while its encoder spins up, which is most visible when keeping
+  // the start of a clip and deleting the right-hand tail. WAV is larger, but
+  // deterministic, instant, and still small enough for these one-word takes.
+  const channels = buffer.numberOfChannels;
+  const bytesPerSample = 2;
+  const blockAlign = channels * bytesPerSample;
+  const dataBytes = buffer.length * blockAlign;
+  const bytes = new ArrayBuffer(44 + dataBytes);
+  const view = new DataView(bytes);
+
+  writeAscii(view, 0, 'RIFF');
+  view.setUint32(4, 36 + dataBytes, true);
+  writeAscii(view, 8, 'WAVE');
+  writeAscii(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, buffer.sampleRate, true);
+  view.setUint32(28, buffer.sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bytesPerSample * 8, true);
+  writeAscii(view, 36, 'data');
+  view.setUint32(40, dataBytes, true);
+
+  const channelData = Array.from({ length: channels }, (_, c) => buffer.getChannelData(c));
+  let offset = 44;
+  for (let i = 0; i < buffer.length; i += 1) {
+    for (let c = 0; c < channels; c += 1) {
+      const sample = Math.max(-1, Math.min(1, channelData[c][i] || 0));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      offset += bytesPerSample;
+    }
+  }
+  return new Blob([bytes], { type: 'audio/wav' });
 }
 
 /**
@@ -479,13 +521,13 @@ export function buildRecorderPage() {
         return;
       }
       if (note) note.textContent = 'Saving edit…';
-      const blob = await encodeAudioBuffer(ctx, edited, analysisState.mime);
+      const blob = encodeWavBuffer(edited);
       if (!blob?.size) throw new Error('browser could not encode the edited audio');
       await store.putClip({
         key: clip.key,
         slug: clip.slug,
-        ext: analysisState.ext || 'webm',
-        mime: blob.type || analysisState.mime,
+        ext: 'wav',
+        mime: blob.type,
         blob,
         profile: recorder?.profile(),
       });
