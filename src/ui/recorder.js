@@ -74,6 +74,13 @@ const formatBytes = (n) =>
 const formatDate = (ms) =>
   ms ? new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null;
 
+const formatDuration = (seconds) => {
+  if (!Number.isFinite(seconds)) return 'unknown length';
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds - minutes * 60;
+  return minutes > 0 ? `${minutes}:${String(Math.round(rest)).padStart(2, '0')}` : `${rest.toFixed(1)}s`;
+};
+
 /**
  * Builds the recording page.
  *
@@ -90,6 +97,7 @@ export function buildRecorderPage() {
   let device = new Map();
   let index = 0;
   let busy = false;
+  let analysisRequest = 0;
 
   // Remembered across visits: choosing microphone settings and having them
   // reset every time you come back would make comparing two takes impossible.
@@ -156,6 +164,7 @@ export function buildRecorderPage() {
         parts.push(`<div class="rec-group">${escapeHtml(group)}</div>`);
       }
       const state = statusFor(clip);
+      const recording = Boolean(recorder?.isRecording());
       const badge =
         state === 'device'
           ? '<span class="rec-badge device">yours</span>'
@@ -163,7 +172,7 @@ export function buildRecorderPage() {
             ? '<span class="rec-badge bundled">built in</span>'
             : '<span class="rec-badge">none</span>';
       parts.push(`
-        <div class="rec-row" role="option" data-i="${i}" aria-selected="${i === index}">
+        <div class="rec-row" role="option" data-i="${i}" aria-selected="${i === index}" aria-disabled="${recording}">
           <span class="rec-row-glyph">${glyphSvg(glyphForClip(clip.glyph))}</span>
           <span class="rec-row-label">${escapeHtml(clip.roman)}
             <span class="rec-row-sub">${escapeHtml(clip.group.replace(/s$/, ''))}</span>
@@ -171,13 +180,14 @@ export function buildRecorderPage() {
           ${badge}
           <span class="rec-row-actions">
             <button type="button" class="rec-btn icon" data-play="${i}"
-              ${state === 'missing' ? 'disabled' : ''}>Play</button>
+              ${state === 'missing' || recording ? 'disabled' : ''}>Play</button>
             <button type="button" class="rec-btn icon" data-del="${i}"
-              ${state === 'device' ? '' : 'disabled'}>Delete</button>
+              ${state === 'device' && !recording ? '' : 'disabled'}>Delete</button>
           </span>
         </div>`);
     }
     listEl.innerHTML = parts.join('');
+    listEl.classList.toggle('recording', Boolean(recorder?.isRecording()));
     listEl.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
   }
 
@@ -196,9 +206,9 @@ export function buildRecorderPage() {
           ${recording ? 'Stop' : mine ? 'Record again' : 'Record'}
         </button>
         <button type="button" class="rec-btn" data-act="play"
-          ${statusFor(clip) === 'missing' ? 'disabled' : ''}>Play</button>
-        <button type="button" class="rec-btn" data-act="prev">←</button>
-        <button type="button" class="rec-btn" data-act="next">→</button>
+          ${statusFor(clip) === 'missing' || recording ? 'disabled' : ''}>Play</button>
+        <button type="button" class="rec-btn" data-act="prev" ${recording ? 'disabled' : ''}>←</button>
+        <button type="button" class="rec-btn" data-act="next" ${recording ? 'disabled' : ''}>→</button>
       </div>
       ${
         recorder
@@ -232,11 +242,70 @@ export function buildRecorderPage() {
       ${lastNote ? `<p class="rec-hint">${escapeHtml(lastNote)}</p>` : ''}
       ${
         mine
-          ? `<p class="rec-hint">Yours: ${formatBytes(mine.bytes)}${
-              formatDate(mine.recordedAt) ? `, ${formatDate(mine.recordedAt)}` : ''
-            }</p>`
+          ? `<div class="rec-analysis" aria-live="polite">
+              <div class="rec-analysis-head">
+                <strong>Your recording</strong>
+                <span>${formatBytes(mine.bytes)}${
+                  formatDate(mine.recordedAt) ? ` · ${formatDate(mine.recordedAt)}` : ''
+                }</span>
+              </div>
+              <canvas class="rec-wave" width="640" height="180"></canvas>
+              <p class="rec-hint rec-analysis-note">Reading audio…</p>
+            </div>`
           : ''
       }`;
+    void renderAnalysis(clip);
+  }
+
+  async function renderAnalysis(clip) {
+    const request = ++analysisRequest;
+    const panel = stageEl.querySelector('.rec-analysis');
+    if (!panel || !device.has(clip.key)) return;
+    const note = panel.querySelector('.rec-analysis-note');
+    const canvas = panel.querySelector('.rec-wave');
+    try {
+      const record = await store.getClip(clip.key);
+      if (request !== analysisRequest || !record?.blob || !canvas) return;
+      const buffer = await getAudioContext().decodeAudioData(await record.blob.arrayBuffer());
+      if (request !== analysisRequest) return;
+      drawWaveform(canvas, buffer);
+      note.textContent = `Length: ${formatDuration(buffer.duration)}`;
+    } catch (error) {
+      if (request === analysisRequest && note) {
+        note.textContent = `Could not read waveform: ${error.message}`;
+      }
+    }
+  }
+
+  function drawWaveform(canvas, buffer) {
+    const ctx = canvas.getContext('2d');
+    const channel = buffer.getChannelData(0);
+    const { width, height } = canvas;
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#fff8ee';
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = 'rgba(43, 48, 71, 0.16)';
+    ctx.beginPath();
+    ctx.moveTo(0, height / 2);
+    ctx.lineTo(width, height / 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#e98a1f';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = 0; x < width; x += 1) {
+      const start = Math.floor((x / width) * channel.length);
+      const end = Math.max(start + 1, Math.floor(((x + 1) / width) * channel.length));
+      let min = 1;
+      let max = -1;
+      for (let i = start; i < end; i += 1) {
+        const sample = channel[i] || 0;
+        if (sample < min) min = sample;
+        if (sample > max) max = sample;
+      }
+      ctx.moveTo(x, ((1 - max) * height) / 2);
+      ctx.lineTo(x, ((1 - min) * height) / 2);
+    }
+    ctx.stroke();
   }
 
   async function renderStatus() {
@@ -284,6 +353,7 @@ export function buildRecorderPage() {
   // -------------------------------------------------------------- actions
 
   function select(i) {
+    if (recorder?.isRecording()) return;
     lastNote = '';
     index = Math.max(0, Math.min(clips.length - 1, i));
     for (const row of listEl.querySelectorAll('.rec-row')) {
@@ -297,6 +367,7 @@ export function buildRecorderPage() {
     if (!recorder || busy) return;
     if (recorder.isRecording()) {
       const take = await recorder.stop();
+      renderList();
       renderStage();
       if (!take || take.blob.size === 0) return;
 
@@ -333,8 +404,6 @@ export function buildRecorderPage() {
       noteDeviceClip(clip.key, true);
       await refresh();
       await play(clip.key);
-      // Recording is a long sitting; step on so the next one is ready.
-      if (index < clips.length - 1) select(index + 1);
     } else {
       stopAll();
       try {
@@ -344,6 +413,7 @@ export function buildRecorderPage() {
           'Microphone unavailable: ' + error.message;
         return;
       }
+      renderList();
       renderStage();
     }
   }
@@ -434,11 +504,13 @@ export function buildRecorderPage() {
 
     if (target.dataset.play !== undefined) {
       event.stopPropagation();
+      if (recorder?.isRecording()) return;
       select(Number(target.dataset.play));
       return void play(clips[index].key);
     }
     if (target.dataset.del !== undefined) {
       event.stopPropagation();
+      if (recorder?.isRecording()) return;
       return void remove(Number(target.dataset.del));
     }
 
@@ -446,6 +518,7 @@ export function buildRecorderPage() {
       case 'record':
         return void toggleRecord();
       case 'play':
+        if (recorder?.isRecording()) return;
         return void play(clips[index].key);
       case 'prev':
         return select(index - 1);
@@ -485,8 +558,8 @@ export function buildRecorderPage() {
     if (event.target.tagName === 'INPUT') return;
     const keys = {
       ' ': () => toggleRecord(),
-      p: () => play(clips[index].key),
-      P: () => play(clips[index].key),
+      p: () => { if (!recorder?.isRecording()) play(clips[index].key); },
+      P: () => { if (!recorder?.isRecording()) play(clips[index].key); },
       ArrowDown: () => select(index + 1),
       ArrowUp: () => select(index - 1),
       ArrowRight: () => select(index + 1),
