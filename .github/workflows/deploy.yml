@@ -12,7 +12,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, master, claude/urdu-learning-web-app-hq1yxc, codex/improve-audio-quality-for-recordings]
+    branches: [main, master, claude/urdu-learning-web-app-hq1yxc, codex/improve-audio-recording-studio-features]
   workflow_dispatch:
 
 permissions:
