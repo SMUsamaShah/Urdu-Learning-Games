@@ -72,7 +72,13 @@ export default defineConfig({
         // subpath rather than the domain root.
         start_url: '.',
         scope: '.',
-        display: 'standalone',
+        // Installed PWAs should launch without browser chrome when supported.
+        // Browsers that do not accept fullscreen fall back through
+        // display_override, and a website opened from a URL still needs the
+        // in-app fullscreen button because fullscreen-on-load is not allowed.
+        display: 'fullscreen',
+        display_override: ['fullscreen', 'standalone'],
+        id: '.',
         // Deliberately not 'landscape'. A manifest lock is absolute — an
         // installed app can never turn, including on the grown-ups screens,
         // where the tracing editor wants a tall window and a finger. The app
