@@ -31,7 +31,9 @@ describe('pwa', { skip: built ? false : 'no dist/ — run `npm run build`' }, ()
     const manifest = JSON.parse(
       fs.readFileSync(path.join(DIST, 'manifest.webmanifest'), 'utf8')
     );
-    assert.equal(manifest.display, 'standalone');
+    assert.equal(manifest.display, 'fullscreen');
+    assert.deepEqual(manifest.display_override, ['fullscreen', 'standalone']);
+    assert.equal(manifest.id, '.');
     assert.equal(manifest.lang, 'ur');
     assert.equal(manifest.dir, 'rtl');
 

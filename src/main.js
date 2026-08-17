@@ -33,6 +33,7 @@ import * as music from './lib/music.js';
 import * as flourish from './lib/flourish.js';
 import * as progress from './lib/progress.js';
 import * as strokes from './lib/strokes.js';
+import * as fullscreen from './lib/fullscreen.js';
 import * as orientation from './lib/orientation.js';
 import * as backHistory from './lib/history.js';
 import * as volumeControl from './lib/volume.js';
@@ -129,6 +130,7 @@ window.__music = music;
 // afresh and see the same thing — see the note above about the dev server's
 // cache-busting query string.
 window.__strokes = strokes;
+window.__fullscreen = fullscreen;
 window.__orientation = orientation;
 // The master gain and the effects, so a check can measure what actually reaches
 // the speakers rather than trusting that it was wired up.

@@ -4,6 +4,7 @@ import { addGlyph } from '../lib/glyph.js';
 import { canInstall, onInstallAvailability, promptInstall } from '../lib/install.js';
 import { addMascot } from '../lib/mascot.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
+import { canFullscreen, isFullscreen, onFullscreenChange, toggleFullscreen } from '../lib/fullscreen.js';
 import { lockLandscape, releaseOrientation } from '../lib/orientation.js';
 import { dropScreen, pushScreen, replaceScreen } from '../lib/history.js';
 import { addScenery } from '../lib/scenery.js';
@@ -148,6 +149,7 @@ export default class Home extends Phaser.Scene {
     this.buildInstallHint();
     this.buildSettingsButton();
     this.buildMusicToggle();
+    this.buildFullscreenToggle();
 
     // The browser only lets audio play after the page has been touched, so the
     // tune starts at whatever the child taps first. Harmless if it is already
@@ -230,6 +232,53 @@ export default class Home extends Phaser.Scene {
     button.add(icon);
     // Held so the verification run can press it without hunting by pixel.
     this.musicButton = button;
+  }
+
+  /**
+   * Fullscreen switch for browsers that support it.
+   *
+   * A site opened from a URL cannot force fullscreen on load: the browser only
+   * allows this after a real tap. The installed PWA asks for fullscreen through
+   * its manifest, and this button covers the website case and lets a parent get
+   * back to normal browser chrome.
+   */
+  buildFullscreenToggle() {
+    if (!canFullscreen()) return;
+
+    const button = makeButton(this, {
+      x: DESIGN.width - 74,
+      y: 142,
+      width: 84,
+      height: 68,
+      color: COLORS.panel,
+      rim: false,
+      onTap: async () => {
+        await toggleFullscreen();
+        paint();
+        squash(this, button);
+        sfx.nudge();
+      },
+    });
+
+    const icon = this.add
+      .text(0, -2, '', {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '34px',
+        color: COLORS.accentCss,
+      })
+      .setOrigin(0.5);
+    button.add(icon);
+
+    const paint = () => {
+      icon.setText(isFullscreen() ? '\u2922' : '\u26f6');
+      icon.setColor(isFullscreen() ? COLORS.inkDim : COLORS.accentCss);
+    };
+    paint();
+
+    this.unsubscribeFullscreen?.();
+    this.unsubscribeFullscreen = onFullscreenChange(paint);
+    this.events.once('shutdown', () => this.unsubscribeFullscreen?.());
+    this.fullscreenButton = button;
   }
 
   /**
