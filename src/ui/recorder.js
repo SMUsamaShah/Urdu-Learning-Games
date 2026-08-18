@@ -74,6 +74,64 @@ const formatBytes = (n) =>
 const formatDate = (ms) =>
   ms ? new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null;
 
+const formatDuration = (seconds) => {
+  if (!Number.isFinite(seconds)) return 'unknown length';
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds - minutes * 60;
+  return minutes > 0
+    ? `${minutes}:${String(Math.round(rest)).padStart(2, '0')}`
+    : `${rest.toFixed(1)}s`;
+};
+
+const selectionLength = (selection) =>
+  selection ? Math.max(0, selection.end - selection.start) : 0;
+
+function emptyAnalysis() {
+  return { key: null, buffer: null, blob: null, mime: '', ext: '', selection: null, playhead: null };
+}
+
+function writeAscii(view, offset, text) {
+  for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
+}
+
+function encodeWavBuffer(buffer) {
+  // Waveform edits need sample-accurate boundaries. MediaRecorder can miss a
+  // little audio while its encoder spins up, which is most visible when keeping
+  // the start of a clip and deleting the right-hand tail. WAV is larger, but
+  // deterministic, instant, and still small enough for these one-word takes.
+  const channels = buffer.numberOfChannels;
+  const bytesPerSample = 2;
+  const blockAlign = channels * bytesPerSample;
+  const dataBytes = buffer.length * blockAlign;
+  const bytes = new ArrayBuffer(44 + dataBytes);
+  const view = new DataView(bytes);
+
+  writeAscii(view, 0, 'RIFF');
+  view.setUint32(4, 36 + dataBytes, true);
+  writeAscii(view, 8, 'WAVE');
+  writeAscii(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, buffer.sampleRate, true);
+  view.setUint32(28, buffer.sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bytesPerSample * 8, true);
+  writeAscii(view, 36, 'data');
+  view.setUint32(40, dataBytes, true);
+
+  const channelData = Array.from({ length: channels }, (_, c) => buffer.getChannelData(c));
+  let offset = 44;
+  for (let i = 0; i < buffer.length; i += 1) {
+    for (let c = 0; c < channels; c += 1) {
+      const sample = Math.max(-1, Math.min(1, channelData[c][i] || 0));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      offset += bytesPerSample;
+    }
+  }
+  return new Blob([bytes], { type: 'audio/wav' });
+}
+
 /**
  * Builds the recording page.
  *
@@ -90,6 +148,8 @@ export function buildRecorderPage() {
   let device = new Map();
   let index = 0;
   let busy = false;
+  let analysisRequest = 0;
+  let analysisState = emptyAnalysis();
 
   // Remembered across visits: choosing microphone settings and having them
   // reset every time you come back would make comparing two takes impossible.
@@ -156,6 +216,7 @@ export function buildRecorderPage() {
         parts.push(`<div class="rec-group">${escapeHtml(group)}</div>`);
       }
       const state = statusFor(clip);
+      const recording = Boolean(recorder?.isRecording());
       const badge =
         state === 'device'
           ? '<span class="rec-badge device">yours</span>'
@@ -163,7 +224,7 @@ export function buildRecorderPage() {
             ? '<span class="rec-badge bundled">built in</span>'
             : '<span class="rec-badge">none</span>';
       parts.push(`
-        <div class="rec-row" role="option" data-i="${i}" aria-selected="${i === index}">
+        <div class="rec-row" role="option" data-i="${i}" aria-selected="${i === index}" aria-disabled="${recording}">
           <span class="rec-row-glyph">${glyphSvg(glyphForClip(clip.glyph))}</span>
           <span class="rec-row-label">${escapeHtml(clip.roman)}
             <span class="rec-row-sub">${escapeHtml(clip.group.replace(/s$/, ''))}</span>
@@ -171,13 +232,14 @@ export function buildRecorderPage() {
           ${badge}
           <span class="rec-row-actions">
             <button type="button" class="rec-btn icon" data-play="${i}"
-              ${state === 'missing' ? 'disabled' : ''}>Play</button>
+              ${state === 'missing' || recording ? 'disabled' : ''}>Play</button>
             <button type="button" class="rec-btn icon" data-del="${i}"
-              ${state === 'device' ? '' : 'disabled'}>Delete</button>
+              ${state === 'device' && !recording ? '' : 'disabled'}>Delete</button>
           </span>
         </div>`);
     }
     listEl.innerHTML = parts.join('');
+    listEl.classList.toggle('recording', Boolean(recorder?.isRecording()));
     listEl.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
   }
 
@@ -196,9 +258,9 @@ export function buildRecorderPage() {
           ${recording ? 'Stop' : mine ? 'Record again' : 'Record'}
         </button>
         <button type="button" class="rec-btn" data-act="play"
-          ${statusFor(clip) === 'missing' ? 'disabled' : ''}>Play</button>
-        <button type="button" class="rec-btn" data-act="prev">←</button>
-        <button type="button" class="rec-btn" data-act="next">→</button>
+          ${statusFor(clip) === 'missing' || recording ? 'disabled' : ''}>Play</button>
+        <button type="button" class="rec-btn" data-act="prev" ${recording ? 'disabled' : ''}>←</button>
+        <button type="button" class="rec-btn" data-act="next" ${recording ? 'disabled' : ''}>→</button>
       </div>
       ${
         recorder
@@ -232,11 +294,252 @@ export function buildRecorderPage() {
       ${lastNote ? `<p class="rec-hint">${escapeHtml(lastNote)}</p>` : ''}
       ${
         mine
-          ? `<p class="rec-hint">Yours: ${formatBytes(mine.bytes)}${
-              formatDate(mine.recordedAt) ? `, ${formatDate(mine.recordedAt)}` : ''
-            }</p>`
+          ? `<div class="rec-analysis" aria-live="polite">
+              <div class="rec-analysis-head">
+                <strong>Your recording</strong>
+                <span>${formatBytes(mine.bytes)}${
+                  formatDate(mine.recordedAt) ? ` · ${formatDate(mine.recordedAt)}` : ''
+                }</span>
+              </div>
+              <canvas class="rec-wave" width="640" height="180"></canvas>
+              <div class="rec-analysis-actions">
+                <button type="button" class="rec-btn icon" data-analysis="play" disabled>Play selection</button>
+                <button type="button" class="rec-btn icon" data-analysis="delete" disabled>Delete selection</button>
+                <button type="button" class="rec-btn icon" data-analysis="pick" disabled>Pick selection</button>
+              </div>
+              <p class="rec-hint rec-analysis-note">Reading audio…</p>
+            </div>`
           : ''
       }`;
+    void renderAnalysis(clip);
+  }
+
+  async function renderAnalysis(clip) {
+    stopAnalysisPlayback();
+    analysisState = emptyAnalysis();
+    const request = ++analysisRequest;
+    const panel = stageEl.querySelector('.rec-analysis');
+    if (!panel || !device.has(clip.key)) return;
+    const note = panel.querySelector('.rec-analysis-note');
+    const canvas = panel.querySelector('.rec-wave');
+    try {
+      const record = await store.getClip(clip.key);
+      if (request !== analysisRequest || !record?.blob || !canvas) return;
+      const buffer = await getAudioContext().decodeAudioData(await record.blob.arrayBuffer());
+      if (request !== analysisRequest) return;
+      analysisState = {
+        key: clip.key,
+        buffer,
+        blob: record.blob,
+        mime: record.mime,
+        ext: record.ext,
+        selection: null,
+        playhead: null,
+      };
+      drawAnalysis();
+      note.textContent = `Length: ${formatDuration(buffer.duration)} · drag on the waveform to select.`;
+      updateAnalysisButtons();
+    } catch (error) {
+      if (request === analysisRequest && note) {
+        note.textContent = `Could not read waveform: ${error.message}`;
+      }
+    }
+  }
+
+  function drawAnalysis() {
+    const canvas = stageEl.querySelector('.rec-wave');
+    if (!canvas || !analysisState.buffer) return;
+    drawWaveform(canvas, analysisState.buffer, {
+      selection: analysisState.selection,
+      playhead: analysisState.playhead,
+    });
+  }
+
+  function drawWaveform(canvas, buffer, { selection = null, playhead = null } = {}) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const channel = buffer.getChannelData(0);
+    const { width, height } = canvas;
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#fff8ee';
+    ctx.fillRect(0, 0, width, height);
+
+    if (selectionLength(selection) > 0) {
+      const x1 = (selection.start / buffer.duration) * width;
+      const x2 = (selection.end / buffer.duration) * width;
+      ctx.fillStyle = 'rgba(47, 174, 116, 0.20)';
+      ctx.fillRect(x1, 0, Math.max(1, x2 - x1), height);
+    }
+
+    ctx.strokeStyle = 'rgba(43, 48, 71, 0.16)';
+    ctx.beginPath();
+    ctx.moveTo(0, height / 2);
+    ctx.lineTo(width, height / 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#e98a1f';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = 0; x < width; x += 1) {
+      const start = Math.floor((x / width) * channel.length);
+      const end = Math.max(start + 1, Math.floor(((x + 1) / width) * channel.length));
+      let min = 1;
+      let max = -1;
+      for (let i = start; i < end; i += 1) {
+        const sample = channel[i] || 0;
+        if (sample < min) min = sample;
+        if (sample > max) max = sample;
+      }
+      ctx.moveTo(x, ((1 - max) * height) / 2);
+      ctx.lineTo(x, ((1 - min) * height) / 2);
+    }
+    ctx.stroke();
+
+    if (Number.isFinite(playhead)) {
+      const x = Math.max(0, Math.min(width, (playhead / buffer.duration) * width));
+      ctx.strokeStyle = '#2b3047';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+  }
+
+  function updateAnalysisButtons() {
+    const panel = stageEl.querySelector('.rec-analysis');
+    if (!panel) return;
+    const hasSelection = selectionLength(analysisState.selection) > 0.03;
+    for (const button of panel.querySelectorAll('[data-analysis]')) {
+      button.disabled = !hasSelection || recorder?.isRecording() || busy;
+    }
+    const note = panel.querySelector('.rec-analysis-note');
+    if (note && analysisState.buffer) {
+      const picked = hasSelection
+        ? ` · selection ${formatDuration(selectionLength(analysisState.selection))}`
+        : '';
+      note.textContent = `Length: ${formatDuration(analysisState.buffer.duration)}${picked} · drag on the waveform to select.`;
+    }
+  }
+
+  function timeFromCanvas(event, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    return (x / rect.width) * analysisState.buffer.duration;
+  }
+
+  function setSelection(start, end) {
+    if (!analysisState.buffer) return;
+    const a = Math.max(0, Math.min(analysisState.buffer.duration, start));
+    const b = Math.max(0, Math.min(analysisState.buffer.duration, end));
+    analysisState.selection = { start: Math.min(a, b), end: Math.max(a, b) };
+    drawAnalysis();
+    updateAnalysisButtons();
+  }
+
+  function stopAnalysisPlayback() {
+    if (analysisState.source) {
+      try {
+        analysisState.source.stop();
+      } catch {
+        /* already ended */
+      }
+    }
+    if (analysisState.frame) cancelAnimationFrame(analysisState.frame);
+    analysisState.source = null;
+    analysisState.frame = 0;
+    analysisState.playhead = null;
+  }
+
+  async function playSelection() {
+    const ctx = getAudioContext();
+    if (!ctx || !analysisState.buffer || selectionLength(analysisState.selection) <= 0.03) return;
+    stopAll();
+    stopAnalysisPlayback();
+    if (ctx.state === 'suspended') await ctx.resume();
+    const { start, end } = analysisState.selection;
+    const source = ctx.createBufferSource();
+    source.buffer = analysisState.buffer;
+    source.connect(ctx.destination);
+    const startedAt = ctx.currentTime;
+    const duration = end - start;
+    analysisState.source = source;
+    source.onended = () => {
+      if (analysisState.source !== source) return;
+      stopAnalysisPlayback();
+      drawAnalysis();
+    };
+    const tick = () => {
+      const elapsed = ctx.currentTime - startedAt;
+      analysisState.playhead = Math.min(end, start + elapsed);
+      drawAnalysis();
+      if (elapsed < duration) analysisState.frame = requestAnimationFrame(tick);
+    };
+    tick();
+    source.start(0, start, duration);
+  }
+
+  function sliceBuffer(ctx, buffer, startSeconds, endSeconds) {
+    const rate = buffer.sampleRate;
+    const start = Math.max(0, Math.min(buffer.length, Math.round(startSeconds * rate)));
+    const end = Math.max(start, Math.min(buffer.length, Math.round(endSeconds * rate)));
+    const out = ctx.createBuffer(buffer.numberOfChannels, end - start, rate);
+    for (let c = 0; c < buffer.numberOfChannels; c += 1) {
+      out.copyToChannel(buffer.getChannelData(c).slice(start, end), c);
+    }
+    return out;
+  }
+
+  function deleteFromBuffer(ctx, buffer, selection) {
+    const rate = buffer.sampleRate;
+    const start = Math.max(0, Math.min(buffer.length, Math.round(selection.start * rate)));
+    const end = Math.max(start, Math.min(buffer.length, Math.round(selection.end * rate)));
+    const out = ctx.createBuffer(buffer.numberOfChannels, buffer.length - (end - start), rate);
+    for (let c = 0; c < buffer.numberOfChannels; c += 1) {
+      const input = buffer.getChannelData(c);
+      const output = out.getChannelData(c);
+      output.set(input.slice(0, start), 0);
+      output.set(input.slice(end), start);
+    }
+    return out;
+  }
+
+  async function editSelection(mode) {
+    const ctx = getAudioContext();
+    if (busy || !ctx || !analysisState.buffer || selectionLength(analysisState.selection) <= 0.03) return;
+    const clip = clips[index];
+    const note = stageEl.querySelector('.rec-analysis-note');
+    busy = true;
+    stopAnalysisPlayback();
+    updateAnalysisButtons();
+    try {
+      const edited =
+        mode === 'pick'
+          ? sliceBuffer(ctx, analysisState.buffer, analysisState.selection.start, analysisState.selection.end)
+          : deleteFromBuffer(ctx, analysisState.buffer, analysisState.selection);
+      if (edited.duration <= 0.03) {
+        if (note) note.textContent = 'Selection would leave an empty recording.';
+        return;
+      }
+      if (note) note.textContent = 'Saving edit…';
+      const blob = encodeWavBuffer(edited);
+      if (!blob?.size) throw new Error('browser could not encode the edited audio');
+      await store.putClip({
+        key: clip.key,
+        slug: clip.slug,
+        ext: 'wav',
+        mime: blob.type,
+        blob,
+        profile: recorder?.profile(),
+      });
+      noteDeviceClip(clip.key, true);
+      lastNote = mode === 'pick' ? 'Kept the selected audio.' : 'Deleted the selected audio.';
+      await refresh();
+    } catch (error) {
+      if (note) note.textContent = `Could not save edit: ${error.message}`;
+    } finally {
+      busy = false;
+      updateAnalysisButtons();
+    }
   }
 
   async function renderStatus() {
@@ -284,6 +587,7 @@ export function buildRecorderPage() {
   // -------------------------------------------------------------- actions
 
   function select(i) {
+    if (recorder?.isRecording()) return;
     lastNote = '';
     index = Math.max(0, Math.min(clips.length - 1, i));
     for (const row of listEl.querySelectorAll('.rec-row')) {
@@ -297,6 +601,7 @@ export function buildRecorderPage() {
     if (!recorder || busy) return;
     if (recorder.isRecording()) {
       const take = await recorder.stop();
+      renderList();
       renderStage();
       if (!take || take.blob.size === 0) return;
 
@@ -333,8 +638,6 @@ export function buildRecorderPage() {
       noteDeviceClip(clip.key, true);
       await refresh();
       await play(clip.key);
-      // Recording is a long sitting; step on so the next one is ready.
-      if (index < clips.length - 1) select(index + 1);
     } else {
       stopAll();
       try {
@@ -344,6 +647,7 @@ export function buildRecorderPage() {
           'Microphone unavailable: ' + error.message;
         return;
       }
+      renderList();
       renderStage();
     }
   }
@@ -429,16 +733,26 @@ export function buildRecorderPage() {
   // --------------------------------------------------------------- events
 
   root.addEventListener('click', async (event) => {
-    const target = event.target.closest('[data-act], [data-play], [data-del], .rec-row');
+    const target = event.target.closest(
+      '[data-act], [data-play], [data-del], [data-analysis], .rec-row'
+    );
     if (!target) return;
+
+    if (target.dataset.analysis) {
+      event.stopPropagation();
+      if (target.dataset.analysis === 'play') return void playSelection();
+      return void editSelection(target.dataset.analysis);
+    }
 
     if (target.dataset.play !== undefined) {
       event.stopPropagation();
+      if (recorder?.isRecording()) return;
       select(Number(target.dataset.play));
       return void play(clips[index].key);
     }
     if (target.dataset.del !== undefined) {
       event.stopPropagation();
+      if (recorder?.isRecording()) return;
       return void remove(Number(target.dataset.del));
     }
 
@@ -446,6 +760,8 @@ export function buildRecorderPage() {
       case 'record':
         return void toggleRecord();
       case 'play':
+        if (recorder?.isRecording()) return;
+        stopAnalysisPlayback();
         return void play(clips[index].key);
       case 'prev':
         return select(index - 1);
@@ -458,6 +774,30 @@ export function buildRecorderPage() {
       default:
         if (target.classList.contains('rec-row')) select(Number(target.dataset.i));
     }
+  });
+
+
+  stageEl.addEventListener('pointerdown', (event) => {
+    const canvas = event.target.closest('.rec-wave');
+    if (!canvas || !analysisState.buffer || recorder?.isRecording() || busy) return;
+    event.preventDefault();
+    stopAnalysisPlayback();
+    const start = timeFromCanvas(event, canvas);
+    setSelection(start, start);
+    canvas.setPointerCapture?.(event.pointerId);
+
+    const move = (moveEvent) => setSelection(start, timeFromCanvas(moveEvent, canvas));
+    const up = (upEvent) => {
+      setSelection(start, timeFromCanvas(upEvent, canvas));
+      canvas.releasePointerCapture?.(event.pointerId);
+      canvas.removeEventListener('pointermove', move);
+      canvas.removeEventListener('pointerup', up);
+      canvas.removeEventListener('pointercancel', up);
+    };
+
+    canvas.addEventListener('pointermove', move);
+    canvas.addEventListener('pointerup', up);
+    canvas.addEventListener('pointercancel', up);
   });
 
   // Changing microphone settings drops the open stream, so the next take
@@ -485,8 +825,8 @@ export function buildRecorderPage() {
     if (event.target.tagName === 'INPUT') return;
     const keys = {
       ' ': () => toggleRecord(),
-      p: () => play(clips[index].key),
-      P: () => play(clips[index].key),
+      p: () => { if (!recorder?.isRecording()) play(clips[index].key); },
+      P: () => { if (!recorder?.isRecording()) play(clips[index].key); },
       ArrowDown: () => select(index + 1),
       ArrowUp: () => select(index - 1),
       ArrowRight: () => select(index + 1),

@@ -322,8 +322,21 @@ export default class Home extends Phaser.Scene {
     attachHoldToOpen(this, button, {
       onProgress: drawRing,
       onOpen: async () => {
+        if (this.settingsOpening) return;
+        this.settingsOpening = true;
         drawRing(0);
-        if (await askParentalQuestion()) this.openSettings();
+        // The DOM gate is above the canvas, but Phaser can still see input in
+        // the short async gap between accepting the answer and mounting the
+        // settings overlay. Hold the whole input plugin shut until the settings
+        // screen exists, or until the gate is cancelled.
+        this.input.enabled = false;
+        const allowed = await askParentalQuestion();
+        if (allowed) {
+          await this.openSettings();
+        } else {
+          this.input.enabled = true;
+          this.settingsOpening = false;
+        }
       },
     });
   }
@@ -334,9 +347,18 @@ export default class Home extends Phaser.Scene {
    * playing the games ever needs.
    */
   async openSettings() {
-    const { openSettings } = await import('../ui/settings.js');
-    // Phaser keeps handling keys underneath a DOM overlay, so a space bar meant
-    // for the record button would also poke the game.
+    let openSettings;
+    try {
+      ({ openSettings } = await import('../ui/settings.js'));
+    } catch (error) {
+      console.error('Could not open settings', error);
+      this.input.enabled = true;
+      this.settingsOpening = false;
+      return;
+    }
+    // Phaser keeps handling input underneath a DOM overlay, so a tap or space
+    // bar meant for settings must not also poke the game.
+    this.input.enabled = false;
     this.input.keyboard.enabled = false;
     // The games are held sideways; these screens are not. The tracing editor in
     // particular wants a tall window and a finger, and a phone that cannot be
@@ -350,7 +372,9 @@ export default class Home extends Phaser.Scene {
         // the time onClose runs the history has already moved.
         dropScreen('settings');
         lockLandscape();
+        this.input.enabled = true;
         this.input.keyboard.enabled = true;
+        this.settingsOpening = false;
         // Restarted rather than resumed: the music switch and the recordings
         // both change what this screen should show.
         this.scene.restart();
