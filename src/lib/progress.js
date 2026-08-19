@@ -9,18 +9,18 @@
  * and the fifth star is as good as it ever gets. A child who plays every day
  * for a week sees exactly what they saw on the first minute of the first day.
  *
- * This is the other thing — a running total saved on the device, shown as a
- * plant that grows (src/lib/plant.js). Coming back tomorrow starts where
- * yesterday stopped. Every level is a small ceremony and the plant immediately
- * starts again from a new seed, which is the loop that makes these apps hard to
- * put down and is worth being deliberate about rather than accidental.
+ * This is the other thing — a running total saved on the device, shown as
+ * whatever is standing in the rail (src/lib/indicators/). Coming back tomorrow
+ * starts where yesterday stopped. Every level is a small ceremony and the next
+ * one starts immediately, which is the loop that makes these apps hard to put
+ * down and is worth being deliberate about rather than accidental.
  *
  * ## A wrong answer takes some of it back
  *
  * It did not, for a long time, and the reasoning was good: a three-year-old who
  * watches a reward vanish learns that the safe move is to stop playing. What
  * changed is what the total *looks* like. A number going down is a punishment;
- * a plant that droops and gets a bit smaller is a plant that wants watering,
+ * a vine that loses its top leaf and droops is a plant that wants watering,
  * which is an invitation to have another go rather than a telling-off.
  *
  * So a wrong answer costs `SETBACK` against the one a right answer earns, and
@@ -54,9 +54,9 @@ export function stepsForLevel(level) {
  * What one wrong answer costs.
  *
  * Two, against the one a right answer earns. One would be invisible — the
- * plant would come back to where it was on the next answer and nothing would
- * have happened. Three takes a stage off the plant for a single slip, which
- * over-punishes a child who tapped the wrong thing because their finger
+ * drawing would come back to where it was on the next answer and nothing would
+ * have happened. Three costs a quarter of an early level for a single slip,
+ * which over-punishes a child who tapped the wrong thing because their finger
  * landed badly. Two is the number at which a run of guesses visibly loses
  * ground and one mistake does not.
  */
@@ -131,8 +131,8 @@ export function award(amount = 1) {
  * Takes some back, for a wrong answer.
  *
  * Floored at zero and at nothing else: it may drop a level, which takes a
- * finished tree out of the row behind the plant. That is the strongest thing
- * a mistake does and it is the whole reason the setback is visible at all.
+ * finished flower off the row in the rail. That is the strongest thing a
+ * mistake does and it is the whole reason the setback is visible at all.
  *
  * @param {number} [amount]
  * @returns {object} the new state, with `levelledDown` on it

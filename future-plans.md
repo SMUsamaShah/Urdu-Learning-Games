@@ -38,10 +38,9 @@ steady drip rather than a batch.
 
 Done. Progress has two hundred pixels down the left of every game screen —
 opaque, no scenery behind it — and what stands in it is a swappable module in
-`src/lib/indicators/`. Three so far: a plant that grows from a seed to a
-fruiting tree, a bar that fills, a glass of juice. One right answer is one pour,
-a full one is a level, and Settings chooses which. The ring and its Urdu numeral
-are gone.
+`src/lib/indicators/`. Three so far: a vine climbing a cane, a bar that fills, a
+glass of juice. One right answer is one leaf, a full climb is a level, and
+Settings chooses which. The ring and its Urdu numeral are gone.
 
 The decision this section used to say needed making has been made. A wrong
 answer now costs two pours against the one a right answer earns and is allowed
@@ -53,18 +52,19 @@ and whatever is in the rail dips for a second rather than telling anybody off.
 
 What is left in this idea:
 
-- **The shelf stops at twelve trees.** After that a child who has played for a
-  month sees exactly what they saw a fortnight in, which is the same flattening
-  the ring had and the reason the ring was replaced. Options: a shelf that
-  scrolls, trees that mature into bigger ones, or a second garden once the first
-  is full.
-- **More indicators.** The rail exists so that this list can grow: a climber
-  going up a cliff, a character who falls back a step on a wrong answer, a tower
-  being built, a pet that evolves. One module in `src/lib/indicators/`, one
-  `create(scene, box)`, and Settings picks it up on its own.
-- **The seed is chosen for you.** Six kinds cycle by level. Letting a child pick
-  the next seed is a decision they would enjoy making and the point at which the
-  garden becomes a thing they own rather than a thing they watch.
+- **The cane holds eight flowers.** Past that the row shows the eight most
+  recent, so it keeps changing rather than going flat the way the orchard before
+  it did — but a child who has played for two months still sees a cane with
+  eight flowers on it. Options: a second cane, flowers that grow into fruit as
+  they age, or a garden screen that holds everything ever grown.
+- **More indicators.** The rail exists so that this list can grow: a tower being
+  built, a pet that evolves, somebody going up a cliff. One module in
+  `src/lib/indicators/`, one `create(scene, box)`, and Settings picks it up on
+  its own.
+- **The plant is chosen for you.** Six varieties cycle by level. Letting a child
+  pick what goes in the pot next is a decision they would enjoy making and the
+  point at which the garden becomes a thing they own rather than a thing they
+  watch.
 
 ## Game controller support
 

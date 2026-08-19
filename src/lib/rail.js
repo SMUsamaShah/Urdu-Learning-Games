@@ -152,7 +152,7 @@ function mount(scene, { depth = 3, indicator: chosen, x, y, width, height }) {
   /** Read by tools/verify-rail.mjs. `drawn` is whatever the indicator publishes. */
   const republish = () => {
     root.total = shown.total;
-    root.trees = shown.level;
+    root.levels = shown.level;
     root.drawn = indicator.drawn;
   };
   republish();

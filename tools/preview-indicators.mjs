@@ -9,20 +9,22 @@
  * Two sheets per indicator: the fill from empty to full, and the same full
  * frame in each of the six level colours.
  *
- * ## A frame drawn in pieces is the sheet, not the plant
+ * ## A frame drawn in pieces is the sheet, not the indicator
  *
- * In headless Chromium the taller plant frames sometimes come out torn — a
- * canopy split in two and shifted, half a pot. It follows the height of the
- * frame rather than how many there are: the short ones are always whole and
- * the full-grown ones are the ones that break. Six to a sheet instead of
- * twelve, staggering the work over frames, and building all the labels before
- * any of the frames each moved it without curing it.
+ * The pot plant that used to be the first indicator baked one large canvas per
+ * step of growth, and in headless Chromium the tall ones sometimes came out
+ * torn — a canopy split in two and shifted, half a pot. It followed the height
+ * of the canvas rather than how many were built: the short ones were always
+ * whole. Six frames to a sheet instead of twelve, staggering the work, and
+ * building every label before any of the frames each moved it without curing
+ * it.
  *
- * It is a property of this renderer under this harness, not of the indicator.
- * The same frames drawn one to a screen — which is all the app ever does — are
- * whole every time, in the rail on all twenty-four game screens and on the
- * menu. Read a torn frame here as noise and run it again; do not go changing
- * the drawing to chase it.
+ * Nothing on these sheets bakes a canvas that big any more — the vine is
+ * assembled from small pieces — and it has not been seen since. If it comes
+ * back, read a torn frame here as noise and run it again; it is a property of
+ * this renderer under this harness, and the same pieces drawn one screen at a
+ * time, which is all the app ever does, are whole every time. Do not go
+ * changing a drawing to chase it.
  *
  * Usage: npm run dev &  then  node tools/preview-indicators.mjs [outdir] [baseUrl]
  */
@@ -62,19 +64,12 @@ async function sheet(file, plan) {
           this.cameras.main.setBackgroundColor('#f6ecd8');
           // Every indicator first, and every label afterwards.
           //
-          // A sheet builds a dozen canvas textures where a real screen builds
-          // one or two, and a Phaser Text is itself a canvas texture. Creating
-          // the two kinds alternately drew several frames in pieces — a torn
-          // canopy here, half a pot there — while the same twelve built in one
-          // run come out clean. Nothing in the app interleaves them like that,
-          // so this is a fix for the sheet rather than for the plant.
-          // Labels first, then the frames.
-          //
-          // A Phaser Text carries a canvas texture of its own, and building one
-          // after a frame has been baked leaves that frame drawn in pieces here
-          // — a torn canopy, half a pot — reliably enough to reproduce. Sheets
-          // with no labels at all never showed it. Making all the text before
-          // any of the frames is what makes this come out whole.
+          // Labels first, then the frames. A Phaser Text carries a canvas
+          // texture of its own, and building one after a frame has been baked
+          // used to leave that frame drawn in pieces here, reliably enough to
+          // reproduce; sheets with no labels at all never showed it. Making all
+          // the text before any of the frames is what made it come out whole.
+          // See the note at the top.
           for (const item of spec.items) {
             this.add
               .text(item.x, item.y + 10, item.label, {
@@ -103,15 +98,22 @@ async function sheet(file, plan) {
   step(`wrote ${to}`);
 }
 
+/**
+ * The rail's own box, near enough: 200 wide, 570 tall.
+ *
+ * It used to be 380 tall here, which is exactly how an indicator that filled
+ * two thirds of the real rail passed a look at this sheet. The sheet is the
+ * only place the shape of the thing is judged, so it has to be the shape.
+ */
 const place = (i) => ({
   width: 200,
-  height: 380,
-  x: 150 + i * 190,
-  y: 620,
+  height: 560,
+  x: 100 + i * 196,
+  y: 690,
   scale: 0.9,
 });
 
-for (const id of ['plant', 'bar', 'glass']) {
+for (const id of ['vine', 'bar', 'glass']) {
   // Empty to full, at one level.
   await sheet(`indicator-${id}-filling.png`, {
     indicator: id,

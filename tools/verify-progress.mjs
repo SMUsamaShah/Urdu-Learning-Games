@@ -7,7 +7,7 @@
  *
  *   - A screen with no rail on it. It is created in addStage, so a game that
  *     builds its own chrome would simply not have one, and nobody would notice
- *     until a child asked where their tree went.
+ *     until a child asked where their vine went.
  *   - A right answer that waters nothing, or waters twice.
  *   - A wrong answer that costs the wrong amount. **This assertion is the
  *     reverse of what it used to be.** It used to read "a wrong answer must
@@ -91,10 +91,11 @@ const railState = (scene) =>
     if (!found) return null;
     return {
       total: found.total,
-      trees: found.trees,
-      // Whatever the indicator publishes: for the plant, the key of the texture
-      // on the sprite; for the bar and the glass, the level and the fraction
-      // actually drawn. Read off the drawing rather than off the model.
+      levels: found.levels,
+      // Whatever the indicator publishes: for the vine, the count of leaves
+      // actually visible and the plant read off the bud's texture; for the bar
+      // and the glass, the level and the fraction actually drawn. Read off the
+      // drawing rather than off the model.
       drawn: found.indicator?.drawn,
       row: found.indicator?.row,
       species: found.indicator?.species,
@@ -103,7 +104,7 @@ const railState = (scene) =>
 
 const model = () => page.evaluate(() => window.__progress.state());
 
-/** Waits for the drawing to catch up — a pour takes a beat of falling water. */
+/** Waits for the drawing to catch up — growing takes a beat. */
 const drawnSettles = (scene, was) =>
   page
     .waitForFunction(
@@ -199,9 +200,9 @@ else step(`  counted once, and the rail went from ${before.drawn} to a fuller fr
 
 // --- 3. The level boundary -------------------------------------------------
 
-step('growing a tree all the way');
+step('climbing a whole level');
 // One short of the level, so the next single award rolls it over. Awarded
-// through the running app rather than by writing storage, so the plant's
+// through the running app rather than by writing storage, so the indicator's
 // listener is what is under test.
 const { steps, step: at } = await model();
 await page.evaluate((n) => {
@@ -209,57 +210,59 @@ await page.evaluate((n) => {
 }, steps - at - 1);
 await page.waitForTimeout(1400);
 const brink = await railState('FindLetter');
-if (brink.trees !== 0) fail(`a tree was banked early, at ${brink.trees}`);
+if (brink.levels !== 0) fail(`a level was banked early, at ${brink.levels}`);
 
 const seedBefore = brink.species;
 const rowBefore = brink.row;
 await page.evaluate(() => window.__progress.award(1));
-// The ceremony holds the fruit on screen before replanting, so this waits for
-// the far side of it rather than for the model, which moves at once.
-const replanted = await page
+// The ceremony holds the flower on screen before the next one starts, so this
+// waits for the far side of it rather than for the model, which moves at once.
+const restarted = await page
   .waitForFunction(
     () => {
       const found = window.__game.scene
         .getScene('FindLetter')
         .children.list.find((child) => child.name === 'progress-rail');
-      return found && found.trees === 1 && found.indicator?.drawn?.endsWith(':0');
+      return found && found.levels === 1 && found.indicator?.drawn?.endsWith(':0');
     },
     null,
     { timeout: 20000 }
   )
   .then(() => true)
   .catch(() => false);
-if (!replanted) {
+if (!restarted) {
   const now = await railState('FindLetter');
-  fail(`no replant: ${now.trees} tree(s) banked, pot at step ${now.step}`);
+  fail(`nothing was banked: ${now.levels} level(s), still drawing ${now.drawn}`);
 } else {
   const after = await railState('FindLetter');
   if (after.species === seedBefore) {
-    fail(`the next seed is another ${after.species} — it should be a different one`);
+    fail(`the next one is another ${after.species} — it should be a different plant`);
   } else if (after.row === rowBefore) {
-    // Read off the sprite, not off the model: the count can be right while the
-    // row behind the pot is still the picture it was before the tree fruited.
-    fail(`a tree was banked but the row is still drawing ${after.row}`);
-  } else step(`  one tree banked, drawn as ${after.row}, and a fresh ${after.species} seed`);
+    // Read off the sprites, not off the model: the count can be right while the
+    // row is still the picture it was before the level finished.
+    fail(`a level was banked but the row is still drawing ${after.row}`);
+  } else step(`  one level banked, drawn as ${after.row}, and a fresh ${after.species}`);
 }
 
-// --- 4. A bad run can cost a tree ------------------------------------------
+// --- 4. A bad run can cost a level -----------------------------------------
 
 step('crossing back down a level');
-const treesBefore = (await railState('FindLetter')).trees;
+const bankedBefore = (await railState('FindLetter')).levels;
 await page.evaluate(() => {
-  // Two setbacks from the very start of a tree, which is the case that has to
+  // Two setbacks from the very start of a level, which is the case that has to
   // reach back into the one before it.
   window.__progress.setback();
   window.__progress.setback();
 });
 await page.waitForTimeout(1200);
 const dropped = await railState('FindLetter');
-if (dropped.trees !== treesBefore - 1) {
-  fail(`going back a level left ${dropped.trees} trees, not ${treesBefore - 1}`);
-} else if (dropped.row !== `orchard:rail:${treesBefore - 1}`) {
-  fail(`the count dropped to ${dropped.trees} but the row still draws ${dropped.row}`);
-} else step(`  ${treesBefore} trees became ${dropped.trees}, and the row redrew`);
+if (dropped.levels !== bankedBefore - 1) {
+  fail(`going back a level left ${dropped.levels} banked, not ${bankedBefore - 1}`);
+  // The row has to *name* the smaller count, not merely be a different string:
+  // an indicator that redrew the row wrongly would pass a check for "changed".
+} else if (!String(dropped.row).endsWith(`:${bankedBefore - 1}`)) {
+  fail(`the count dropped to ${dropped.levels} but the row still draws ${dropped.row}`);
+} else step(`  ${bankedBefore} banked became ${dropped.levels}, and the row redrew`);
 
 // --- 5. It survives a reload ----------------------------------------------
 
@@ -274,16 +277,17 @@ if (restored.total !== saved) {
 } else step(`  ${saved} still there`);
 
 const onMenu = await railState('Home');
-if (!onMenu || onMenu.trees !== restored.level) {
-  fail(`the menu shows ${onMenu?.trees} trees against the saved level ${restored.level}`);
+if (!onMenu || onMenu.levels !== restored.level) {
+  fail(`the menu shows ${onMenu?.levels} banked against the saved level ${restored.level}`);
 }
 
-// A long way in: the row of finished trees stops growing at eight, and the
-// plant must still draw rather than falling over on an index it has no spot for.
+// A long way in: the row of finished levels stops growing at its cap, and the
+// indicator must still draw rather than falling over on an index it has no spot
+// for.
 await seed(200);
 const high = await railState('Home');
 if (!high?.drawn) fail('a long-played device drew nothing in the rail at all');
-else step(`  level ${(await model()).level + 1} still draws, with the row of trees capped`);
+else step(`  level ${(await model()).level + 1} still draws, with the row capped`);
 
 // --- 6. Starting again -----------------------------------------------------
 
@@ -292,9 +296,9 @@ await page.waitForTimeout(600);
 const cleared = await model();
 const clearedRail = await railState('Home');
 if (cleared.total !== 0) fail(`reset left ${cleared.total} behind`);
-else if (clearedRail.trees !== 0 || !/:0$/.test(String(clearedRail.drawn))) {
+else if (clearedRail.levels !== 0 || !/:0$/.test(String(clearedRail.drawn))) {
   fail(
-    `reset cleared the total but the rail still shows ${clearedRail.trees} ` +
+    `reset cleared the total but the rail still shows ${clearedRail.levels} ` +
       `finished and is drawing ${clearedRail.drawn}`
   );
 } else step('reset clears the total and the rail');

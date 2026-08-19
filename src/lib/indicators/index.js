@@ -1,4 +1,4 @@
-import * as plant from './plant.js';
+import * as vine from './vine.js';
 import * as bar from './bar.js';
 import * as glass from './glass.js';
 
@@ -27,13 +27,20 @@ import * as glass from './glass.js';
  * Nothing here is optional; the rail calls all of them.
  */
 export const INDICATORS = [
-  { id: 'plant', name: 'Plant', module: plant },
+  { id: 'vine', name: 'Vine', module: vine },
   { id: 'bar', name: 'Bar', module: bar },
   { id: 'glass', name: 'Glass of juice', module: glass },
 ];
 
 const KEY = 'urdu-games:indicator';
-const DEFAULT = 'plant';
+/**
+ * Which one a device with no preference gets.
+ *
+ * Also what anyone whose stored preference is `plant` now gets: that indicator
+ * is gone, and `currentIndicator()` already answers with this for an id it does
+ * not recognise, so no migration is owed.
+ */
+const DEFAULT = 'vine';
 
 export function indicatorNames() {
   return INDICATORS.map(({ id, name }) => ({ id, name }));
