@@ -124,6 +124,32 @@ export function glyphForClip({ kind, id, form }) {
   return null;
 }
 
+/**
+ * The outline of the taught letter *inside* its word, when the face leaves it
+ * separable, and null when it does not.
+ *
+ * AlQalam Taj fuses joined letters into single glyphs: پتنگ is one outline for
+ * all four letters, and there is no honest way to colour the ت in it. The bake
+ * records which source characters each glyph covers (see clustersOf() in
+ * tools/bake-glyphs.mjs), so this asks for a cluster that is *exactly* the
+ * taught letter and gives back nothing otherwise. Nine of the app's
+ * thirty-seven words have one.
+ *
+ * Deliberately all-or-nothing. A cluster that covers the taught letter and its
+ * neighbour would colour two letters and say the second one was the first,
+ * which is worse than saying nothing.
+ *
+ * @returns {string|null} an SVG path, in the same coordinates as the word
+ */
+export function taughtCluster(wordId) {
+  const word = wordsById.get(wordId);
+  const glyph = glyphs?.words[wordId];
+  if (!word || !glyph?.clusters) return null;
+  const at = word.letterIndex;
+  const exact = glyph.clusters.find((c) => c.from === at && c.to === at + 1);
+  return exact?.d || null;
+}
+
 export function wordGlyph(wordId) {
   return glyphs?.words[wordId] ?? null;
 }

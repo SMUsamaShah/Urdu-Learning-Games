@@ -19,22 +19,6 @@ editor. Nothing in the code assumes 38 — `letters.length` is read everywhere i
 matters — but the count appears in a few comments and in the Settings row, so
 those want a look.
 
-### The Letters screen does not show where the letter is in its word
-
-On the Letters screen the taught letter, its positional forms and the word it
-teaches are all drawn in the same ink, so nothing connects them. Colouring the
-hero letter and its matching form box in one accent, and colouring the same
-letter inside the word, would show a child *where* the letter they are looking
-at turns up.
-
-The word is the hard half. AlQalam Taj Nastaliq fuses joined letters into single
-outlines: shaping all 37 words through HarfBuzz, the taught letter has its own
-separable glyph in only **10** of them (پتنگ is one glyph for all four letters).
-So `tools/bake-glyphs.mjs` needs to keep the `infos[i].cluster` it currently
-throws away — baked per word as `clusters: [{from, to, d}]` — and the word is
-coloured only where the cluster is exactly the taught letter, plain ink
-otherwise.
-
 ### Most tile pictures do not show their game
 
 Only **Balloons**, **Pairs** and **More games** have a picture that says what

@@ -6,6 +6,7 @@ import {
   letterGlyph,
   lettersById,
   sequenceFor,
+  taughtCluster,
   uiGlyph,
   uiGlyphs,
   wordForLetter,
@@ -390,9 +391,9 @@ export default class Flashcards extends Phaser.Scene {
         this,
         HERO_X,
         heroY,
-        `hero:em${Math.round(heroFit.em)}:${letterId}`,
+        `hero:em${Math.round(heroFit.em)}:${letterId}:taught`,
         isolated,
-        { em: heroFit.em, color: COLORS.ink }
+        { em: heroFit.em, color: COLORS.taughtCss }
       );
       card.add(glyph);
       // The letter arrives rather than being there. This screen is the one a
@@ -472,9 +473,9 @@ export default class Flashcards extends Phaser.Scene {
         this,
         x,
         FORM_BOX.top + boxW / 2,
-        `form:em${Math.round(formFit.em)}:${letterId}:${form}`,
+        `form:em${Math.round(formFit.em)}:${letterId}:${form}:taught`,
         glyph,
-        { em: formFit.em, color: COLORS.ink }
+        { em: formFit.em, color: COLORS.taughtCss }
       );
       card.add(formGlyph);
       // Right to left, a beat apart, so the four forms are seen as a sequence.
@@ -548,15 +549,30 @@ export default class Flashcards extends Phaser.Scene {
 
     const wordFit = fitEmAlone(allWordGlyphs(), WORD_BOX.width, WORD_BOX.height);
     const glyph = wordGlyph(word.id);
+    // The taught letter picked out inside the word, in the colour it is wearing
+    // everywhere else on this screen — which is the whole point of the screen:
+    // this shape, these are its disguises, and *there* it is doing a job.
+    //
+    // Null for most words, and that is the typeface rather than a bug: AlQalam
+    // Taj shapes پتنگ as one outline for all four letters, so there is nothing
+    // to colour without cutting it. Nine of the thirty-seven can be picked out;
+    // the rest are drawn plain and the screen says nothing, because a wrongly
+    // coloured word would teach the wrong letter. See taughtCluster().
+    const lit = taughtCluster(word.id);
     let wordGlyphImage = null;
     if (glyph) {
       wordGlyphImage = addGlyph(
         this,
         MAIN_X - 60,
         WORD_BOX.top + WORD_BOX.height / 2,
-        `card-word:em${Math.round(wordFit.em)}:${word.id}`,
+        `card-word:em${Math.round(wordFit.em)}:${word.id}${lit ? ':lit' : ''}`,
         glyph,
-        { em: wordFit.em, color: COLORS.ink }
+        {
+          em: wordFit.em,
+          color: COLORS.ink,
+          partD: lit,
+          partColor: lit ? COLORS.taughtCss : null,
+        }
       );
       card.add(wordGlyphImage);
       // Last of the three, after the letter and its forms, which is the order

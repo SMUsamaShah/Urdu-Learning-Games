@@ -60,6 +60,9 @@ const MIN_OUTLINE_EM = 50;
  * @param {number} [options.strokeEm=0] A line as a fraction of the font's em,
  *   which keeps it proportional to the letterforms. Wins over strokeWidth.
  * @param {number} [options.padding=0.06] Fraction of height kept as margin.
+ * @param {string} [options.partD] One cluster's outline, redrawn in
+ *   `partColor` over the finished glyph. See paintGlyph.
+ * @param {string} [options.partColor]
  * @returns {string} The texture key, for `scene.add.image(x, y, key)`.
  */
 export function glyphTexture(scene, key, glyph, options = {}) {
@@ -73,6 +76,8 @@ export function glyphTexture(scene, key, glyph, options = {}) {
     strokeWidth = 0,
     strokeEm = 0,
     padding = 0.06,
+    partD = null,
+    partColor = null,
   } = options;
 
   const [, , bw, bh] = glyph.bbox;
@@ -100,7 +105,7 @@ export function glyphTexture(scene, key, glyph, options = {}) {
   const ctx = canvas.getContext('2d');
   ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
   ctx.translate(pad, pad);
-  paintGlyph(ctx, glyph, { scale, color, stroke, strokeWidth, strokeEm });
+  paintGlyph(ctx, glyph, { scale, color, stroke, strokeWidth, strokeEm, partD, partColor });
 
   const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
   texture.context.drawImage(canvas, 0, 0);
@@ -128,9 +133,20 @@ export function glyphTexture(scene, key, glyph, options = {}) {
  * @param {string} [options.stroke]
  * @param {number} [options.strokeWidth] a constant line, in context units
  * @param {number} [options.strokeEm] a line as a fraction of the font's em
+ * @param {string} [options.partD] one cluster's outline, drawn again over the
+ *   whole glyph in `partColor` — see the note below
+ * @param {string} [options.partColor]
  */
 export function paintGlyph(ctx, glyph, options) {
-  const { scale, color = '#ffffff', stroke = null, strokeWidth = 0, strokeEm = 0 } = options;
+  const {
+    scale,
+    color = '#ffffff',
+    stroke = null,
+    strokeWidth = 0,
+    strokeEm = 0,
+    partD = null,
+    partColor = null,
+  } = options;
   const [bx, by] = glyph.bbox;
   if (!glyph.d) return;
 
@@ -141,6 +157,19 @@ export function paintGlyph(ctx, glyph, options) {
   const path = new Path2D(glyph.d);
   ctx.fillStyle = color;
   ctx.fill(path, 'nonzero');
+
+  // One letter of the word, again, in another colour.
+  //
+  // Drawn over the finished word rather than instead of part of it, and in the
+  // same coordinates, so it lands exactly on top of the shape already there —
+  // which is the only way to do this with an outline that was shaped as a
+  // whole. `partD` is a cluster's own `d` from content/glyphs.json; which
+  // cluster, and whether there is one worth using, is the caller's problem.
+  // See clustersOf() in tools/bake-glyphs.mjs for why it is usually not.
+  if (partD && partColor) {
+    ctx.fillStyle = partColor;
+    ctx.fill(new Path2D(partD), 'nonzero');
+  }
 
   // How big the letterforms themselves are, as opposed to the box they were
   // fitted into. Everything about outlining depends on this rather than on

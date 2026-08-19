@@ -567,6 +567,18 @@ at what all twenty-one letter screens are *holding* rather than what they
 happen to deal — OddOne shows four letters out of thirty-eight a round, so a
 check that watched a round would pass about nine times in ten.
 
+**One letter of a word, in another colour.** The Letters screen draws the
+taught letter, its positional forms and the same letter *inside* its word in one
+purple, so a child can see where the shape they are looking at turns up. The
+word is the hard half: AlQalam Taj fuses joined letters into single outlines, so
+`tools/bake-glyphs.mjs` records which source characters each output glyph covers
+(`clusters: [{from, to, d}]`) and `taughtCluster()` hands back an outline only
+where a cluster is *exactly* the taught letter. Nine of the thirty-seven words
+qualify; the rest are drawn plain, because a cluster covering two letters would
+colour both and say the second was the first. `tests/content.test.mjs` asserts
+that nine, exactly — a font change that quietly took it to three would leave the
+screen working and teaching nothing.
+
 **Every game gets a ribbon.** Set `instruction` and `instructionRoman` on a
 QuizScene subclass, or call `addBanner()` directly. The id is a string in
 `content/ui.json`; a typo there renders an empty ribbon and nothing else, so

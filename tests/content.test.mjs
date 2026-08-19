@@ -127,6 +127,66 @@ describe('words', () => {
   });
 });
 
+describe('word clusters', () => {
+  /**
+   * How many of the words let the taught letter be coloured on its own.
+   *
+   * Asserted exactly rather than as "at least one". AlQalam Taj is a ligature
+   * face and this number is a property of *that font* — پتنگ is a single glyph
+   * for four letters and cannot be picked apart. If a font change quietly took
+   * it from nine to three, the Letters screen would go on working and simply
+   * stop teaching the thing it was built to teach, which is exactly the kind of
+   * silent loss this file exists to catch. Re-measure and change the number
+   * deliberately.
+   */
+  const SEPARABLE = 9;
+
+  test('every word has clusters covering it exactly once', () => {
+    for (const word of words) {
+      const baked = glyphs.words[word.id];
+      assert.ok(baked?.clusters?.length, `${word.id} has no clusters — re-run npm run bake`);
+      const spans = [...baked.clusters].sort((a, b) => a.from - b.from);
+      assert.equal(spans[0].from, 0, `${word.id} does not start at character 0`);
+      assert.equal(
+        spans[spans.length - 1].to,
+        [...word.word].length,
+        `${word.id}'s clusters stop short of the end of the word`
+      );
+      for (let i = 1; i < spans.length; i++) {
+        assert.equal(
+          spans[i].from,
+          spans[i - 1].to,
+          `${word.id} has a gap or an overlap at character ${spans[i].from}`
+        );
+      }
+    }
+  });
+
+  test('every cluster carries an outline', () => {
+    for (const word of words) {
+      for (const cluster of glyphs.words[word.id].clusters) {
+        assert.ok(
+          cluster.d?.length,
+          `${word.id}'s cluster ${cluster.from}-${cluster.to} has no path`
+        );
+      }
+    }
+  });
+
+  test(`the taught letter is separable in exactly ${SEPARABLE} words`, () => {
+    const separable = words.filter((word) =>
+      glyphs.words[word.id].clusters.some(
+        (c) => c.from === word.letterIndex && c.to === word.letterIndex + 1
+      )
+    );
+    assert.equal(
+      separable.length,
+      SEPARABLE,
+      `separable in ${separable.length}: ${separable.map((w) => w.id).join(', ')}`
+    );
+  });
+});
+
 describe('numbers', () => {
   /** 0–100, then a thousand and a lakh. */
   const EXPECTED = [...Array.from({ length: 101 }, (unused, i) => i), 1000, 100000];

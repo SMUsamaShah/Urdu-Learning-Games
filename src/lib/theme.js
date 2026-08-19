@@ -56,6 +56,16 @@ export const COLORS = {
   onColorDim: '#f0eef8',
   accent: 0xe98a1f,
   accentCss: '#e98a1f',
+  /**
+   * The letter being taught, wherever it appears on the Letters screen — the
+   * big one, the form it is in, and the same letter inside the word.
+   *
+   * Purple, and not the orange accent: the accent is a button colour and this
+   * has to be read as "this is the same thing" rather than "tap this". Not
+   * `familyColor` either, which already means "these share a shape".
+   */
+  taught: 0x8b3ed6,
+  taughtCss: '#8b3ed6',
   correct: 0x2fae74,
   gentle: 0xef6c4d,
   /** Shadow under a card. Softer than on a dark background, or it looks dirty. */

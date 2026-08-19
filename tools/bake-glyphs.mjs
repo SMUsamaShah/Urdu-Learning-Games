@@ -120,6 +120,9 @@ function bakeRun(font, text) {
   let cursorX = 0;
   let cursorY = 0;
   const parts = [];
+  /** One entry per output glyph: which source characters it covers, and its
+   *  own outline. See the note on clusters below. */
+  const pieces = [];
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -128,6 +131,7 @@ function bakeRun(font, text) {
   for (let i = 0; i < infos.length; i++) {
     const pos = positions[i];
     const commands = font.glyphToJson(infos[i].codepoint);
+    const mine = [];
 
     // ZWJ and other zero-ink glyphs shape to empty outlines. They still carry
     // advances, so skip the path but let the cursor move.
@@ -148,16 +152,25 @@ function bakeRun(font, text) {
             if (y > maxY) maxY = y;
           }
         }
-        parts.push(cmd.type + values.join(','));
+        mine.push(cmd.type + values.join(','));
       }
+      parts.push(...mine);
     }
+
+    pieces.push({ cluster: infos[i].cluster, d: mine.join('') });
 
     cursorX += pos.xAdvance;
     cursorY += pos.yAdvance;
   }
 
   if (parts.length === 0) {
-    return { d: '', bbox: [0, 0, 0, 0], advance: cursorX, upem: font.face.upem };
+    return {
+      d: '',
+      bbox: [0, 0, 0, 0],
+      advance: cursorX,
+      upem: font.face.upem,
+      clusters: [],
+    };
   }
 
   return {
@@ -165,7 +178,45 @@ function bakeRun(font, text) {
     bbox: [round(minX), round(minY), round(maxX - minX), round(maxY - minY)],
     advance: round(cursorX),
     upem: font.face.upem,
+    clusters: clustersOf(pieces, [...text].length),
   };
+}
+
+/**
+ * Which source characters each output glyph covers, and that glyph's outline.
+ *
+ * HarfBuzz gives every output glyph a *cluster*: the lowest index, in the
+ * original string, of the characters that went into it. It does not say where a
+ * cluster ends — the next one's start is the only clue, and the last one runs
+ * to the end of the text. That is what this works out.
+ *
+ * It matters because AlQalam Taj is a ligature face. In a font that keeps one
+ * glyph per letter, every cluster spans one character and any letter can be
+ * picked out of a word. Here پتنگ shapes to a *single* glyph covering all four,
+ * so its cluster is `{from: 0, to: 4}` and there is no way to colour the ت
+ * inside it short of cutting the outline, which is not a thing to do to a
+ * typeface. Of the 37 words in the app the taught letter has its own glyph in
+ * 10; those 10 can be coloured and the rest are drawn plain. Callers decide
+ * that by looking at `from`/`to`, which is why both are recorded rather than
+ * just the start.
+ *
+ * Written for a right-to-left run, where the glyphs come out in visual order
+ * and the clusters therefore *descend*. Sorting by `cluster` before pairing
+ * each with the next is what makes the direction stop mattering.
+ */
+function clustersOf(pieces, length) {
+  const byStart = new Map();
+  for (const piece of pieces) {
+    const at = byStart.get(piece.cluster);
+    if (at) at.d += piece.d;
+    else byStart.set(piece.cluster, { from: piece.cluster, d: piece.d });
+  }
+  const starts = [...byStart.values()].sort((a, b) => a.from - b.from);
+  return starts.map((entry, i) => ({
+    from: entry.from,
+    to: i + 1 < starts.length ? starts[i + 1].from : length,
+    d: entry.d,
+  }));
 }
 
 /** Two decimals is well below one screen pixel at any size we render. */
@@ -196,13 +247,16 @@ async function main() {
   let written = 0;
   const empties = [];
 
-  const record = (baked, label) => {
+  const record = (baked, label, { clusters = false } = {}) => {
     if (!baked.d) empties.push(label);
     out.upem ||= baked.upem;
     written++;
     // upem is identical for every glyph; hoist it and drop the per-glyph copy.
-    const { upem, ...rest } = baked;
-    return rest;
+    // Clusters are dropped too unless somebody asked: only the words need them,
+    // and carrying a second copy of every outline for the other 330 glyphs
+    // would about double the file for nothing.
+    const { upem, clusters: pieces, ...rest } = baked;
+    return clusters ? { ...rest, clusters: pieces } : rest;
   };
 
   for (const letter of letters) {
@@ -233,7 +287,9 @@ async function main() {
   // entire word, so a word assembled from individually baked letters would not
   // be readable Urdu.
   for (const word of words) {
-    out.words[word.id] = record(bakeRun(font, word.word), word.id);
+    // With clusters: the Letters screen colours the taught letter inside its
+    // word where the face leaves it separable. See clustersOf().
+    out.words[word.id] = record(bakeRun(font, word.word), word.id, { clusters: true });
   }
 
   // Menu labels go through the same pipeline as gameplay glyphs, so no Urdu in
