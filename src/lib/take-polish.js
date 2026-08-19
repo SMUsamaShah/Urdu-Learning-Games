@@ -1,7 +1,8 @@
 /**
- * Tidies a recording after it has been made: trims the silence, evens the level.
+ * Tidies a recording after it has been made: trims silence, reduces the room,
+ * evens the level.
  *
- * Both of these have to happen after capture rather than through microphone
+ * These have to happen after capture rather than through microphone
  * constraints, because neither is knowable while recording. You cannot trim to
  * the speech until you have heard where the speech was, and gain applied live
  * is `autoGainControl`, which is the thing that makes a take hiss.
@@ -136,6 +137,23 @@ const MIN_SPEECH_MS = 120;
 const MAX_GAIN = 6;
 const NOISE_CEILING_DB = -32;
 
+/**
+ * Studio-ish cleanup that is safe to do in a browser without a noise print.
+ *
+ * This is not magic spectral repair. The reliable win for these one-word phone
+ * takes is removing the noise you hear before and after the word, and reducing
+ * the hiss between quiet syllable parts without putting a robot gate on the
+ * voice. A soft downward expander does that: anything down near the measured
+ * room floor is pushed lower, while samples that clearly belong to the voice are
+ * left alone.
+ */
+const NOISE_REDUCTION_DB = 16;
+const EXPANDER_CLOSE_ABOVE_NOISE_DB = 4;
+const EXPANDER_OPEN_ABOVE_NOISE_DB = 14;
+
+/** A gentle high-pass, enough to remove taps/handling rumble below speech. */
+const HIGHPASS_HZ = 75;
+
 const dB = (amplitude) => 20 * Math.log10(Math.max(amplitude, 1e-9));
 
 /** The value at a percentile of a list, which this sorts in place. */
@@ -260,17 +278,43 @@ function trimAndLevel(ctx, buffer, bounds) {
   const fade = Math.min(pad(FADE_MS), Math.floor(length / 4));
 
   const out = ctx.createBuffer(buffer.numberOfChannels, length, rate);
+  const noiseAfterGain = 10 ** (bounds.noise / 20) * gain;
+  const closed = noiseAfterGain * 10 ** (EXPANDER_CLOSE_ABOVE_NOISE_DB / 20);
+  const open = Math.max(
+    closed * 1.1,
+    noiseAfterGain * 10 ** (EXPANDER_OPEN_ABOVE_NOISE_DB / 20)
+  );
+  const floor = 10 ** (-NOISE_REDUCTION_DB / 20);
+  const highpassAlpha = 1 / (1 + (2 * Math.PI * HIGHPASS_HZ) / rate);
+
   for (let c = 0; c < buffer.numberOfChannels; c++) {
     const from = buffer.getChannelData(c);
     const to = out.getChannelData(c);
+    let lastIn = from[start] ?? 0;
+    let lastOut = 0;
     for (let i = 0; i < length; i++) {
-      let v = from[start + i] * gain;
+      const input = from[start + i] ?? 0;
+      // One-pole high-pass in the sample domain. It removes rumble and button
+      // taps without touching the consonant band that makes Urdu clips clear.
+      const filtered = highpassAlpha * (lastOut + input - lastIn);
+      lastIn = input;
+      lastOut = filtered;
+
+      let v = filtered * gain;
+      const a = Math.abs(v);
+      if (a < open) {
+        const t = Math.max(0, Math.min(1, (a - closed) / Math.max(1e-9, open - closed)));
+        // Smoothstep, so the expander eases open rather than chattering.
+        const eased = t * t * (3 - 2 * t);
+        v *= floor + (1 - floor) * eased;
+      }
+
       if (i < fade) v *= i / fade;
       else if (i > length - fade) v *= (length - i) / fade;
       to[i] = Math.max(-1, Math.min(1, v));
     }
   }
-  return { buffer: out, gain };
+  return { buffer: out, gain, noiseReductionDb: NOISE_REDUCTION_DB };
 }
 
 /**
@@ -316,13 +360,14 @@ function encode(ctx, buffer, mime) {
 }
 
 /**
- * Trims and levels a take.
+ * Trims, reduces room noise and levels a take.
  *
  * @param {AudioContext} ctx the app's context
  * @param {Blob} blob the take as recorded
  * @param {string} mime the container to write back
- * @returns {Promise<{blob: Blob, removedMs: number, gain: number}|null>} null
- *   when nothing could usefully be done, in which case keep the original.
+ * @returns {Promise<{blob: Blob, removedMs: number, gain: number,
+ *   noiseReductionDb: number}|null>} null when nothing could usefully be done,
+ *   in which case keep the original.
  */
 export async function polishTake(ctx, blob, mime) {
   if (!ctx || !blob?.size) return null;
@@ -341,6 +386,7 @@ export async function polishTake(ctx, blob, mime) {
       blob: encoded,
       removedMs: Math.round((decoded.duration - trimmed.buffer.duration) * 1000),
       gain: trimmed.gain,
+      noiseReductionDb: trimmed.noiseReductionDb,
     };
   } catch {
     // Anything at all going wrong here means keeping the take as recorded.

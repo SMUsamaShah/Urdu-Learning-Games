@@ -4,6 +4,7 @@ import { addGlyph } from '../lib/glyph.js';
 import { canInstall, onInstallAvailability, promptInstall } from '../lib/install.js';
 import { addMascot } from '../lib/mascot.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
+import { canFullscreen, isFullscreen, onFullscreenChange, toggleFullscreen } from '../lib/fullscreen.js';
 import { lockLandscape, releaseOrientation } from '../lib/orientation.js';
 import { dropScreen, pushScreen, replaceScreen } from '../lib/history.js';
 import { addScenery } from '../lib/scenery.js';
@@ -147,6 +148,7 @@ export default class Home extends Phaser.Scene {
     this.buildInstallHint();
     this.buildSettingsButton();
     this.buildMusicToggle();
+    this.buildFullscreenToggle();
 
     // The browser only lets audio play after the page has been touched, so the
     // tune starts at whatever the child taps first. Harmless if it is already
@@ -232,6 +234,53 @@ export default class Home extends Phaser.Scene {
   }
 
   /**
+   * Fullscreen switch for browsers that support it.
+   *
+   * A site opened from a URL cannot force fullscreen on load: the browser only
+   * allows this after a real tap. The installed PWA asks for fullscreen through
+   * its manifest, and this button covers the website case and lets a parent get
+   * back to normal browser chrome.
+   */
+  buildFullscreenToggle() {
+    if (!canFullscreen()) return;
+
+    const button = makeButton(this, {
+      x: DESIGN.width - 74,
+      y: 142,
+      width: 84,
+      height: 68,
+      color: COLORS.panel,
+      rim: false,
+      onTap: async () => {
+        await toggleFullscreen();
+        paint();
+        squash(this, button);
+        sfx.nudge();
+      },
+    });
+
+    const icon = this.add
+      .text(0, -2, '', {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '34px',
+        color: COLORS.accentCss,
+      })
+      .setOrigin(0.5);
+    button.add(icon);
+
+    const paint = () => {
+      icon.setText(isFullscreen() ? '\u2922' : '\u26f6');
+      icon.setColor(isFullscreen() ? COLORS.inkDim : COLORS.accentCss);
+    };
+    paint();
+
+    this.unsubscribeFullscreen?.();
+    this.unsubscribeFullscreen = onFullscreenChange(paint);
+    this.events.once('shutdown', () => this.unsubscribeFullscreen?.());
+    this.fullscreenButton = button;
+  }
+
+  /**
    * Entry to the recording screen, behind a hold and a sum.
    *
    * That screen can delete recordings, so it must not be reachable by a child
@@ -272,8 +321,21 @@ export default class Home extends Phaser.Scene {
     attachHoldToOpen(this, button, {
       onProgress: drawRing,
       onOpen: async () => {
+        if (this.settingsOpening) return;
+        this.settingsOpening = true;
         drawRing(0);
-        if (await askParentalQuestion()) this.openSettings();
+        // The DOM gate is above the canvas, but Phaser can still see input in
+        // the short async gap between accepting the answer and mounting the
+        // settings overlay. Hold the whole input plugin shut until the settings
+        // screen exists, or until the gate is cancelled.
+        this.input.enabled = false;
+        const allowed = await askParentalQuestion();
+        if (allowed) {
+          await this.openSettings();
+        } else {
+          this.input.enabled = true;
+          this.settingsOpening = false;
+        }
       },
     });
   }
@@ -284,9 +346,18 @@ export default class Home extends Phaser.Scene {
    * playing the games ever needs.
    */
   async openSettings() {
-    const { openSettings } = await import('../ui/settings.js');
-    // Phaser keeps handling keys underneath a DOM overlay, so a space bar meant
-    // for the record button would also poke the game.
+    let openSettings;
+    try {
+      ({ openSettings } = await import('../ui/settings.js'));
+    } catch (error) {
+      console.error('Could not open settings', error);
+      this.input.enabled = true;
+      this.settingsOpening = false;
+      return;
+    }
+    // Phaser keeps handling input underneath a DOM overlay, so a tap or space
+    // bar meant for settings must not also poke the game.
+    this.input.enabled = false;
     this.input.keyboard.enabled = false;
     // The games are held sideways; these screens are not. The tracing editor in
     // particular wants a tall window and a finger, and a phone that cannot be
@@ -300,7 +371,9 @@ export default class Home extends Phaser.Scene {
         // the time onClose runs the history has already moved.
         dropScreen('settings');
         lockLandscape();
+        this.input.enabled = true;
         this.input.keyboard.enabled = true;
+        this.settingsOpening = false;
         // Restarted rather than resumed: the music switch and the recordings
         // both change what this screen should show.
         this.scene.restart();
