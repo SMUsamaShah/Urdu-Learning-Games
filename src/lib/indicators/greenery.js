@@ -61,6 +61,8 @@ const SOIL = '#4a3020';
 const CANE = '#b9925a';
 const CANE_DARK = '#94703f';
 const CANE_NODE = '#7d5c32';
+const BARK = '#8a5f39';
+const BARK_LIGHT = '#a1734a';
 
 /** The pot's drawing, in design pixels, measured up from its base. */
 export const POT = { topWidth: 92, baseWidth: 66, height: 50, rim: 12 };
@@ -194,6 +196,68 @@ export function caneTexture(scene, height) {
 
   // A rounded cap, so the top is an end rather than a cut.
   ellipse(ctx, 0, -height + 2, half - 2.5, 4, CANE);
+
+  return publish(scene, key, canvas);
+}
+
+/**
+ * A bare tree, drawn to the height it is given: trunk, two pairs of branches.
+ *
+ * The tree's answer to "fill the rail before anything has been earned" — a
+ * tree in winter is still a tree, and leafing it out one clump at a time is a
+ * better unit of progress than a canopy that inflates.
+ *
+ * Bark is one colour for every variety. Six kinds of leaf and flower are worth
+ * having; six kinds of brown are not.
+ */
+export function trunkTexture(scene, height, spread) {
+  const key = `greenery:trunk:${Math.round(height)}:${Math.round(spread)}`;
+  if (scene.textures.exists(key)) return key;
+
+  const width = spread * 2 + 24;
+  const { canvas, ctx } = makeCanvas(width, height, width / 2, height);
+  const base = 15;
+  const tip = 5;
+
+  ctx.fillStyle = BARK;
+  ctx.beginPath();
+  ctx.moveTo(-base, 0);
+  ctx.quadraticCurveTo(-base * 0.5, -height * 0.5, -tip, -height);
+  ctx.lineTo(tip, -height);
+  ctx.quadraticCurveTo(base * 0.5, -height * 0.5, base, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // The lit side, down the left, where the sun is on every other drawing here.
+  ctx.fillStyle = BARK_LIGHT;
+  ctx.beginPath();
+  ctx.moveTo(-base, 0);
+  ctx.quadraticCurveTo(-base * 0.5, -height * 0.5, -tip, -height);
+  ctx.lineTo(-tip + 3, -height);
+  ctx.quadraticCurveTo(-base * 0.5 + 6, -height * 0.5, -base + 7, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = BARK;
+  ctx.lineCap = 'round';
+  for (const [at, reach, rise] of [
+    [0.52, 0.78, 0.2],
+    [0.76, 0.62, 0.16],
+  ]) {
+    const y = -height * at;
+    ctx.lineWidth = 9 * (1 - at * 0.5);
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(side * 4, y);
+      ctx.quadraticCurveTo(
+        side * spread * reach * 0.6,
+        y - height * rise * 0.35,
+        side * spread * reach,
+        y - height * rise
+      );
+      ctx.stroke();
+    }
+  }
 
   return publish(scene, key, canvas);
 }

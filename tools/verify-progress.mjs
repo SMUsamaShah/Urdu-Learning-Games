@@ -67,7 +67,27 @@ const KEY = 'urdu-games:progress:v1';
 /** Must match SETBACK in src/lib/progress.js. */
 const SETBACK = 2;
 
+/**
+ * Which indicator to run all of this against.
+ *
+ * The level ceremony and the setback that crosses a level are the two paths
+ * every indicator implements for itself, and Settings decides which one a
+ * device is looking at — so a run against the default proves nothing about the
+ * others. `INDICATOR=tree npm run verify:progress` puts a different one in the
+ * rail before the first load.
+ */
+const INDICATOR = process.env.INDICATOR || '';
+
 const { page, finish } = await openApp({ name: 'progress' });
+
+if (INDICATOR) {
+  await page.evaluate((id) => localStorage.setItem('urdu-games:indicator', id), INDICATOR);
+  await page.reload();
+  await page.waitForFunction(() => window.__game?.scene.isActive('Home'), null, {
+    timeout: 30000,
+  });
+  step(`against the ${INDICATOR}`);
+}
 
 /** Sets the saved total and reloads onto a fresh Home. */
 async function seed(total) {
@@ -141,6 +161,11 @@ if (!missing.length) step(`${SCREENS.length - NO_RAIL.size} screens, all showing
 // --- 2. A right answer waters it, a wrong one takes water back -------------
 
 await seed(0);
+// What "nothing earned" looks like on whichever indicator is in the rail. The
+// reset at the end is checked against this rather than against a string shape:
+// a fresh vine draws `vine:glory:0` and a fresh bar `bar:0:0.000`, and a check
+// that knows about one of those is a check that only ever ran on one.
+const empty = (await railState('Home'))?.drawn;
 const fresh = await model();
 if (fresh.total !== 0 || fresh.level !== 0) {
   fail(`a fresh device starts at level ${fresh.level + 1} with ${fresh.total} — expected level 1, 0`);
@@ -217,37 +242,56 @@ const rowBefore = brink.row;
 await page.evaluate(() => window.__progress.award(1));
 // The ceremony holds the flower on screen before the next one starts, so this
 // waits for the far side of it rather than for the model, which moves at once.
+//
+// The wait is the assertion, and deliberately so. Every indicator holds
+// something on screen for a second or two before the next one starts — a
+// flower opening, a fruit swelling, a glass being drunk — and how long that
+// takes is its own business, so there is no duration to wait out and no
+// picture this file can name. What it can insist on is that the next one
+// *does* start: a different plant where the indicator says what it is growing,
+// and a different drawing where it does not. Falling out of the wait is the
+// failure, and the message below says so.
 const restarted = await page
   .waitForFunction(
-    () => {
+    ([was, wasSpecies]) => {
       const found = window.__game.scene
         .getScene('FindLetter')
         .children.list.find((child) => child.name === 'progress-rail');
-      return found && found.levels === 1 && found.indicator?.drawn?.endsWith(':0');
+      if (!found || found.levels !== 1) return false;
+      const shown = found.indicator;
+      if (shown?.species !== undefined) return shown.species !== wasSpecies;
+      return shown?.drawn !== was;
     },
-    null,
+    [brink.drawn, seedBefore],
     { timeout: 20000 }
   )
   .then(() => true)
   .catch(() => false);
 if (!restarted) {
   const now = await railState('FindLetter');
-  fail(`nothing was banked: ${now.levels} level(s), still drawing ${now.drawn}`);
+  fail(
+    `the level never restarted: ${now.levels} banked, still growing ` +
+      `${now.species ?? now.drawn} — it should be a different one by now`
+  );
 } else {
   const after = await railState('FindLetter');
-  if (after.species === seedBefore) {
-    fail(`the next one is another ${after.species} — it should be a different plant`);
-  } else if (after.row === rowBefore) {
-    // Read off the sprites, not off the model: the count can be right while the
-    // row is still the picture it was before the level finished.
+  // Separate from the wait above, and not implied by it: what is growing can
+  // change over while the row of finished ones is never redrawn, which is the
+  // half of a level that accumulates. Read off the sprites, not off the model.
+  // A row is the growing indicators' contract; the bar and the glass carry a
+  // level colour and nothing else, and are not asked for one.
+  if (after.row !== undefined && after.row === rowBefore) {
     fail(`a level was banked but the row is still drawing ${after.row}`);
-  } else step(`  one level banked, drawn as ${after.row}, and a fresh ${after.species}`);
+  } else if (after.row !== undefined && !String(after.row).endsWith(':1')) {
+    fail(`one level is banked but the row draws ${after.row}`);
+  } else step(`  one level banked, drawn as ${after.drawn}`);
 }
 
 // --- 4. A bad run can cost a level -----------------------------------------
 
 step('crossing back down a level');
-const bankedBefore = (await railState('FindLetter')).levels;
+const beforeDrop = await railState('FindLetter');
+const bankedBefore = beforeDrop.levels;
 await page.evaluate(() => {
   // Two setbacks from the very start of a level, which is the case that has to
   // reach back into the one before it.
@@ -258,11 +302,14 @@ await page.waitForTimeout(1200);
 const dropped = await railState('FindLetter');
 if (dropped.levels !== bankedBefore - 1) {
   fail(`going back a level left ${dropped.levels} banked, not ${bankedBefore - 1}`);
-  // The row has to *name* the smaller count, not merely be a different string:
-  // an indicator that redrew the row wrongly would pass a check for "changed".
-} else if (!String(dropped.row).endsWith(`:${bankedBefore - 1}`)) {
+  // Where there is a row, it has to *name* the smaller count rather than merely
+  // be a different string: an indicator that redrew it wrongly would pass a
+  // check for "changed".
+} else if (dropped.row !== undefined && !String(dropped.row).endsWith(`:${bankedBefore - 1}`)) {
   fail(`the count dropped to ${dropped.levels} but the row still draws ${dropped.row}`);
-} else step(`  ${bankedBefore} banked became ${dropped.levels}, and the row redrew`);
+} else if (dropped.drawn === beforeDrop.drawn) {
+  fail(`the count dropped to ${dropped.levels} but the rail is drawing what it was`);
+} else step(`  ${bankedBefore} banked became ${dropped.levels}, and the rail redrew`);
 
 // --- 5. It survives a reload ----------------------------------------------
 
@@ -296,10 +343,10 @@ await page.waitForTimeout(600);
 const cleared = await model();
 const clearedRail = await railState('Home');
 if (cleared.total !== 0) fail(`reset left ${cleared.total} behind`);
-else if (clearedRail.levels !== 0 || !/:0$/.test(String(clearedRail.drawn))) {
+else if (clearedRail.levels !== 0 || clearedRail.drawn !== empty) {
   fail(
     `reset cleared the total but the rail still shows ${clearedRail.levels} ` +
-      `finished and is drawing ${clearedRail.drawn}`
+      `finished and is drawing ${clearedRail.drawn}, not ${empty}`
   );
 } else step('reset clears the total and the rail');
 

@@ -1,4 +1,5 @@
 import * as vine from './vine.js';
+import * as tree from './tree.js';
 import * as bar from './bar.js';
 import * as glass from './glass.js';
 
@@ -28,6 +29,7 @@ import * as glass from './glass.js';
  */
 export const INDICATORS = [
   { id: 'vine', name: 'Vine', module: vine },
+  { id: 'tree', name: 'Tree', module: tree },
   { id: 'bar', name: 'Bar', module: bar },
   { id: 'glass', name: 'Glass of juice', module: glass },
 ];

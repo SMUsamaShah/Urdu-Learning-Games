@@ -113,7 +113,7 @@ const place = (i) => ({
   scale: 0.9,
 });
 
-for (const id of ['vine', 'bar', 'glass']) {
+for (const id of ['vine', 'tree', 'bar', 'glass']) {
   // Empty to full, at one level.
   await sheet(`indicator-${id}-filling.png`, {
     indicator: id,

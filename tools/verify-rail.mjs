@@ -147,7 +147,7 @@ else if (buttons.home <= buttons.rail) {
 
 // --- 4. Each indicator answers to the total ---------------------------------
 
-for (const id of ['vine', 'bar', 'glass']) {
+for (const id of ['vine', 'tree', 'bar', 'glass']) {
   step(`the ${id} moves when the total does`);
   await page.evaluate((which) => {
     localStorage.setItem('urdu-games:indicator', which);

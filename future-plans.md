@@ -38,9 +38,9 @@ steady drip rather than a batch.
 
 Done. Progress has two hundred pixels down the left of every game screen —
 opaque, no scenery behind it — and what stands in it is a swappable module in
-`src/lib/indicators/`. Three so far: a vine climbing a cane, a bar that fills, a
-glass of juice. One right answer is one leaf, a full climb is a level, and
-Settings chooses which. The ring and its Urdu numeral are gone.
+`src/lib/indicators/`. Four so far: a vine climbing a cane, a tree that leafs
+out, a bar that fills, a glass of juice. One right answer is one leaf, a full
+climb is a level, and Settings chooses which. The ring and its Urdu numeral are gone.
 
 The decision this section used to say needed making has been made. A wrong
 answer now costs two pours against the one a right answer earns and is allowed

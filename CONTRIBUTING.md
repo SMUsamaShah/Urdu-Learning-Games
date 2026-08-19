@@ -444,9 +444,10 @@ character sprite sheet and a set of backgrounds at every screen density:
 - `src/lib/scenery.js` — the sky, sun, clouds, hills and ground every screen
   sits on.
 - `src/lib/rail.js` — the opaque strip down the left of every game screen, and
-  `src/lib/indicators/` — what stands in it. Three so far: a vine climbing a
-  cane, a bar that fills, a glass of juice. `src/lib/indicators/greenery.js` is
-  the parts bin the growing ones are assembled from.
+  `src/lib/indicators/` — what stands in it. Four so far: a vine climbing a
+  cane, a tree that leafs out, a bar that fills, a glass of juice.
+  `src/lib/indicators/greenery.js` is the parts bin the growing ones are
+  assembled from.
 - `src/lib/mascot.js` — the spider, now only on the menu.
 - `src/lib/banner.js` — the instruction ribbon across the top of a game.
 - `src/lib/celebrate.js` — confetti, the flying star, the dance and the paper.
@@ -504,6 +505,13 @@ game skips the menu and nothing else would.
 tile is seen to react, and a three-year-old can hit two more things in that
 time — which used to start three games at once, all running, all on the stack.
 `Home.leave()` is the latch; it opens again when the menu is rebuilt.
+
+**Run `verify:progress` against yours.** It takes an `INDICATOR` — `INDICATOR=tree
+npm run verify:progress` — because the level ceremony and the setback that
+crosses a level are the two paths every indicator writes for itself, and a run
+against the default proves nothing about the rest. Adding that knob turned up
+that half the file's assertions were written against one indicator's texture
+keys; they now test what happened rather than what it was called.
 
 `npm run preview-indicators` draws every stage of each one onto a sheet, at the
 rail's own 200×560. Use it: whether a vine looks like a vine is not something a
