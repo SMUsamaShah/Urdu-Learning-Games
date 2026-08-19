@@ -53,11 +53,14 @@ and whatever is in the rail dips for a second rather than telling anybody off.
 
 What is left in this idea:
 
-- **The cane holds eight flowers.** Past that the row shows the eight most
-  recent, so it keeps changing rather than going flat the way the orchard before
-  it did — but a child who has played for two months still sees a cane with
-  eight flowers on it. Options: a second cane, flowers that grow into fruit as
-  they age, or a garden screen that holds everything ever grown.
+- **The cane holds twenty flowers.** That is about two months of daily playing,
+  and it matches the twenty plants the varieties cycle through, so the cane
+  fills up exactly as the first flower comes round again. Past that the row
+  shows the twenty most recent, so it keeps changing rather than going flat the
+  way the orchard before it did — but there is still a point at which a longer
+  run of play looks the same. Options past twenty: a second cane, flowers that
+  grow into fruit as they age, or a garden screen holding everything ever
+  grown.
 - **More indicators.** The rail exists so that this list can grow: a tower being
   built, a pet that evolves, a road being travelled. One module in
   `src/lib/indicators/`, one `create(scene, box)`, and Settings picks it up on

@@ -1,4 +1,4 @@
-import { ellipse, makeCanvas, publish } from './canvas.js';
+import { ellipse, hsl, levelHue, makeCanvas, publish, readable } from './canvas.js';
 
 /**
  * The parts a growing thing in the rail is built from.
@@ -29,24 +29,58 @@ import { ellipse, makeCanvas, publish } from './canvas.js';
  */
 
 /**
+ * Twenty names, in the order they are planted.
+ *
+ * Names only — every colour below is generated, so a name cannot be relied on
+ * to describe its flower. They are all things that really do come in most
+ * colours, which is what makes that survivable: a cyan tulip and a magenta
+ * dahlia are both fanciful rather than wrong, where a "bluebell" that came out
+ * orange would just be a mistake. Six colours were authored by hand first, and
+ * one of the six — a white jasmine — turned out to be invisible on the rail's
+ * cream panel, which is the argument for not hand-authoring twenty.
+ */
+const NAMES = [
+  'rose', 'tulip', 'dahlia', 'aster', 'zinnia',
+  'cosmos', 'poppy', 'iris', 'lily', 'hibiscus',
+  'pansy', 'petunia', 'anemone', 'camellia', 'freesia',
+  'primrose', 'gladiolus', 'ranunculus', 'sweetpea', 'chrysanth',
+];
+
+/**
+ * Four greens, cycled under the flowers.
+ *
+ * So two consecutive levels differ in leaf as well as in flower. Four rather
+ * than twenty because a vine is a green thing: twenty greens would either be
+ * indistinguishable or would include some that are not a plausible leaf.
+ */
+const GREENS = [
+  { leaf: '#54a83f', shade: '#3d8730' },
+  { leaf: '#4f9f4a', shade: '#3a7c37' },
+  { leaf: '#6fae35', shade: '#578f28' },
+  { leaf: '#3f9e56', shade: '#2f7f42' },
+];
+
+/**
  * What is growing, cycling by level.
  *
- * Six, on the same reasoning as the six colours in canvas.js: a child who has
- * finished six levels has been playing for a week, and a seventh kind of flower
- * is a smaller reward than the first one coming round again.
+ * Twenty, which is about two months of daily playing. It was six, and six meant
+ * a child on their seventh level was shown a plant they had already grown —
+ * the app ran out of new things to say after a week, which is the flattening
+ * that the ring before it had and the whole reason the ring was replaced.
  *
- * The flower colours are all things that read against the rail's cream panel.
- * A white jasmine was drawn first and had to go: it is a lovely flower and it
- * is invisible on #f6ecd8.
+ * The flower hue comes from `levelHue` so this and the bar and the glass move
+ * through the same wheel in the same order: whatever is in the rail, level nine
+ * is the same colour of thing.
  */
-export const VARIETIES = [
-  { id: 'glory', leaf: '#54a83f', shade: '#3d8730', flower: '#3f9ee0', gloss: '#a5d9f7' },
-  { id: 'pea', leaf: '#4f9f4a', shade: '#3a7c37', flower: '#d94f8c', gloss: '#f8b0cd' },
-  { id: 'nasturtium', leaf: '#6fae35', shade: '#578f28', flower: '#e98a1f', gloss: '#ffcf93' },
-  { id: 'rose', leaf: '#3f9e56', shade: '#2f7f42', flower: '#e0574a', gloss: '#ffab9e' },
-  { id: 'clematis', leaf: '#489a63', shade: '#357a4c', flower: '#9b5fc9', gloss: '#cfa9e8' },
-  { id: 'gourd', leaf: '#5aa347', shade: '#437f34', flower: '#f2c230', gloss: '#fff3ab' },
-];
+export const VARIETIES = NAMES.map((id, i) => ({
+  id,
+  ...GREENS[i % GREENS.length],
+  flower: readable(levelHue(i)),
+  // The petal highlight: same hue, much lighter. It sits inside the petal
+  // rather than on the panel, so it does not need to clear the panel's
+  // contrast — only the flower it is drawn on.
+  gloss: hsl(levelHue(i), 0.8, 0.8),
+}));
 
 /** Which one is growing at a given level. Negative levels cannot happen, but. */
 export function varietyFor(level) {

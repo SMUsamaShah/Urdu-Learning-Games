@@ -514,6 +514,15 @@ against the default proves nothing about the rest. Adding that knob turned up
 that half the file's assertions were written against one indicator's texture
 keys; they now test what happened rather than what it was called.
 
+**One wheel of twenty colours.** `levelHue()` in `canvas.js` decides what colour
+level *n* is, and the bar, the glass and every plant read from it — so whichever
+indicator is chosen, level nine is the same colour of thing. Twenty, generated
+rather than authored: `readable()` darkens a hue until it clears the panel
+behind it, and the wheel skips the green quarter, because a green flower on a
+green vine is a flower nobody can see. `tests/palette.test.mjs` holds both of
+those, plus the spacing that stops two consecutive levels being neighbouring
+shades. Add a colour by changing `LEVEL_CYCLE`, not by typing a hex string.
+
 `npm run preview-indicators` draws every stage of each one onto a sheet, at the
 rail's own 200×560. Use it: whether a vine looks like a vine is not something a
 test can answer, and the alternative is playing to level nine to find out what

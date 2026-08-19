@@ -72,10 +72,22 @@ const FOOT = POT_LIFT + POT.height + POT.rim;
 /** The most steps a level can be worth — `stepsForLevel` caps at twelve. */
 const MAX_STEPS = 12;
 
-/** Slots up the cane for the levels already finished. */
-const SLOTS = 8;
-const SLOT_X = 46;
-const BLOSSOM = 30;
+/**
+ * Slots up the cane for the levels already finished.
+ *
+ * Twenty, which is about two months of daily playing, and the same number the
+ * plant in the pot cycles through — so a child reaches the top of the cane and
+ * the first flower comes round again together, rather than the record filling
+ * up while there are still new plants to see. It was eight, and eight meant a
+ * fortnight in the row stopped changing.
+ *
+ * Twenty across a ~460px span is 23 pixels apart, alternating sides, so two
+ * flowers on the *same* side are 46 apart. The blossom comes down to 20 to fit
+ * that with air around it.
+ */
+const SLOTS = 20;
+const SLOT_X = 44;
+const BLOSSOM = 20;
 const BLOOM = 58;
 
 /**
@@ -138,7 +150,7 @@ export function create(scene, { width, height }, options = {}) {
     const blossom = scene.add
       .image(
         (j % 2 ? -1 : 1) * SLOT_X,
-        -(FOOT + (span * (j + 0.7)) / SLOTS),
+        -(FOOT + (span * (j + 0.6)) / SLOTS),
         flowerTexture(scene, varietyFor(j), BLOSSOM)
       )
       .setScale(DRAW)

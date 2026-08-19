@@ -61,7 +61,14 @@ const SCREENS = [
 ];
 
 /** Flashcards is a letter and its word with no furniture at all — see its create(). */
-const NO_RAIL = new Set(['Flashcards']);
+/**
+ * Flashcards is a letter and its word with no furniture at all — see its
+ * create(). Home has none either: the menu is not an activity, and an
+ * indicator standing on it with no panel behind it read as a flowerpot hanging
+ * in the scenery. Both are asserted to have *no* rail rather than skipped, so
+ * one reappearing is a failure rather than a silence.
+ */
+const NO_RAIL = new Set(['Flashcards', 'Home']);
 
 const KEY = 'urdu-games:progress:v1';
 /** Must match SETBACK in src/lib/progress.js. */
@@ -165,9 +172,13 @@ if (!missing.length) step(`${SCREENS.length - NO_RAIL.size} screens, all showing
 await seed(0);
 // What "nothing earned" looks like on whichever indicator is in the rail. The
 // reset at the end is checked against this rather than against a string shape:
-// a fresh vine draws `vine:glory:0` and a fresh bar `bar:0:0.000`, and a check
+// a fresh vine draws `vine:rose:0` and a fresh bar `bar:0:0.000`, and a check
 // that knows about one of those is a check that only ever ran on one.
-const empty = (await railState('Home'))?.drawn;
+//
+// Read on a game screen, because the menu has no rail. `seed()` lands on Home,
+// so every read of the rail in this file opens a game first.
+await startScene(page, 'FindLetter');
+const empty = (await railState('FindLetter'))?.drawn;
 const fresh = await model();
 if (fresh.total !== 0 || fresh.level !== 0) {
   fail(`a fresh device starts at level ${fresh.level + 1} with ${fresh.total} — expected level 1, 0`);
@@ -368,16 +379,18 @@ if (restored.total !== saved) {
   fail(`${saved} before the reload, ${restored.total} after — progress is not being saved`);
 } else step(`  ${saved} still there`);
 
-const onMenu = await railState('Home');
-if (!onMenu || onMenu.levels !== restored.level) {
-  fail(`the menu shows ${onMenu?.levels} banked against the saved level ${restored.level}`);
+await startScene(page, 'FindLetter');
+const reopened = await railState('FindLetter');
+if (!reopened || reopened.levels !== restored.level) {
+  fail(`the rail shows ${reopened?.levels} banked against the saved level ${restored.level}`);
 }
 
 // A long way in: the row of finished levels stops growing at its cap, and the
 // indicator must still draw rather than falling over on an index it has no spot
 // for.
 await seed(200);
-const high = await railState('Home');
+await startScene(page, 'FindLetter');
+const high = await railState('FindLetter');
 if (!high?.drawn) fail('a long-played device drew nothing in the rail at all');
 else step(`  level ${(await model()).level + 1} still draws, with the row capped`);
 
@@ -386,7 +399,7 @@ else step(`  level ${(await model()).level + 1} still draws, with the row capped
 await page.evaluate(() => window.__progress.reset());
 await page.waitForTimeout(600);
 const cleared = await model();
-const clearedRail = await railState('Home');
+const clearedRail = await railState('FindLetter');
 if (cleared.total !== 0) fail(`reset left ${cleared.total} behind`);
 else if (clearedRail.levels !== 0 || clearedRail.drawn !== empty) {
   fail(

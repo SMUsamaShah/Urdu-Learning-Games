@@ -122,17 +122,6 @@ export function addRail(scene, options = {}) {
   return root;
 }
 
-/**
- * The indicator on its own, with no panel behind it.
- *
- * For the menu, which has no rail — it is not an activity, its left edge is
- * already the character's, and a floor-to-ceiling panel there would evict him.
- * The same component, the same subscription, a smaller box.
- */
-export function addIndicator(scene, options) {
-  return mount(scene, options);
-}
-
 /** Builds the indicator, wires it to the total, and hands back the container. */
 function mount(scene, { depth = 3, indicator: chosen, x, y, width, height }) {
   const root = scene.add.container(0, 0).setDepth(depth).setName('progress-rail');

@@ -18,7 +18,6 @@ import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { queueTileArt } from '../lib/tiles.js';
-import { addIndicator } from '../lib/rail.js';
 import { running as chaloRunning, startRun, stopRun } from '../lib/chalo.js';
 import { FEATURED, GAMES, MORE, MORE_TILE } from '../lib/games.js';
 
@@ -160,13 +159,13 @@ export default class Home extends Phaser.Scene {
     // button in the corner beneath it.
     addMascot(this, 116, 618, { height: 214 }).point();
 
-    // Whatever is standing in the games' rail, in the corner the games keep the
-    // home button in — this screen has no home button, and between games is
-    // exactly when a child wants to see what they have got to.
-    //
-    // No panel behind it here. The menu is not an activity, its left edge is
-    // already the spider's, and a floor-to-ceiling strip would evict him.
-    addIndicator(this, { x: 112, y: 318, width: 190, height: 250 });
+    // No progress indicator here. One used to stand at the left with no panel
+    // behind it, and with nothing earned yet that is a flowerpot and a bare
+    // cane hanging in mid-air half way up the painted tree — which is what it
+    // looked like. The rail belongs to game screens; the argument for having
+    // one on the menu was that between games is when a child wants to see how
+    // far they have got, and چلو has since made "between games" something that
+    // does not pass through the menu at all.
 
     this.buildInstallHint();
     this.buildSettingsButton();

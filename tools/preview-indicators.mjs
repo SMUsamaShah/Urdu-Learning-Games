@@ -125,11 +125,14 @@ for (const id of ['vine', 'tree', 'climber', 'bar', 'glass']) {
     })),
   });
 
-  // Full, in each of the six colours a run of levels cycles through.
+  // Full, sampled across the twenty levels a run cycles through. Six columns
+  // and twenty levels, so it steps rather than counts: the point of the sheet
+  // is what level 20 looks like, and drawing 1 to 6 would show a third of the
+  // cycle and none of the crowding that twenty flowers on a cane might cause.
   await sheet(`indicator-${id}-levels.png`, {
     indicator: id,
-    items: [0, 1, 2, 3, 4, 5].map((level) => ({
-      ...place(level),
+    items: [0, 3, 7, 11, 15, 19].map((level, i) => ({
+      ...place(i),
       fraction: 1,
       level,
       label: `level ${level + 1}`,

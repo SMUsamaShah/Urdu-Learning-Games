@@ -47,8 +47,18 @@ const HEAD = 16;
 /** The most steps a level can be worth — `stepsForLevel` caps at twelve. */
 const MAX_STEPS = 12;
 
-/** Fruit already earned, hung round the crown. */
-const SLOTS = 8;
+/**
+ * Fruit already earned, hung in the crown.
+ *
+ * Twenty, matching the number of plants the varieties cycle through, so the
+ * record fills up exactly as the first kind comes round again. It was eight,
+ * which went flat after a fortnight.
+ */
+const SLOTS = 20;
+const FRUIT = 18;
+
+/** The one that swells at the end of a level, before it shrinks into the row. */
+const RIPE = 46;
 
 /** The angle a sunflower turns by, in radians. */
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
@@ -78,15 +88,26 @@ export function create(scene, { width, height }) {
       .setScale(DRAW)
   );
 
-  /** Where clump `i` sits: the golden angle, stepping outwards. */
-  const place = (i) => {
-    const angle = i * GOLDEN;
-    const out = Math.sqrt((i + 0.4) / MAX_STEPS);
+/**
+   * A point on a phyllotactic spiral inside the crown: turn by the golden angle
+   * each step, and move out as the square root of the count.
+   *
+   * Used for both the leaves and the fruit, at different phases, so twenty
+   * fruit thread through twelve leaf clumps instead of landing on them. A ring
+   * would have done for eight; twenty round the edge of the crown is a
+   * necklace, and twenty on a spiral is a tree with fruit in it.
+   */
+  const spiral = (i, count, phase, outX, outY) => {
+    const angle = phase + i * GOLDEN;
+    const out = Math.sqrt((i + 0.4) / count);
     return {
-      x: Math.cos(angle) * crownRX * 0.6 * out,
-      y: crownY + Math.sin(angle) * crownRY * 0.74 * out,
+      x: Math.cos(angle) * crownRX * outX * out,
+      y: crownY + Math.sin(angle) * crownRY * outY * out,
     };
   };
+
+  /** Where clump `i` sits. */
+  const place = (i) => spiral(i, MAX_STEPS, 0, 0.6, 0.74);
 
   const clumps = [];
   for (let i = 0; i < MAX_STEPS; i++) {
@@ -109,13 +130,9 @@ export function create(scene, { width, height }) {
    */
   const fruits = [];
   for (let j = 0; j < SLOTS; j++) {
-    const angle = -Math.PI / 2 + ((j + 0.5) / SLOTS) * Math.PI * 2;
+    const { x, y } = spiral(j, SLOTS, GOLDEN / 2, 0.66, 0.8);
     const fruit = scene.add
-      .image(
-        Math.cos(angle) * crownRX * 0.58,
-        crownY + Math.sin(angle) * crownRY * 0.56,
-        fruitTexture(scene, varietyFor(j), 26)
-      )
+      .image(x, y, fruitTexture(scene, varietyFor(j), FRUIT))
       .setScale(DRAW)
       .setVisible(false);
     fruits.push(fruit);
@@ -123,7 +140,7 @@ export function create(scene, { width, height }) {
   }
 
   /** The one that swells when a level finishes, before it joins the row. */
-  const ripe = scene.add.image(0, crownY, fruitTexture(scene, varietyFor(0), 46));
+  const ripe = scene.add.image(0, crownY, fruitTexture(scene, varietyFor(0), RIPE));
   ripe.setScale(DRAW).setVisible(false);
   root.add(ripe);
 
@@ -149,12 +166,12 @@ export function create(scene, { width, height }) {
 
     const clumpKey = clumpTexture(scene, variety, clumpSize);
     for (const clump of clumps) clump.setTexture(clumpKey);
-    ripe.setTexture(fruitTexture(scene, variety, 46));
+    ripe.setTexture(fruitTexture(scene, variety, RIPE));
 
     for (let j = 0; j < SLOTS; j++) {
-      // Past eight the row shows the eight most recent, so it keeps moving.
+      // Past the cap the row shows the most recent, so it keeps moving.
       const which = level <= SLOTS ? j : level - SLOTS + j;
-      fruits[j].setTexture(fruitTexture(scene, varietyFor(which), 26));
+      fruits[j].setTexture(fruitTexture(scene, varietyFor(which), FRUIT));
       fruits[j].setVisible(level > j);
     }
   };
@@ -233,7 +250,7 @@ export function create(scene, { width, height }) {
         targets: ripe,
         x: slot ? slot.x : 0,
         y: slot ? slot.y : crownY,
-        scale: DRAW * (26 / 46),
+        scale: DRAW * (FRUIT / RIPE),
         duration: 460,
         ease: 'Quad.easeInOut',
         onComplete: () => {
