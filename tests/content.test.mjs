@@ -128,18 +128,51 @@ describe('words', () => {
 });
 
 describe('numbers', () => {
+  /** 0–100, then a thousand and a lakh. */
+  const EXPECTED = [...Array.from({ length: 101 }, (unused, i) => i), 1000, 100000];
+
+  test('every value is there exactly once, in order', () => {
+    assert.deepEqual(numbers.map((n) => n.value), EXPECTED);
+  });
+
+  test('ids follow the values', () => {
+    for (const n of numbers) assert.equal(n.id, `n${n.value}`);
+  });
+
   test('digits use the Urdu block, not the Arabic one', () => {
     // ۴ ۶ ۷ (U+06F4/6/7) are drawn differently from ٤ ٦ ٧ (U+0664/6/7).
-    // Picking the wrong block gives digits an Urdu reader will not recognise.
-    assert.equal(numbers.length, 10);
-    numbers.forEach((n, i) => {
-      assert.equal(n.value, i);
+    // Picking the wrong block gives digits an Urdu reader will not recognise,
+    // and the two blocks are indistinguishable in most editors — which is why
+    // this is checked rather than eyeballed.
+    for (const n of numbers) {
+      const digits = [...n.char];
       assert.equal(
-        n.char.codePointAt(0),
-        0x06f0 + i,
-        `${n.id} is U+${n.char.codePointAt(0).toString(16)}, expected U+06F${i}`
+        digits.join(''),
+        String(n.value)
+          .split('')
+          .map((d) => String.fromCodePoint(0x06f0 + Number(d)))
+          .join(''),
+        `${n.id} is written ${n.char}`
       );
-    });
+    }
+  });
+
+  test('every name and every romanisation is its own', () => {
+    // The check that catches a copy-paste in ninety hand-written words: Urdu
+    // builds none of 11–99 out of its parts, so two numbers sharing a name is
+    // always a mistake rather than a language feature.
+    const names = numbers.map((n) => n.name);
+    const romans = numbers.map((n) => n.roman);
+    const twice = (list) => list.filter((v, i) => list.indexOf(v) !== i);
+    assert.deepEqual(twice(names), [], 'a name is used for two numbers');
+    assert.deepEqual(twice(romans), [], 'a romanisation is used for two numbers');
+  });
+
+  test('nothing is blank', () => {
+    for (const n of numbers) {
+      assert.ok(n.name?.trim(), `${n.id} has no Urdu name`);
+      assert.ok(n.roman?.trim(), `${n.id} has no romanisation`);
+    }
   });
 });
 

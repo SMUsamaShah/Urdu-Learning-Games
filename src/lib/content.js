@@ -10,6 +10,7 @@ import letterData from '../../content/letters.json';
 import numberData from '../../content/numbers.json';
 import wordData from '../../content/words.json';
 import orderingData from '../../content/orderings.json';
+import { numberBand, BANDS } from './enabled.js';
 
 // Glyph outlines are fetched rather than imported so the bundler emits them as
 // a separate cacheable asset instead of inlining ~220 KB into the main bundle.
@@ -78,9 +79,21 @@ export function allLetterGlyphs(form) {
   return all.flatMap((forms) => Object.values(forms));
 }
 
-/** Every number glyph. See allLetterGlyphs. */
+/**
+ * Every number glyph *that is currently in play*. See allLetterGlyphs.
+ *
+ * The one place a filtered set is used for sizing rather than the full one, and
+ * deliberately. Letters are all about the same width, so sizing them against
+ * the full alphabet costs nothing and keeps a letter the same size whatever
+ * else is switched on. Numbers are not: the set runs to ۱۰۰۰۰۰, and sizing a
+ * screen showing ۰ to ۹ against a six-digit number would draw every digit at a
+ * fifth of the size it should be. The band is a different curriculum rather
+ * than a filter over one, so it decides the sizing too.
+ */
 export function allNumberGlyphs() {
-  return Object.values(glyphs?.numbers ?? {});
+  return activeNumbers()
+    .map((number) => glyphs?.numbers[number.id])
+    .filter(Boolean);
 }
 
 /** Every word glyph. See allLetterGlyphs. */
@@ -152,6 +165,25 @@ export function glyphFont() {
 /** A baked Urdu UI string (menu labels, headings). See content/ui.json. */
 export function uiGlyph(stringId) {
   return glyphs?.ui[stringId] ?? null;
+}
+
+/**
+ * The numbers currently in play: whatever the Settings band allows.
+ *
+ * Everything that deals a number goes through this rather than through the raw
+ * `numbers` export, so a band of ten cannot be undermined by one game reading
+ * the whole file. The raw export stays for Settings and the recorder, which
+ * both need the complete list whatever is being taught this week.
+ */
+export function activeNumbers() {
+  const band = numberBand();
+  // A thousand and a lakh ride along with the widest band rather than sitting
+  // above it. They are not the next numbers after a hundred — nothing between
+  // 101 and 999 exists here — they are the two round numbers Urdu actually
+  // counts big things in, and a band that says "up to 100" and then hides them
+  // would be hiding them for ever.
+  const cap = band === BANDS[BANDS.length - 1] ? Infinity : band;
+  return numbers.filter((number) => number.value <= cap);
 }
 
 /** The word taught alongside a letter, or null where none is suitable. */

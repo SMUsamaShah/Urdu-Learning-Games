@@ -19,20 +19,6 @@ editor. Nothing in the code assumes 38 — `letters.length` is read everywhere i
 matters — but the count appears in a few comments and in the Settings row, so
 those want a look.
 
-### Numbers only go to nine
-
-`content/numbers.json` holds ۰–۹ and nothing else, so every counting screen —
-`Numbers`, `NumberLine`, the counting games — teaches ten numerals and stops.
-Urdu names every number to a hundred separately and irregularly (اکیس, بائیس,
-تیئس …), so 11–99 have to be authored rather than generated from tens and
-units; ہزار and لاکھ come after them, and لاکھ is worth having because it is the
-unit Urdu actually counts large things in.
-
-`npm run bake` renders the multi-digit forms once the JSON is there. Settings
-wants a **Numbers up to: 10 / 20 / 100** band defaulting to 10, or a
-three-year-old meets ninety-nine in a matching game. It adds 93 clips to the
-recorder's list, optional like every other clip.
-
 ### Nothing can be switched off
 
 Every letter, word and number in `content/` appears in every game that can use
@@ -92,6 +78,20 @@ Only worth doing if the tracing is actually being done on the tablet rather than
 at a computer.
 
 ## Language
+
+### The ninety number names want reading
+
+`content/numbers.json` now carries a name for every number to a hundred, plus
+ہزار and لاکھ. Ten of them were there before and have been used for months; the
+other ninety-three were written in one sitting and nobody has read them. Urdu
+composes none of 11–99 from its parts, so each is its own word and each is its
+own chance to be wrong — and a wrong one teaches a child the wrong word for a
+number.
+
+The ones worth checking first, because they are the ones where usage and
+spelling vary most: چھبیس (26), تریسٹھ (63), سڑسٹھ (67), اٹھہتر (78), نوے (90)
+and ننانوے (99). The rest are common enough that an error would be a typo rather
+than a judgement.
 
 ### The Urdu I wrote has not been read by a native speaker
 

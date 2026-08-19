@@ -41,6 +41,7 @@ import * as sfx from '../lib/sfx.js';
 import { summaries } from '../lib/clip-store.js';
 import { expectedClips } from '../lib/clip-list.js';
 import { letters, numbers, words } from '../lib/content.js';
+import { numberBand, setNumberBand, BANDS } from '../lib/enabled.js';
 import { guidedLetters, strokesMatchFont } from '../lib/strokes.js';
 import { reset as resetProgressTotal, state as progressState } from '../lib/progress.js';
 import {
@@ -156,6 +157,7 @@ export function openSettings({ onClose } = {}) {
         ])}
         ${group('Voice', [pageRow('recordings', 'Your recordings', '…')])}
         ${group('Writing', [pageRow('traces', 'Letter traces', traceSummary())])}
+        ${group('Content', [pageRow('numbers', 'Numbers up to', String(numberBand()))])}
         ${group('Progress', [
           pageRow('indicator', 'Shown as', indicatorName(currentIndicator())),
           actionRow('progress', 'How far', progressSummary()),
@@ -230,6 +232,7 @@ export function openSettings({ onClose } = {}) {
   const PAGE_TITLES = {
     tune: 'Tune',
     indicator: 'Shown as',
+    numbers: 'Numbers up to',
     check: 'Sound check',
     recordings: 'Your recordings',
     traces: 'Letter traces',
@@ -246,6 +249,7 @@ export function openSettings({ onClose } = {}) {
 
     if (id === 'tune') return void bodyEl.append(tunePage());
     if (id === 'indicator') return void bodyEl.append(indicatorPage());
+    if (id === 'numbers') return void bodyEl.append(numbersPage());
     if (id === 'check') return void openSoundCheck();
 
     if (id === 'recordings') {
@@ -303,6 +307,36 @@ export function openSettings({ onClose } = {}) {
         <p class="set-note">
           The strip down the left of every game. It shows the same total
           whichever one is chosen; a change takes effect on the next screen.
+        </p>
+      </div>`);
+  }
+
+  /**
+   * How far the counting goes.
+   *
+   * `content/numbers.json` holds 0–100 plus a thousand and a lakh. All of it at
+   * once is not a harder version of the same app, it is a different one: ۹۹
+   * turning up in a three-year-old's matching game teaches nothing and is
+   * mostly frightening. Ten is the default and is what the app did before the
+   * rest of the numbers existed.
+   */
+  function numbersPage() {
+    return el(`
+      <div class="set-list">
+        <div class="set-card">
+          ${BANDS.map(
+            (band) => `<button type="button" class="set-row" data-band="${band}"
+              aria-checked="${band === numberBand()}" role="radio">
+              <span class="set-row-label">${band}</span>
+              <span class="set-row-tick" aria-hidden="true">✓</span>
+            </button>`
+          ).join('')}
+        </div>
+        <p class="set-note">
+          Every number to a hundred has its own name in Urdu — ۴۷ is سینتالیس,
+          not "four ten seven" — so this decides how many names a child is meeting
+          as well as how high the counting goes. A thousand and a lakh come in
+          with the hundred.
         </p>
       </div>`);
   }
@@ -423,6 +457,16 @@ export function openSettings({ onClose } = {}) {
           'aria-checked',
           String(row.dataset.indicator === currentIndicator())
         );
+      }
+      sfx.tap();
+      return;
+    }
+
+    const band = event.target.closest('[data-band]');
+    if (band) {
+      setNumberBand(Number(band.dataset.band));
+      for (const row of root.querySelectorAll('[data-band]')) {
+        row.setAttribute('aria-checked', String(Number(row.dataset.band) === numberBand()));
       }
       sfx.tap();
       return;

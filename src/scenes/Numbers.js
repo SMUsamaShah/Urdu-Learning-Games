@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { allNumberGlyphs, numberGlyph, numbers, numbersById } from '../lib/content.js';
+import { activeNumbers, allNumberGlyphs, numberGlyph, numbersById } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { hop } from '../lib/liveliness.js';
 import { ringBurst } from '../lib/particles.js';
@@ -9,6 +9,13 @@ import { addWordImage, illustratedWords, queueWordImages } from '../lib/images.j
 import { sayNumber } from '../lib/say.js';
 import { COLORS, chunkyGlyphEm, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
+
+/**
+ * The most things a round will ever lay out to be counted.
+ *
+ * Not the same as how high the numerals go — see the note in onCreated().
+ */
+const COUNTABLE_MAX = 9;
 
 /** Star colours, cycled by value so the same digit is always the same colour. */
 const STAR_COLORS = [0xe4633c, 0x3f74d6, 0x2fa05f, 0xd44f8c, 0x9b5fc9, 0xe09a1c, 0x1a9c96];
@@ -53,10 +60,19 @@ export default class Numbers extends QuizScene {
     queueWordImages(this);
   }
 
+
   onCreated() {
     // Zero is left out: an empty screen is not a counting question, and "how
     // many?" with nothing there reads as a bug rather than a puzzle.
-    this.countable = numbers.filter((n) => n.value >= 1 && n.value <= 9).map((n) => n.id);
+    //
+    // Counting does not follow the Settings band, and that is not an oversight.
+    // The band decides which numerals a child is shown and told the name of;
+    // this is the other thing, laying out that many objects and asking how many
+    // there are, and nobody counts forty-seven ducks. Nine stays nine however
+    // high the numerals go.
+    this.countable = activeNumbers()
+      .filter((n) => n.value >= 1 && n.value <= COUNTABLE_MAX)
+      .map((n) => n.id);
     this.props = illustratedWords();
   }
 
@@ -193,7 +209,7 @@ export default class Numbers extends QuizScene {
    * Silent if that number has not been recorded yet, like everything else here.
    */
   countAloud(value) {
-    const number = numbers.find((n) => n.value === value);
+    const number = activeNumbers().find((n) => n.value === value);
     if (number) sayNumber(number.id);
   }
 }

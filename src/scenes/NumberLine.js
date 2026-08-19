@@ -1,5 +1,5 @@
 import Caterpillar from './Caterpillar.js';
-import { allNumberGlyphs, numberGlyph, numbers } from '../lib/content.js';
+import { activeNumbers, allNumberGlyphs, numberGlyph } from '../lib/content.js';
 import { sayNumber } from '../lib/say.js';
 
 /**
@@ -44,7 +44,9 @@ export default class NumberLine extends Caterpillar {
   }
 
   items() {
-    return numbers.map((n) => n.id).filter((id) => numberGlyph(id));
+    return activeNumbers()
+      .map((n) => n.id)
+      .filter((id) => numberGlyph(id));
   }
 
   glyphFor(id) {
