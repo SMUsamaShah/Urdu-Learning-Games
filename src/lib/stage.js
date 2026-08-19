@@ -30,6 +30,7 @@ import { addBanner } from './banner.js';
 import { paperFall } from './celebrate.js';
 import { jig } from './liveliness.js';
 import { starShower } from './particles.js';
+import { armBrowseTimer, noteFinished } from './chalo.js';
 import { addRail } from './rail.js';
 import { addScenery } from './scenery.js';
 import { COLORS, RAIL, makeButton } from './theme.js';
@@ -92,6 +93,11 @@ export function addStage(scene, options = {}) {
 
   const banner = instruction ? addBanner(scene, { ui: instruction, roman }) : null;
 
+  // A چلو run moves on when a screen finishes something. The screens that never
+  // finish anything get a clock instead, armed here so a scene does not have to
+  // know whether it is being played alone or as part of a run. See chalo.js.
+  armBrowseTimer(scene);
+
   // Leaving mid-word should not leave a voice talking over the menu.
   scene.events.once('shutdown', stopAll);
 
@@ -118,6 +124,9 @@ export function wellDone(scene, { banner, rail }, options = {}) {
   paperFall(scene);
   starShower(scene, options.duration ? { duration: options.duration } : {});
   rail?.cheer();
+  // The one moment every game agrees is "an activity finished", which is what a
+  // چلو run waits for. Nothing in the scenes changes for it.
+  noteFinished(scene);
   if (banner) {
     // Said before the jumping starts: a ribbon still reading "find the letter"
     // while it dances is celebrating the wrong thing.

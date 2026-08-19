@@ -245,6 +245,38 @@ else if ((await screens()).length !== 0) {
   step('  it closes both levels and leaves nothing behind');
 }
 
+// --- 7b. Three quick taps on the menu open one game --------------------------
+//
+// A tile waits a beat before the screen changes so it is seen to react, and
+// three-year-olds fill that beat. Every tap in it used to be honoured: three
+// games started at once, all three left running, and all three pushed onto the
+// stack — so back walked out through two games nobody had played.
+
+step('the menu can be hammered');
+const hammered = await page.evaluate(() => {
+  const tiles = window.__game.scene
+    .getScene('Home')
+    .children.list.filter((c) => c.name === 'tile' && c.input?.enabled);
+  if (tiles.length < 3) return null;
+  tiles.slice(0, 3).forEach((tile) => tile.emit('pointerup'));
+  return true;
+});
+if (!hammered) fail('could not find three tiles on the menu to tap');
+else {
+  await page.waitForFunction(
+    () => window.__history.screens().some((name) => name.startsWith('game:')),
+    null,
+    { timeout: 15000 }
+  );
+  await settled();
+  const opened = await screens();
+  const awake = await running();
+  if (opened.length !== 1) fail(`three taps left ${opened.length} entries: ${opened.join()}`);
+  else if (awake.length !== 1) fail(`three taps left ${awake.length} scenes up: ${awake.join()}`);
+  else step(`  one game (${opened[0].replace('game:', '')}), one entry`);
+  await back();
+}
+
 // --- 8. At the menu, back leaves the app -----------------------------------
 //
 // A check cannot watch a tab close, but it can assert there is nothing of ours

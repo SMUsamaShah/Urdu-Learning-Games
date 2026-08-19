@@ -466,6 +466,25 @@ a wrong answer, `cheer()` for finishing something.
 **Nothing a child taps may sit under the panel.** `npm run verify:rail` walks
 every game looking for one, and found seven the day the rail went in.
 
+**چلو plays the app for itself.** `src/lib/chalo.js` holds one run: a shuffled
+bag of games, opened through `Home.openGame`, advancing when an activity
+finishes. The signal it waits on is `wellDone()` in `stage.js`, which is the one
+moment every game agrees on — sixteen scenes call it after a board is finished
+and QuizScene calls it on the fifth right answer — so a new game joins a run
+without knowing a run exists. Flashcards is the one screen that never finishes
+anything, and gets a timer from `armBrowseTimer()` instead.
+
+Two rules the run depends on, both checked by `npm run verify:chalo`. Every game
+after the first **replaces** its history entry rather than pushing one, so a run
+is one back press deep however long it has gone on. And `openGame` stops
+whatever is on screen before starting the next, because stepping from game to
+game skips the menu and nothing else would.
+
+**Nothing on the menu honours a second tap.** Every departure waits 150ms so the
+tile is seen to react, and a three-year-old can hit two more things in that
+time — which used to start three games at once, all running, all on the stack.
+`Home.leave()` is the latch; it opens again when the menu is rebuilt.
+
 `npm run preview-indicators` draws every stage of each one onto a sheet. Use it:
 whether a plant looks like a plant is not something a test can answer, and the
 alternative is playing to level nine to find out what level nine looks like.

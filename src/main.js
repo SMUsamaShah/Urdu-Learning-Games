@@ -36,6 +36,8 @@ import * as strokes from './lib/strokes.js';
 import * as fullscreen from './lib/fullscreen.js';
 import * as orientation from './lib/orientation.js';
 import * as backHistory from './lib/history.js';
+import * as chalo from './lib/chalo.js';
+import * as stage from './lib/stage.js';
 import * as volumeControl from './lib/volume.js';
 import * as sfx from './lib/sfx.js';
 import { useAudioContext } from './lib/tone-setup.js';
@@ -137,6 +139,14 @@ window.__orientation = orientation;
 window.__volume = volumeControl;
 window.__sfx = sfx;
 window.__history = backHistory;
+// The چلو run. Module-scope state again, and for the same reason: a check has
+// to ask the running app which game the run is on, not a second copy of the
+// module that has never been started.
+window.__chalo = chalo;
+// `wellDone` is the one moment every game agrees is "an activity finished",
+// and it is what a چلو run listens for. A check needs to be able to end an
+// activity the way a game does without playing one through by hand.
+window.__stage = stage;
 
 // Asks to be held sideways — and where that is refused, does nothing at all
 // rather than blocking the view. Released while the grown-ups screens are open.

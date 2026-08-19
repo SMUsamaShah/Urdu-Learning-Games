@@ -168,6 +168,10 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
       paint: paintFace(game),
       paintKey: `${role}-face:em${Math.round(labelFit.em)}:${game.ui}`,
     });
+    // Named so a check can find the tiles among everything else on the menu
+    // without knowing where they were laid out. `role` also tells the menu's
+    // tiles apart from the panel's.
+    button.setName(role);
     button.on('pointerdown', () => squash(scene, button));
     return button;
   };

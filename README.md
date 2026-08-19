@@ -56,6 +56,13 @@ on a device on the same wifi.
 
 ## The games
 
+**چلو — "let's go"** is the front door: one tap starts a random activity, and
+when that activity finishes the app moves straight into a different one. The
+menu asks a three-year-old to choose between twenty-four pictures in a script
+they cannot read, so most of them are never opened; چلو is the way to play
+without choosing, and it is meant to be the normal one. Back leaves the run and
+returns to the menu, from however many games in.
+
 **Letters** is free exploration: pick any letter, see it large with every
 positional form it actually has, and the word that teaches it. Nothing is
 locked and there is no wrong move.

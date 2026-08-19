@@ -10,7 +10,7 @@ import { dropScreen, pushScreen, replaceScreen } from '../lib/history.js';
 import { addScenery } from '../lib/scenery.js';
 import { gridPlaces, tileMaker } from '../lib/game-tile.js';
 import { openGamesPanel } from '../lib/games-panel.js';
-import { popIn, squash } from '../lib/liveliness.js';
+import { breathe, popIn, squash } from '../lib/liveliness.js';
 import { musicOn, setMusicOn, startMusic } from '../lib/music.js';
 import { prepareFlourishes } from '../lib/flourish.js';
 import { ringBurst } from '../lib/particles.js';
@@ -19,6 +19,7 @@ import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { queueTileArt } from '../lib/tiles.js';
 import { addIndicator } from '../lib/rail.js';
+import { running as chaloRunning, startRun, stopRun } from '../lib/chalo.js';
 import { FEATURED, GAMES, MORE, MORE_TILE } from '../lib/games.js';
 
 /**
@@ -47,6 +48,22 @@ import { FEATURED, GAMES, MORE, MORE_TILE } from '../lib/games.js';
 const STAGE = { left: 250, right: DESIGN.width - 60 };
 const STAGE_X = (STAGE.left + STAGE.right) / 2;
 
+/**
+ * The چلو button, and where the grid starts beneath it.
+ *
+ * The grid used to start at 228. It drops to make room for the one control on
+ * this screen that is meant to be tapped without reading anything, which is the
+ * point of putting it above the tiles rather than among them: a child scanning
+ * for something to press should meet it first.
+ */
+const CHALO = { y: 252, width: 340, height: 84 };
+/**
+ * The band the grid gets. The bottom is where the footer line starts, not the
+ * canvas edge — the tiles are sized to this rather than being allowed to run
+ * past it.
+ */
+const GRID = { top: 318, bottom: DESIGN.height - 56 };
+
 export default class Home extends Phaser.Scene {
   constructor() {
     super('Home');
@@ -62,6 +79,8 @@ export default class Home extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor(COLORS.bg);
     addScenery(this);
+    // Nothing has been tapped yet. See leave().
+    this.leaving = false;
 
     const title = uiGlyph('app-title');
     if (title) {
@@ -78,13 +97,20 @@ export default class Home extends Phaser.Scene {
     // COLUMNS.
     const COLUMNS = 5;
     const gap = 26;
+    const rowGap = 24;
     const shown = [...FEATURED, MORE_TILE];
+    const rows = Math.ceil(shown.length / COLUMNS);
+    // Two limits, and the tighter one wins. Width alone used to decide this,
+    // which was true right up until چلو pushed the grid's top down by ninety
+    // pixels and the second row started printing through the footer. Sizing
+    // against the band as well means the tiles give way to the text rather than
+    // landing on top of it, whichever direction runs out first.
     const tileW = Math.min(
       252,
-      (STAGE.right - STAGE.left - gap * (COLUMNS - 1)) / COLUMNS
+      (STAGE.right - STAGE.left - gap * (COLUMNS - 1)) / COLUMNS,
+      (GRID.bottom - GRID.top - rowGap * (rows - 1)) / rows / 1.04
     );
     const tileH = Math.round(tileW * 1.04);
-    const rowGap = 24;
     // Measured from the top of the grid rather than its centre, so a second row
     // grows downwards into the space above the footer instead of pushing the
     // last row through it.
@@ -95,21 +121,18 @@ export default class Home extends Phaser.Scene {
       width: tileW,
       height: tileH,
       centerX: STAGE_X,
-      top: 228,
+      top: GRID.top,
     });
 
     const makeTile = tileMaker(this, shown, { width: tileW, height: tileH });
     const tiles = shown.map((game, index) =>
       makeTile(game, places[index].x, places[index].y, () => {
         sfx.whoosh();
-        // A beat between the tap and the screen changing, so the tile is seen
-        // to react. Leaving instantly makes the tap feel like it went to the
-        // next screen rather than to the thing that was pressed.
-        this.time.delayedCall(150, () =>
-          game.scene ? this.openGame(game.scene) : this.openMore()
-        );
+        this.leave(() => (game.scene ? this.openGame(game.scene) : this.openMore()));
       })
     );
+
+    this.buildChalo();
 
     // The grid assembles itself instead of being there already. Reading order,
     // so it builds right to left the way the script does, and quickly — this is
@@ -162,6 +185,112 @@ export default class Home extends Phaser.Scene {
   }
 
   /**
+   * چلو — the button that plays the app for you.
+   *
+   * The one control on this screen aimed at somebody who cannot read. Wide,
+   * central, above the tiles, and the only thing here that moves: a slow swell
+   * and a highlight travelling across it, which is what makes a child look at
+   * it first among ten pictures that are now deliberately still.
+   *
+   * The swell is scale on a container rather than anything redrawn, and it is
+   * slow — a two-second breath rather than a bounce. A button that jumps reads
+   * as urgent; this one only needs to read as ready.
+   */
+  buildChalo() {
+    const button = makeButton(this, {
+      x: STAGE_X,
+      y: CHALO.y,
+      width: CHALO.width,
+      height: CHALO.height,
+      color: COLORS.accent,
+      onTap: () => this.startChalo(),
+    });
+    button.setName('chalo-button');
+
+    const word = uiGlyph('chalo');
+    if (word) {
+      button.add(
+        addGlyph(this, -34, -6, 'ui:chalo:52', word, {
+          height: 52,
+          color: COLORS.onColor,
+        })
+      );
+    }
+    button.add(
+      label(this, 66, 4, "Let's go", { size: 26, color: COLORS.onColor })
+    );
+
+    // The highlight: a pale bar travelling across the face. It has to stay
+    // *inside* the face, and a container does not clip its children — a bar the
+    // width of the button slid across it would spend most of its journey as a
+    // white diagonal floating over the meadow. So it is sized to fit the card
+    // once tilted (a 62-tall bar at 14° stands 69 high, inside the 84 less the
+    // rim), it turns back short of the rounded corners, and it fades in and out
+    // at the ends rather than appearing from nowhere.
+    // Solid white, and hidden by the object's own alpha rather than by the
+    // fill's: the two multiply, so a fill alpha of zero is a bar that can never
+    // be tweened into view however far its alpha is raised.
+    const sheen = this.add.rectangle(0, 0, 38, 62, 0xffffff, 1).setAlpha(0);
+    sheen.setAngle(14);
+    button.addAt(sheen, 1);
+    this.tweens.add({
+      targets: sheen,
+      x: { from: -114, to: 114, duration: 1500, ease: 'Quad.easeInOut' },
+      alpha: { from: 0, to: 0.3, duration: 750, yoyo: true },
+      repeat: -1,
+      repeatDelay: 2200,
+    });
+
+    // Arrives first, then breathes — and in that order for a reason. Both are
+    // tweens on the same scale, and a tween reads the value it is starting from
+    // on its first frame, not when it is created. Breathing started alongside
+    // popIn read a fifth of full size as its resting scale and swung the button
+    // between that and full size for ever, so it sat at about five sixths and
+    // looked like a mis-sized button rather than a moving one.
+    popIn(this, button, { delay: 40, duration: 420 }).once('complete', () =>
+      breathe(this, button, { amount: 0.035, duration: 1900 })
+    );
+    this.chaloButton = button;
+  }
+
+  /**
+   * Starts a run: a random game, and a different one each time one finishes.
+   *
+   * The first game pushes a history entry and every one after it replaces that
+   * same entry, so a run is one back press deep however long it goes on. A
+   * child six games in is still one press from the menu, and pressing it ends
+   * the run rather than dropping them into the fifth game again.
+   */
+  startChalo() {
+    if (chaloRunning() || this.leaving) return;
+    sfx.whoosh();
+    ringBurst(this, this.chaloButton.x, this.chaloButton.y, COLORS.accent);
+    this.leave(() => {
+      startRun((key, first) => this.openGame(key, first ? pushScreen : replaceScreen));
+    });
+  }
+
+  /**
+   * Waits a beat, then goes — and only the first tap gets to.
+   *
+   * The beat is so the tile is seen to react: leaving instantly makes the tap
+   * feel like it went to the next screen rather than to the thing that was
+   * pressed. But a hundred and fifty milliseconds is plenty of time for a
+   * three-year-old to hit two more things, and every one of those taps used to
+   * be honoured — three quick jabs at the menu started three games at once, all
+   * three left running, all three in the history, and the console filling with
+   * two scenes claiming the same texture.
+   *
+   * So the menu closes on the first tap. The latch opens again when the menu is
+   * built, which is what coming back to it does.
+   */
+  leave(go) {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.time.delayedCall(150, go);
+  }
+
+  /**
    * Opens a game, and says what leaving it means.
    *
    * The back action rather than the ⌂ button is where the swoosh lives now, so
@@ -170,7 +299,19 @@ export default class Home extends Phaser.Scene {
    * src/lib/history.js.
    */
   openGame(key, how = pushScreen) {
+    // A run steps straight from one game into the next without passing through
+    // the menu, so the game being left has to be stopped from here. `this` is
+    // Home, and `this.scene.start` only ever stops the scene it is called on —
+    // without this the finished game keeps running underneath the new one,
+    // updating and playing sounds and taking taps.
+    for (const other of this.game.scene.getScenes(true)) {
+      const running = other.scene.key;
+      if (running !== 'Home' && running !== key) this.game.scene.stop(running);
+    }
     how(`game:${key}`, () => {
+      // Backing out of a game ends a run. Without this the next game to finish
+      // would drag the child out of the menu and into another one.
+      stopRun();
       sfx.swoosh();
       // Stopped explicitly, then Home started. `this.scene.start('Home')` would
       // not do it: that stops *the scene it is called on*, and this runs on
@@ -192,6 +333,12 @@ export default class Home extends Phaser.Scene {
     this.morePanel = openGamesPanel(this, MORE, (game) =>
       this.openGame(game.scene, replaceScreen)
     );
+    // Opening the panel is not leaving the menu — the menu is still there
+    // behind it and is not rebuilt when the panel closes, so the latch has to
+    // be opened by hand or the next tap on anything would do nothing.
+    this.morePanel.once('destroy', () => {
+      this.leaving = false;
+    });
   }
 
   /**

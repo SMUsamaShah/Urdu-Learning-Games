@@ -41,6 +41,7 @@
     "verify:back": "node tools/verify-back.mjs",
     "verify:speech": "node tools/verify-speech.mjs",
     "verify:rail": "node tools/verify-rail.mjs",
+    "verify:chalo": "node tools/verify-chalo.mjs",
     "preview-indicators": "node tools/preview-indicators.mjs"
   },
   "dependencies": {
