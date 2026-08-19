@@ -444,8 +444,9 @@ character sprite sheet and a set of backgrounds at every screen density:
 - `src/lib/scenery.js` — the sky, sun, clouds, hills and ground every screen
   sits on.
 - `src/lib/rail.js` — the opaque strip down the left of every game screen, and
-  `src/lib/indicators/` — what stands in it. Four so far: a vine climbing a
-  cane, a tree that leafs out, a bar that fills, a glass of juice.
+  `src/lib/indicators/` — what stands in it. Five so far: a vine climbing a
+  cane, the same vine with a ladybird riding the tip, a tree that leafs out, a
+  bar that fills, a glass of juice.
   `src/lib/indicators/greenery.js` is the parts bin the growing ones are
   assembled from.
 - `src/lib/mascot.js` — the spider, now only on the menu.

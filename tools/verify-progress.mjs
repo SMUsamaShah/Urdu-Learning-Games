@@ -119,6 +119,8 @@ const railState = (scene) =>
       drawn: found.indicator?.drawn,
       row: found.indicator?.row,
       species: found.indicator?.species,
+      // Only the one with somebody on it publishes this.
+      rider: found.indicator?.rider,
     };
   }, scene);
 
@@ -310,6 +312,49 @@ if (dropped.levels !== bankedBefore - 1) {
 } else if (dropped.drawn === beforeDrop.drawn) {
   fail(`the count dropped to ${dropped.levels} but the rail is drawing what it was`);
 } else step(`  ${bankedBefore} banked became ${dropped.levels}, and the rail redrew`);
+
+// --- 4b. And carries anybody riding it back down ----------------------------
+//
+// The climber's whole reason for existing. Every other indicator loses a bit of
+// itself on a wrong answer, which is a fact about a plant; this one carries
+// somebody back down, which is something happening to somebody, and a
+// three-year-old reads the second without being told. Skipped where there is
+// nobody up there.
+
+step('a rider comes back down');
+// Nine, which is the middle of the second level: a setback from there stays
+// inside the level. From the *start* of one it crosses back into the last, and
+// the end of a five-step climb is higher up the cane than the start of a
+// six-step one — so the rider correctly goes up, and a check that read that as
+// a failure would be checking the wrong thing.
+await seed(9);
+await startScene(page, 'FindLetter');
+await page.waitForTimeout(400);
+const riding = await railState('FindLetter');
+if (riding.rider === undefined) {
+  step('  nothing riding this one');
+} else {
+  const height = riding.rider;
+  await page.evaluate(() => window.__progress.setback());
+  const fell = await page
+    .waitForFunction(
+      (was) => {
+        const found = window.__game.scene
+          .getScene('FindLetter')
+          .children.list.find((child) => child.name === 'progress-rail');
+        // Down the screen is up in y, so falling is the number growing.
+        return found && found.indicator?.rider > was + 4;
+      },
+      height,
+      { timeout: 15000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!fell) {
+    const now = await railState('FindLetter');
+    fail(`the rider was at ${height} and is at ${now.rider} — it should have come down`);
+  } else step(`  fell from ${height}`);
+}
 
 // --- 5. It survives a reload ----------------------------------------------
 

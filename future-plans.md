@@ -38,8 +38,9 @@ steady drip rather than a batch.
 
 Done. Progress has two hundred pixels down the left of every game screen —
 opaque, no scenery behind it — and what stands in it is a swappable module in
-`src/lib/indicators/`. Four so far: a vine climbing a cane, a tree that leafs
-out, a bar that fills, a glass of juice. One right answer is one leaf, a full
+`src/lib/indicators/`. Five so far: a vine climbing a cane, the same vine with
+a ladybird riding the tip, a tree that leafs out, a bar that fills, a glass of
+juice. One right answer is one leaf, a full
 climb is a level, and Settings chooses which. The ring and its Urdu numeral are gone.
 
 The decision this section used to say needed making has been made. A wrong
@@ -58,7 +59,7 @@ What is left in this idea:
   eight flowers on it. Options: a second cane, flowers that grow into fruit as
   they age, or a garden screen that holds everything ever grown.
 - **More indicators.** The rail exists so that this list can grow: a tower being
-  built, a pet that evolves, somebody going up a cliff. One module in
+  built, a pet that evolves, a road being travelled. One module in
   `src/lib/indicators/`, one `create(scene, box)`, and Settings picks it up on
   its own.
 - **The plant is chosen for you.** Six varieties cycle by level. Letting a child

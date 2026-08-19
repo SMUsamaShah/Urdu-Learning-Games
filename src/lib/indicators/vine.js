@@ -6,6 +6,7 @@ import {
   caneTexture,
   flowerTexture,
   groundTexture,
+  ladybirdTexture,
   leafTexture,
   potTexture,
   stemTexture,
@@ -82,10 +83,13 @@ const BLOOM = 58;
  *
  * @param {Phaser.Scene} scene
  * @param {{width: number, height: number}} box measured from its bottom centre
+ * @param {{rider?: boolean}} [options] `rider` puts a ladybird on the tip and
+ *   makes this the climber — see src/lib/indicators/climber.js
  * @returns {Phaser.GameObjects.Container} the indicator contract — see
  *   src/lib/indicators/index.js
  */
-export function create(scene, { width, height }) {
+export function create(scene, { width, height }, options = {}) {
+  const { rider = false } = options;
   const root = scene.add.container(0, 0);
 
   // Everything is laid out against the box rather than against numbers typed
@@ -153,6 +157,25 @@ export function create(scene, { width, height }) {
   bloom.setScale(DRAW).setVisible(false);
   root.add(bloom);
 
+  /**
+   * Somebody to do the climbing, for the indicator that has one.
+   *
+   * Added last, so it is over the leaves it is walking on. It only ever rides
+   * the tip: where the vine has got to is where the ladybird is, which means
+   * there is one thing to look at rather than two, and a slip carries it down
+   * rather than merely shortening a plant.
+   */
+  const bug = rider
+    ? scene.add.image(0, -FOOT, ladybirdTexture(scene)).setScale(DRAW)
+    : null;
+  if (bug) {
+    root.add(bug);
+    // How high the climber is, live off the sprite rather than sampled into a
+    // field: the fall is a tween, and a number written down when the setback
+    // arrived would say where it was about to leave rather than where it is.
+    Object.defineProperty(root, 'rider', { get: () => Math.round(bug.y) });
+  }
+
   let variety = varietyFor(0);
   let steps = MAX_STEPS;
   let cell = span / steps;
@@ -161,6 +184,12 @@ export function create(scene, { width, height }) {
 
   /** Where the tip of a vine of `k` segments is. */
   const tipY = (k) => -(FOOT + k * cell);
+
+  /**
+   * Just under the tip, on the stem, where a thing climbing would be — but
+   * never below the soil, or at nothing earned it sits half inside the pot.
+   */
+  const rideY = (k) => Math.min(tipY(k) + 12, -FOOT - 2);
 
   /**
    * What is on screen, read off the sprites rather than tracked beside them.
@@ -246,6 +275,10 @@ export function create(scene, { width, height }) {
     bud.setPosition(0, tipY(shown)).setVisible(true).setScale(DRAW).setAlpha(1).setAngle(0);
     scene.tweens.killTweensOf(bloom);
     bloom.setVisible(false);
+    if (bug) {
+      scene.tweens.killTweensOf(bug);
+      bug.setPosition(0, rideY(shown)).setAngle(0).setScale(DRAW).setAlpha(1);
+    }
     republish();
   };
 
@@ -274,12 +307,25 @@ export function create(scene, { width, height }) {
       });
     }
     bud.setPosition(0, tipY(from));
+    const rise = 260 + (shown - from) * 60;
     scene.tweens.add({
       targets: bud,
       y: tipY(shown),
-      duration: 260 + (shown - from) * 60,
+      duration: rise,
       ease: 'Quad.easeOut',
     });
+    if (bug) {
+      bug.setPosition(0, rideY(from));
+      scene.tweens.add({ targets: bug, y: rideY(shown), duration: rise, ease: 'Quad.easeOut' });
+      // A squash on the way, so it climbs rather than slides.
+      scene.tweens.add({
+        targets: bug,
+        scaleY: DRAW * 0.82,
+        duration: rise / 2,
+        yoyo: true,
+        ease: 'Sine.easeInOut',
+      });
+    }
   };
 
   /** Water taken back: the top of the vine withers rather than vanishing. */
@@ -308,6 +354,20 @@ export function create(scene, { width, height }) {
       ease: 'Sine.easeInOut',
       onComplete: () => bud.setAngle(0),
     });
+    if (bug) {
+      // Down two, with a turn. A tumble rather than a slide: the fall is the
+      // whole point of having somebody up there, and it has to be readable as
+      // "oh" and not as a punishment — it lands on a leaf and carries on.
+      scene.tweens.killTweensOf(bug);
+      scene.tweens.add({
+        targets: bug,
+        y: rideY(Math.max(0, k)),
+        angle: { from: 0, to: 360 },
+        duration: 420,
+        ease: 'Quad.easeIn',
+        onComplete: () => bug.setAngle(0),
+      });
+    }
     // The count is true immediately even though the fade is still running: what
     // is published is what the vine now *is*, not what is still on screen for
     // another fifth of a second.
@@ -406,9 +466,9 @@ export function create(scene, { width, height }) {
  * the rest of the state is worked out here rather than the vine being made to
  * take a fraction it would only round.
  */
-export function still(scene, box, { fraction, level }) {
+export function still(scene, box, { fraction, level }, options = {}) {
   const steps = Math.min(5 + level, MAX_STEPS);
-  const el = create(scene, box);
+  const el = create(scene, box, options);
   const state = { fraction, level, steps, step: Math.round(fraction * steps) };
   el.apply({ ...state, reset: true }, state);
   return el;
