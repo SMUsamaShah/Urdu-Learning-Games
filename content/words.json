@@ -373,14 +373,14 @@
       "letterIndex": 0
     },
     {
-      "id": "hauz",
-      "word": "حوض",
-      "roman": "hauz",
-      "gloss": "pond",
-      "emoji": "🛁",
+      "id": "zaeef",
+      "word": "ضعیف",
+      "roman": "zaeef",
+      "gloss": "an elderly person",
+      "emoji": "🧓",
       "image": null,
       "letter": "zuad",
-      "letterIndex": 2
+      "letterIndex": 0
     }
   ]
 }

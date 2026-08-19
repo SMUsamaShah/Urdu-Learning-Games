@@ -98,6 +98,29 @@ await page.addInitScript(() => {
       window.__audioProbe.contexts.push(this);
     }
   };
+  // Every buffer the page plays *out loud*, so a check can tell whether saving
+  // a take played it back.
+  //
+  // Where it connects is the whole distinction. The tidy-up plays the take
+  // twice without a sound coming out: once into an OfflineAudioContext to trim
+  // and level it, and once into a MediaStreamDestination, which is the only way
+  // to reach the browser's Opus encoder — see take-polish.js. Counting starts
+  // alone counts both, and reports playback on a run where nothing was audible.
+  // Only a source routed at a live, real output is a source anybody heard.
+  window.__audioProbe.started = 0;
+  const connect = AudioBufferSourceNode.prototype.connect;
+  AudioBufferSourceNode.prototype.connect = function (dest, ...rest) {
+    const offline = dest?.context?.constructor?.name === 'OfflineAudioContext';
+    if (!offline && !(dest instanceof MediaStreamAudioDestinationNode)) {
+      this.__audible = true;
+    }
+    return connect.call(this, dest, ...rest);
+  };
+  const start = AudioBufferSourceNode.prototype.start;
+  AudioBufferSourceNode.prototype.start = function (...args) {
+    if (this.__audible) window.__audioProbe.started++;
+    return start.apply(this, args);
+  };
   const getUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
   navigator.mediaDevices.getUserMedia = async (...args) => {
     const stream = await getUserMedia(...args);
@@ -231,6 +254,50 @@ await page.waitForFunction(
 );
 step('clip saved to the device');
 
+// ------------------------------------------ hearing the take back, or not
+
+// The tune uses the same node type, so it would land in the count as well.
+await page.evaluate(() => window.__music.setMusicOn(false));
+
+/** Records over the same clip and reports whether anything was played back. */
+async function recordAgain() {
+  // Back to the same clip every time, and after the last save has finished
+  // moving. Saving steps the selection on to the next clip, and it does that
+  // after an await, so a click sent straight afterwards is silently undone a
+  // moment later: the pass records the *next* letter instead, and the run ends
+  // with more clips on the device than everything after here expects. Waiting
+  // for the step-on to land first is what makes the click stick.
+  await page.waitForSelector('.rec-root .rec-row[data-i="1"][aria-selected="true"]', {
+    timeout: 15000,
+  });
+  await page.click('.rec-root .rec-row[data-i="0"]');
+  await page.waitForSelector('.rec-root .rec-row[data-i="0"][aria-selected="true"]', {
+    timeout: 10000,
+  });
+  await page.evaluate(() => {
+    window.__audio.stopAll();
+    window.__audioProbe.started = 0;
+  });
+  await page.click('.rec-root [data-act="record"]');
+  await page.waitForTimeout(900);
+  await page.click('.rec-root [data-act="record"]');
+  // Long enough for the tidy-up, the save and any playback that follows.
+  await page.waitForTimeout(4000);
+  return page.evaluate(() => window.__audioProbe.started);
+}
+
+step('a saved take is played back when the box is ticked');
+const heard = await recordAgain();
+if (heard < 1) fail('the take was saved but never played back');
+else step(`  ${heard} clip(s) started`);
+
+step('and is not, when it is unticked');
+await page.uncheck('.rec-root [data-act="playback"]');
+const quiet = await recordAgain();
+if (quiet !== 0) fail(`playback was switched off but ${quiet} clip(s) still started`);
+else step('  nothing played');
+await page.check('.rec-root [data-act="playback"]');
+
 const stored = await page.evaluate(
   (key) =>
     new Promise((resolve) => {
@@ -254,6 +321,7 @@ else step(`IndexedDB holds ${stored.bytes} bytes (${stored.ext})`);
 const played = await page.evaluate((key) => window.__audio.play(key), CLIP.key);
 if (played !== true) fail(`play("${CLIP.key}") returned ${played} after recording`);
 else step('plays back from the device');
+
 
 // --------------------------------------------------- the audio hardware
 

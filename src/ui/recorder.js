@@ -98,6 +98,7 @@ export function buildRecorderPage() {
   // On unless explicitly turned off. Trimming is what makes a name and a word
   // recorded minutes apart play back as one phrase rather than two.
   let tidy = localStorage.getItem('urdu:tidy-takes') !== '0';
+  let playback = localStorage.getItem('urdu:playback-after-take') !== '0';
 
   const recorder = isRecordingSupported()
     ? createRecorder({
@@ -115,6 +116,10 @@ export function buildRecorderPage() {
       <div class="rec-head">
         <span class="rec-progress"></span>
         <span class="rec-head-spacer"></span>
+        <label class="rec-check">
+          <input type="checkbox" data-act="playback" ${playback ? 'checked' : ''} />
+          <span>Play it back</span>
+        </label>
         <button type="button" class="rec-btn" data-act="export">Export…</button>
         <button type="button" class="rec-btn" data-act="import">Import…</button>
       </div>
@@ -331,6 +336,10 @@ export function buildRecorderPage() {
       // of whatever it was playing before, or the old take keeps coming out.
       noteDeviceClip(clip.key, true);
       await refresh();
+      // Hearing the take back is the right default — it is how you find out
+      // the mic was pointing the wrong way — but it doubles the time each clip
+      // takes, and somebody working through a hundred and twenty of them knows
+      // by then whether the mic is working.
       await play(clip.key);
       // Recording is a long sitting; step on so the next one is ready.
       if (index < clips.length - 1) select(index + 1);
@@ -465,6 +474,11 @@ export function buildRecorderPage() {
     if (event.target.dataset?.act === 'tidy') {
       tidy = event.target.checked;
       localStorage.setItem('urdu:tidy-takes', tidy ? '1' : '0');
+      return;
+    }
+    if (event.target.dataset?.act === 'playback') {
+      playback = event.target.checked;
+      localStorage.setItem('urdu:playback-after-take', playback ? '1' : '0');
       return;
     }
     if (event.target.dataset?.act !== 'profile') return;

@@ -411,3 +411,25 @@
   margin: 0 auto 6px;
   max-width: 420px;
 }
+
+/* ------------------------------------------------- the toolbar's checkbox */
+
+/* Sits with Export and Import because it belongs to the sitting rather than to
+   the take: whether to hear each clip back is a decision made once, at the
+   start of an hour of recording, not per clip. */
+.rec-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--dim);
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rec-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}

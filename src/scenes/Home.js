@@ -9,7 +9,7 @@ import { dropScreen, pushScreen, replaceScreen } from '../lib/history.js';
 import { addScenery } from '../lib/scenery.js';
 import { gridPlaces, tileMaker } from '../lib/game-tile.js';
 import { openGamesPanel } from '../lib/games-panel.js';
-import { bob, popIn, squash } from '../lib/liveliness.js';
+import { popIn, squash } from '../lib/liveliness.js';
 import { musicOn, setMusicOn, startMusic } from '../lib/music.js';
 import { prepareFlourishes } from '../lib/flourish.js';
 import { ringBurst } from '../lib/particles.js';
@@ -115,14 +115,11 @@ export default class Home extends Phaser.Scene {
     // a menu a child comes back to twenty times a day and a slow flourish
     // becomes an obstacle by the third visit.
     tiles.forEach((tile, index) => popIn(this, tile, { delay: 60 + index * 55 }));
-    // Then they breathe, out of phase, for as long as the menu is up. Ten
-    // still rectangles read as a form; ten that move a hair read as things
-    // waiting to be picked up.
-    this.time.delayedCall(60 + tiles.length * 55 + 380, () => {
-      tiles.forEach((tile, index) =>
-        bob(this, tile, { distance: 4, duration: 2200, delay: index * 180 })
-      );
-    });
+    // And then they stop. They used to keep breathing for as long as the menu
+    // was up, on the theory that ten still rectangles read as a form. Ten that
+    // never stop moving read as a screen that will not settle, which is worse
+    // on the one screen a child comes back to twenty times a day. Arrival is
+    // movement enough.
 
     label(
       this,

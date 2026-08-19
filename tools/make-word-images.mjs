@@ -68,7 +68,9 @@ const OVERRIDES = {
   ainak: 'a pair of round eyeglasses',
   gaari: 'a small cheerful toy car seen from the side',
   patang: 'a diamond kite with a tail, flying',
-  naak: 'a friendly cartoon face showing a prominent nose',
+  // The nose on its own. A whole face reads as "face", which is the word
+  // next door, and a child asked to name the picture says the wrong thing.
+  naak: 'a single human nose on its own, front view, no face around it, no eyes, no mouth, no head',
   qalam: 'a single pen at a slight angle',
   saabun: 'a bar of soap with a few bubbles',
   jahaaz: 'a passenger aeroplane flying',
@@ -78,7 +80,8 @@ const OVERRIDES = {
   zakheera:
     'a neat pile of stored goods, stacked wooden crates and bulging sacks ' +
     'of grain with a couple of jars beside them',
-  hauz: 'a small round garden pond of blue water with a stone rim',
+  zaeef:
+    'a kindly elderly person with white hair and a walking stick, standing, smiling',
 };
 
 const words = readContent('words.json').words.filter(
