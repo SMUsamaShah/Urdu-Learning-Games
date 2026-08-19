@@ -40,7 +40,8 @@
     "verify:volume": "node tools/verify-volume.mjs",
     "verify:back": "node tools/verify-back.mjs",
     "verify:speech": "node tools/verify-speech.mjs",
-    "preview-plant": "node tools/preview-plant.mjs"
+    "verify:rail": "node tools/verify-rail.mjs",
+    "preview-indicators": "node tools/preview-indicators.mjs"
   },
   "dependencies": {
     "@fontsource/noto-nastaliq-urdu": "^5.3.0",

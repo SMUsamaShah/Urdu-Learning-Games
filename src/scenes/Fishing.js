@@ -9,7 +9,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { sway } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayWord } from '../lib/say.js';
-import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, familyColor, label } from '../lib/theme.js';
 
 /**
  * Catch the letter that starts the word.
@@ -80,15 +80,14 @@ export default class Fishing extends Phaser.Scene {
       hills: false,
       instruction: 'catch-letter',
       roman: 'Catch the letter',
-      plant: { depth: 12 },
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     this.fishFit = fitEmAlone(allLetterGlyphs('isolated'), 92, 76);
     // The word being asked about, in the corner where every screen here puts
     // its question.
-    this.promptLayer = this.add.container(190, 190).setDepth(21);
+    this.promptLayer = this.add.container(RAIL_EDGE + 96, 190).setDepth(21);
 
     this.newRound();
   }
@@ -236,7 +235,7 @@ export default class Fishing extends Phaser.Scene {
 
     if (fish.letterId !== this.target) {
       wrongAnswer();
-      this.plant?.wonder();
+      this.rail?.wonder();
       // It wriggles and swims on. Nothing is lost — the streak is only broken
       // by giving up, and there is no way to give up here.
       this.tweens.add({
@@ -258,7 +257,7 @@ export default class Fishing extends Phaser.Scene {
     this.streak++;
     popPuff(this, fish.x, fish.y, familyColor(lettersById.get(fish.letterId).shapeFamily));
     sparkleBurst(this, fish.x, fish.y, { count: 26 });
-    this.plant?.cheer();
+    this.rail?.cheer();
     this.remove(fish);
     this.updateStreak();
     // Now the letter can be named, next to the word it starts.

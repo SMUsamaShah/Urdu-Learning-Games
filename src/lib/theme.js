@@ -10,6 +10,23 @@
 export const DESIGN = { width: 1280, height: 720 };
 
 /**
+ * The strip down the left of every game screen, which belongs to progress.
+ *
+ * One number, here, because every game already reserved roughly this much on
+ * the left for the character and each of them had picked its own figure — 250,
+ * 268, 280, 300, 320, 330. Those were all guesses at the same thing, so they
+ * now read `RAIL.width + something` and the width can move without twenty-four
+ * separate corrections.
+ *
+ * `gap` is the clear space a game leaves between the rail and its own content:
+ * nothing the child taps should touch the panel.
+ */
+export const RAIL = { width: 200, gap: 56 };
+
+/** The first x a game may use. */
+export const RAIL_EDGE = RAIL.width + RAIL.gap;
+
+/**
  * A bright palette, because the audience is three.
  *
  * Two surfaces, and which one something sits on decides its colour:

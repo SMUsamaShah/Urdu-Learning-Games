@@ -78,10 +78,9 @@ export default class ConnectPairs extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'join-picture',
       roman: 'Join each letter to its picture',
-      plant: { x: 104, y: 640, height: 176 },
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     // Threads under the cards, and the line being drawn above them so it is
     // visible while it crosses one.
@@ -238,7 +237,7 @@ export default class ConnectPairs extends Phaser.Scene {
 
     if (onto.letterId !== from.letterId) {
       wrongAnswer();
-      this.plant?.wonder();
+      this.rail?.wonder();
       for (const card of [from, onto]) {
         this.tweens.add({
           targets: card,

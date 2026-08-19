@@ -1,51 +1,41 @@
-import { onProgress, state } from './progress.js';
-import { sparkleBurst, starShower } from './particles.js';
-import { sway } from './liveliness.js';
-import * as sfx from './sfx.js';
+import { sparkleBurst, starShower } from '../particles.js';
+import { sway } from '../liveliness.js';
+import * as sfx from '../sfx.js';
+import { ellipse, makeCanvas, publish, SUPERSAMPLE } from './canvas.js';
 
 /**
- * The thing that grows, in place of a number that goes up.
+ * A seed that grows into a fruiting tree, one pour of water per right answer.
  *
- * ## Why a plant and not a ring
+ * ## What it is for
  *
- * The ring this replaces counted correctly and meant nothing. A number in a
- * circle is a dashboard: it is written for somebody who reads, and the child
- * this app is for does not. What they do understand is that a plant they water
- * gets bigger, that a small plant is early and a tree with fruit on it is a
- * long way in, and that a plant which droops wants something from them.
- *
- * So the progress *is* the plant. There is no separate score to read off:
+ * A number in a circle is a dashboard: written for somebody who reads, which
+ * the child this app is for does not. What they do understand is that a plant
+ * they water gets bigger, that a small plant is early and a tree with fruit on
+ * it is a long way in, and that a plant which droops wants something from them.
  *
  *   wet soil -> a shoot -> leaves -> a young tree -> a tree with fruit
  *
- * One right answer is one pour of water. A tree that fruits is a level, and the
- * next seed goes straight into the pot — a different one each time, so the
- * question "what is this one going to be?" survives the fiftieth tree.
+ * A tree that fruits is a level, and the next seed goes straight into the pot —
+ * a different one each time, so the question "what is this one going to be?"
+ * survives the fiftieth tree. The row of small trees at the top of the rail is
+ * every tree grown so far, which is the part that accumulates across days: the
+ * pot resets every level and on its own would say nothing about a fortnight of
+ * playing.
  *
  * ## A mistake takes water back
  *
- * A wrong answer costs two pours against the one a right answer earns, and it
- * is allowed to cross back into the previous tree. That is a deliberate break
- * with what this app did before, where nothing was ever taken away — see the
- * note on it in progress.js. A plant that can only ever grow is scenery; a
- * plant that visibly shrinks when you guess wildly is the thing that makes
- * guessing wildly feel like a choice.
- *
- * It is still not a fail state. Nothing is locked, no round ends, and the
- * droop lasts a second. The worst a bad run does is put the tree back a stage.
+ * A wrong answer costs two pours against the one a right answer earns, and may
+ * cross back into the previous tree — see the note in progress.js for why that
+ * rule changed. It is still not a fail state: nothing locks, no round ends, and
+ * the droop lasts a second.
  *
  * ## Drawn, not loaded
  *
  * Every frame of growth is a canvas texture drawn from numbers, the same
- * approach as the meadow in scenery.js and for the same reasons: it is
+ * approach as the meadow in scenery.js and for the same reasons: growth is
  * continuous, so no set of drawn images would ever have the right number of
  * them, and an image model cannot draw the same plant eleven times at eleven
- * sizes without it becoming a different plant. Thirty lines of arcs also cost
- * nothing offline, which a hundred pictures of a tree would not.
- *
- * A texture per growth step, baked once and shared by every screen — a Phaser
- * Graphics re-tessellates every frame whether or not it changed, and this one
- * changes about once a minute.
+ * sizes without it becoming a different plant.
  */
 
 /** Growth steps between bare soil and a full tree. */
@@ -55,18 +45,10 @@ const STEPS = 10;
 const POT = { topWidth: 96, baseWidth: 68, height: 54, rim: 13 };
 
 /** The canvas a plant is drawn into. Origin is the bottom centre of the pot. */
-const PLANT = { width: 300, height: 372 };
-
-/** The mound the pot and the finished trees stand on. */
-const MOUND = { width: 320, height: 150 };
-
-/** How far above the mound texture's foot its crown sits — where the pot goes. */
-const MOUND_CROWN = 22;
+const PLANT = { width: 200, height: 400 };
 
 /** How tall a full-grown tree stands above the soil. */
-const REACH = 214;
-
-const SUPERSAMPLE = 1.5;
+const REACH = 236;
 
 /**
  * The seeds, in the order they are planted.
@@ -99,36 +81,6 @@ const POT_DARK = '#a95a30';
 const POT_RIM = '#dc8049';
 const SOIL = '#5a3d28';
 const SOIL_WET = '#3f2a1b';
-const GRASS = '#79bd55';
-const GRASS_DARK = '#5da13f';
-
-/** A canvas to draw into, at the supersample, with the origin where it helps. */
-function makeCanvas(width, height, originX, originY) {
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(width * SUPERSAMPLE);
-  canvas.height = Math.ceil(height * SUPERSAMPLE);
-  const ctx = canvas.getContext('2d');
-  ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
-  ctx.translate(originX, originY);
-  return { canvas, ctx };
-}
-
-function publish(scene, key, canvas) {
-  const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
-  // createCanvas returns null when another scene got there first, which is the
-  // normal case on the second screen of a session.
-  if (!texture) return key;
-  texture.context.drawImage(canvas, 0, 0);
-  texture.refresh();
-  return key;
-}
-
-const ellipse = (ctx, x, y, rx, ry, fill) => {
-  ctx.fillStyle = fill;
-  ctx.beginPath();
-  ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-  ctx.fill();
-};
 
 // ------------------------------------------------------------------- the pot
 
@@ -285,6 +237,13 @@ function drawCanopy(ctx, species, growth, fruiting) {
  * @param {boolean} fruiting whether the fruit is on it — the moment a level is
  *   finished, held for the ceremony and then replanted
  */
+/**
+ * One frame of growth, baked.
+ *
+ * @param {number} step 0 (wet soil) to STEPS (a full tree)
+ * @param {boolean} fruiting whether the fruit is on it — the moment a level is
+ *   finished, held for the ceremony and then replanted
+ */
 export function plantTexture(scene, species, step, fruiting) {
   const key = `plant:${species.id}:${step}${fruiting ? ':fruit' : ''}`;
   if (scene.textures.exists(key)) return key;
@@ -318,144 +277,152 @@ function drawSmallTree(ctx, x, ground, height, species, fade) {
   ctx.globalAlpha = 1;
 }
 
-/**
- * Where a finished tree stands, in the order the row fills up.
- *
- * Both sides of the pot and outwards, front row first, so one tree is a tree
- * next to the pot rather than something in a corner. The middle is left empty
- * because the pot is drawn over it.
- *
- * Eight is as many as the mound holds at a size that still reads as a tree.
- * Past that the row stops growing, which is a real flattening a long way in —
- * see the note in future-plans.md.
- */
-const ORCHARD_SPOTS = [
-  { x: -78, back: false },
-  { x: 78, back: false },
-  { x: -46, back: true },
-  { x: 46, back: true },
-  { x: -138, back: false },
-  { x: 138, back: false },
-  { x: -110, back: true },
-  { x: 110, back: true },
-];
+/** The shelf of finished trees at the top of the rail: three across, rows up. */
+const ROW = { columns: 3, cell: 60, rows: 4 };
+const ORCHARD_MAX = ROW.columns * ROW.rows;
 
 /**
- * The mound, and one small tree for every tree already grown.
+ * One small tree for every tree already grown.
  *
- * This is the part that accumulates. The plant in the pot resets every level,
- * so on its own it would say nothing about a fortnight of playing; the row
- * behind it is the fortnight. It shrinks too — a wrong answer that crosses back
- * a level takes a tree out of the row, which is the strongest form the setback
- * takes and the reason it is worth having at all.
+ * The pot resets at every level, so on its own it would say nothing about a
+ * fortnight of playing; this shelf is the fortnight. It shrinks too — a wrong
+ * answer that crosses back a level takes a tree off it, which is the strongest
+ * form the setback takes and most of the reason it is worth having.
+ *
+ * Twelve fit before the shelf stops growing, which is roughly a month of daily
+ * playing. Past that the seed in the pot still changes, and the flattening is
+ * written down in future-plans.md rather than pretended away.
  */
-export function orchardTexture(scene, trees) {
-  const shown = Math.min(trees, ORCHARD_SPOTS.length);
-  const key = `orchard:${shown}`;
+function orchardTexture(scene, trees) {
+  const shown = Math.min(trees, ORCHARD_MAX);
+  const key = `orchard:rail:${shown}`;
   if (scene.textures.exists(key)) return key;
 
-  const { canvas, ctx } = makeCanvas(MOUND.width, MOUND.height, MOUND.width / 2, MOUND.height);
+  const width = ROW.columns * ROW.cell;
+  const height = ROW.rows * ROW.cell;
+  const { canvas, ctx } = makeCanvas(width, height, width / 2, height);
 
-  // The mound first and the trees standing on it. The other way round buries
-  // every trunk to its middle and turns a row of trees into a row of bushes.
-  ellipse(ctx, 0, -16, MOUND.width / 2 - 6, 32, GRASS_DARK);
-  ellipse(ctx, 0, -24, MOUND.width / 2 - 14, 26, GRASS);
-
-  // The back rank is smaller, paler and stood higher up the mound, which is
-  // what lets eight trees share the width one spider used to take.
   for (let i = 0; i < shown; i++) {
-    const { x, back } = ORCHARD_SPOTS[i];
-    drawSmallTree(ctx, x, back ? -46 : -28, back ? 66 : 84, speciesFor(i), back ? 0.78 : 1);
+    const column = i % ROW.columns;
+    const row = Math.floor(i / ROW.columns);
+    // Left to right, bottom row first: the newest tree lands on top, where a
+    // child watching the ceremony is already looking.
+    const x = (column - (ROW.columns - 1) / 2) * ROW.cell;
+    const y = -row * ROW.cell;
+    drawSmallTree(ctx, x, y, ROW.cell - 6, speciesFor(i), 1);
   }
 
+  return publish(scene, key, canvas);
+}
+
+/**
+ * A strip of grass across the foot of the rail.
+ *
+ * Without it the pot stands on the bottom edge of a panel, which reads as the
+ * drawing having been cut off rather than as a pot standing on the ground.
+ */
+function groundTexture(scene, width) {
+  const key = `plant:ground:${Math.round(width)}`;
+  if (scene.textures.exists(key)) return key;
+  const { canvas, ctx } = makeCanvas(width, 54, width / 2, 54);
+  ellipse(ctx, 0, -6, width / 2 - 4, 30, '#5da13f');
+  ellipse(ctx, 0, -14, width / 2 - 12, 24, '#79bd55');
   return publish(scene, key, canvas);
 }
 
 // ------------------------------------------------------------------- the pot
 
 /**
- * Puts the garden on a screen and keeps it in step with the total.
+ * Puts the garden in the rail's box.
  *
  * @param {Phaser.Scene} scene
- * @param {number} x
- * @param {number} y the ground it stands on, not its centre
- * @param {{height?: number, depth?: number}} [options] height is the mound plus
- *   a full-grown tree, so a young plant is much shorter than this
- * @returns {Phaser.GameObjects.Container} with `flyTo`, `catch`, `cheer` and
- *   `wonder`, so a scene can treat it the way it treated the character
+ * @param {{width: number, height: number}} box measured from its bottom centre
+ * @returns {Phaser.GameObjects.Container} the indicator contract — see
+ *   src/lib/indicators/index.js
  */
-export function addPlant(scene, x, y, options = {}) {
-  const { height = 300, depth = 4 } = options;
+export function create(scene, { width, height }) {
+  const root = scene.add.container(0, 0);
 
-  const root = scene.add.container(x, y).setDepth(depth).setName('progress-plant');
-  // `height` is the whole thing at full growth: the mound, the pot and a tree.
-  root.setScale(height / (PLANT.height + MOUND_CROWN));
+  // The pot at the foot, the shelf of finished trees directly above where a
+  // full-grown tree reaches, and nothing between them. One scale for the whole
+  // composition rather than one per piece: the menu's corner is a quarter the
+  // height of the rail, and scaling only the plant against it left the shelf
+  // taller than the box and the plant with negative room to grow into.
+  const shelfHeight = ROW.rows * ROW.cell;
+  const natural = PLANT.height + 8 + shelfHeight;
+  const scale = Math.min(1, height / natural, width / PLANT.width);
+  const draw = scale / SUPERSAMPLE;
 
-  let shown = state();
-  let species = speciesFor(shown.level);
+  root.add(
+    scene.add
+      .image(0, 0, groundTexture(scene, PLANT.width))
+      .setOrigin(0.5, 1)
+      .setScale(draw)
+  );
 
-  const orchard = scene.add.image(0, 0, orchardTexture(scene, shown.level));
-  orchard.setOrigin(0.5, 1).setScale(1 / SUPERSAMPLE);
+  const orchard = scene.add.image(0, -(PLANT.height + 8) * scale, orchardTexture(scene, 0));
+  orchard.setOrigin(0.5, 1).setScale(draw);
   root.add(orchard);
 
-  // The pot stands on the crown of the mound rather than at its foot.
-  const plant = scene.add.image(0, -MOUND_CROWN, plantTexture(scene, species, stepFor(shown), false));
-  plant.setOrigin(0.5, 1).setScale(1 / SUPERSAMPLE);
+  const plant = scene.add.image(0, 0, plantTexture(scene, SPECIES[0], 0, false));
+  plant.setOrigin(0.5, 1).setScale(draw);
   root.add(plant);
 
-  /** What the model says. Read by tools/verify-progress.mjs. */
-  const republish = () => {
-    root.growth = stepFor(shown) / STEPS;
-    root.step = stepFor(shown);
-    root.trees = shown.level;
-    root.species = species.id;
-  };
-  republish();
+  let species = SPECIES[0];
+  let step = 0;
+  let breeze = sway(scene, plant, { angle: 1.6, duration: 2600 });
 
   /**
    * Swaps in a frame of growth.
    *
-   * `root.drawn` is read back off the sprite rather than set beside it, and
-   * that is the whole point of it. It is a different thing from `root.step`
-   * above: a plant whose model counts perfectly while the picture never
-   * changes is exactly the failure a check against the model would pass — and
-   * a `drawn` assigned from the key rather than from the sprite is the same
-   * failure one step further in. Deleting the setTexture below has to be
-   * enough to turn tools/verify-progress.mjs red, and it is only enough if
-   * this reads the sprite.
+   * `drawn` is read back off the sprite rather than set beside it, and that is
+   * the whole point of it: a plant whose model counts perfectly while the
+   * picture never changes is exactly the failure a check against the model
+   * would pass, and a `drawn` assigned from the key rather than from the sprite
+   * is the same failure one step further in.
    */
-  const face = (step, fruiting = false) => {
-    plant.setTexture(plantTexture(scene, species, step, fruiting));
+  /**
+   * Keys this instance has baked, oldest first, so they can be thrown away.
+   *
+   * Eleven steps times six seeds is sixty-six possible frames, and each one is
+   * a 300x600 canvas — a little under three quarters of a megabyte on the GPU.
+   * Left uncapped, a long sitting would bake its way through tens of megabytes
+   * of them on a phone. Three is enough: the frame on screen, the one it just
+   * came from, and the fruiting frame the level-up holds.
+   */
+  const baked = [];
+  const KEEP = 3;
+
+  const face = (toStep, fruiting = false) => {
+    step = toStep;
+    const key = plantTexture(scene, species, toStep, fruiting);
+    plant.setTexture(key);
     root.drawn = plant.texture.key;
+    root.step = toStep;
+    root.species = species.id;
+
+    const already = baked.indexOf(key);
+    if (already > -1) baked.splice(already, 1);
+    baked.push(key);
+    while (baked.length > KEEP) {
+      const drop = baked.shift();
+      if (drop !== plant.texture.key) scene.textures.remove(drop);
+    }
   };
 
-  /** The same, for the row of finished trees behind the pot. */
-  const row = (trees) => {
+  const shelf = (trees) => {
     orchard.setTexture(orchardTexture(scene, trees));
     root.row = orchard.texture.key;
   };
-  row(shown.level);
-  face(stepFor(shown));
+  shelf(0);
 
-  /** Where a star thrown from an answer should land: on the soil. */
-  root.flyTo = { x, y: y - height * 0.42 };
-
-  let breeze = sway(scene, plant, { angle: 1.6, duration: 2600 });
-
-  /**
-   * Water falling, and then the plant springing up into its new size.
-   *
-   * The drops matter more than they look: they are what makes the growth
-   * *caused* by the answer rather than a thing that happened at the same time.
-   * The texture swaps as the last one lands.
-   */
+  /** Water falling, then the plant springing up into its new size. */
   const pour = (toStep) => {
     sfx.water();
-    const top = -PLANT.height * 0.72;
     for (let i = 0; i < 4; i++) {
       const drop = scene.add.ellipse(
-        (Math.random() - 0.5) * 46,
-        top,
+        (Math.random() - 0.5) * 44,
+        -PLANT.height * scale * 0.8,
         7,
         11,
         0x62b8f0,
@@ -464,7 +431,7 @@ export function addPlant(scene, x, y, options = {}) {
       root.add(drop);
       scene.tweens.add({
         targets: drop,
-        y: -POT.height - MOUND_CROWN - 6,
+        y: -POT.height * scale - 6,
         delay: i * 70,
         duration: 260,
         ease: 'Quad.easeIn',
@@ -474,8 +441,8 @@ export function addPlant(scene, x, y, options = {}) {
           face(toStep);
           scene.tweens.add({
             targets: plant,
-            scaleY: (1 / SUPERSAMPLE) * 1.1,
-            scaleX: (1 / SUPERSAMPLE) * 0.94,
+            scaleY: draw * 1.1,
+            scaleX: draw * 0.94,
             duration: 180,
             yoyo: true,
             ease: 'Back.easeOut',
@@ -483,7 +450,6 @@ export function addPlant(scene, x, y, options = {}) {
         },
       });
     }
-    sparkleBurst(scene, root.x, root.flyTo.y, { count: 8, tint: [0x8fd4f5, 0xffffff] });
   };
 
   /** Water taken back. The plant sags to its smaller self rather than snapping. */
@@ -493,50 +459,42 @@ export function addPlant(scene, x, y, options = {}) {
     scene.tweens.add({
       targets: plant,
       angle: { from: 0, to: 7 },
-      scaleY: (1 / SUPERSAMPLE) * 0.9,
+      scaleY: draw * 0.9,
       duration: 260,
       yoyo: true,
       ease: 'Sine.easeInOut',
       onComplete: () => {
-        plant.setAngle(0).setScale(1 / SUPERSAMPLE);
+        plant.setAngle(0).setScale(draw);
         breeze = sway(scene, plant, { angle: 1.6, duration: 2600 });
       },
     });
   };
 
-  /**
-   * The tree fruits, and then the next seed goes in.
-   *
-   * Deliberately the longest thing the plant does. It is what all the pours
-   * were for, and if it passes as quickly as a right answer then filling the
-   * pot meant nothing.
-   */
+  /** The tree fruits, and then the next seed goes in. */
   const bloom = (next) => {
     face(STEPS, true);
     sfx.tada();
-    sparkleBurst(scene, root.x, root.flyTo.y, {
+    sparkleBurst(scene, 0, -PLANT.height * scale * 0.6, {
       count: 30,
       tint: [0xffffff, 0xffc93c, 0x8fd4f5],
     });
     starShower(scene, { duration: 1500 });
     scene.tweens.add({
       targets: plant,
-      scale: (1 / SUPERSAMPLE) * 1.12,
+      scale: draw * 1.12,
       duration: 300,
       yoyo: true,
       ease: 'Back.easeOut',
     });
-    // Long enough to be looked at, then the fruit is banked into the row behind
-    // and the pot starts again.
+    // Long enough to be looked at, then banked onto the shelf and replanted.
     scene.time.delayedCall(1500, () => {
       if (!scene.scene.isActive()) return;
       species = speciesFor(next.level);
-      row(next.level);
+      shelf(next.level);
       face(stepFor(next));
-      republish();
       scene.tweens.add({
         targets: orchard,
-        scaleY: (1 / SUPERSAMPLE) * 1.08,
+        scaleY: draw * 1.12,
         duration: 220,
         yoyo: true,
         ease: 'Back.easeOut',
@@ -544,34 +502,26 @@ export function addPlant(scene, x, y, options = {}) {
     });
   };
 
-  const apply = (next) => {
-    const was = shown;
-    shown = next;
-    if (next.levelledUp) return bloom(next);
+  root.focus = { x: 0, y: -POT.height * scale - 20 };
+
+  root.apply = (next, previous) => {
+    if (next.levelledUp) return void bloom(next);
 
     species = speciesFor(next.level);
-    if (next.level !== was.level || next.reset) {
-      row(next.level);
-    }
+    if (next.level !== previous.level || next.reset) shelf(next.level);
     const toStep = stepFor(next);
-    republish();
     if (next.reset) return void face(toStep);
     // Losing a level withers even when the step number happens to go up:
     // dropping from the start of one tree to the end of the last one is a tree
-    // taken out of the row, which is the biggest thing a mistake can do.
-    if (toStep < stepFor(was) || next.level < was.level) return void wither(toStep);
-    // Rounding can leave two answers on the same step. Water it anyway — the
-    // answer was right, and the pour is the acknowledgement.
+    // taken off the shelf, which is the biggest thing a mistake can do.
+    if (toStep < step || next.level < previous.level) return void wither(toStep);
     pour(toStep);
   };
 
-  /** Something thrown at the plant has landed. */
-  root.catch = () => {
-    sparkleBurst(scene, root.x, root.flyTo.y, { count: 10, tint: [0x8fd4f5, 0xffffff] });
-  };
+  root.land = () =>
+    sparkleBurst(scene, 0, root.focus.y, { count: 10, tint: [0x8fd4f5, 0xffffff] });
 
-  /** A right answer, from the scene's point of view. */
-  root.cheer = () => {
+  root.cheer = () =>
     scene.tweens.add({
       targets: plant,
       angle: { from: -3, to: 3 },
@@ -581,10 +531,9 @@ export function addPlant(scene, x, y, options = {}) {
       ease: 'Sine.easeInOut',
       onComplete: () => plant.setAngle(0),
     });
-  };
 
-  /** A wrong one. The droop, not a frown — see the note at the top. */
-  root.wonder = () => {
+  /** The droop, not a frown — see the note at the top. */
+  root.wonder = () =>
     scene.tweens.add({
       targets: plant,
       angle: { from: 0, to: 9 },
@@ -594,11 +543,15 @@ export function addPlant(scene, x, y, options = {}) {
       ease: 'Sine.easeInOut',
       onComplete: () => plant.setAngle(0),
     });
-  };
-
-  const stop = onProgress(apply);
-  scene.events.once('shutdown', stop);
-  scene.events.once('destroy', stop);
 
   return root;
 }
+
+/** Used by the preview sheet, which draws a frame without a progress event. */
+export function still(scene, box, { fraction, level }) {
+  const el = create(scene, box);
+  el.apply({ fraction, level, reset: true }, { fraction, level });
+  return el;
+}
+
+export const NAME = 'Plant';

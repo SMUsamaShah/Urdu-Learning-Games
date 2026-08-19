@@ -33,11 +33,14 @@ More two- and three-letter combinations to read and trace, and more words behind
 them. Each word needs a picture and a recording, which is what makes this a
 steady drip rather than a batch.
 
-## Make the progress itself a game — built, as a garden
+## Make the progress itself a game — built, and given a room of its own
 
-Done, and it is a plant: `src/lib/plant.js`. One right answer is one pour of
-water, a full-grown tree is a level, and the row of finished trees behind the
-pot is every tree grown so far. The ring and its Urdu numeral are gone.
+Done. Progress has two hundred pixels down the left of every game screen —
+opaque, no scenery behind it — and what stands in it is a swappable module in
+`src/lib/indicators/`. Three so far: a plant that grows from a seed to a
+fruiting tree, a bar that fills, a glass of juice. One right answer is one pour,
+a full one is a level, and Settings chooses which. The ring and its Urdu numeral
+are gone.
 
 The decision this section used to say needed making has been made. A wrong
 answer now costs two pours against the one a right answer earns and is allowed
@@ -45,21 +48,22 @@ to cross back a level, taking a finished tree out of the row; only the floor at
 zero survives of the old "nothing is ever taken away" rule.
 `tools/verify-progress.mjs` now asserts the reverse of what it used to, and says
 so where it does. It is still not a fail state — nothing locks, no round ends,
-and the plant droops for a second rather than being told off.
+and whatever is in the rail dips for a second rather than telling anybody off.
 
 What is left in this idea:
 
-- **The row stops at eight trees.** After that a child who has played for a
+- **The shelf stops at twelve trees.** After that a child who has played for a
   month sees exactly what they saw a fortnight in, which is the same flattening
-  the ring had and the reason the ring was replaced. Options: a second mound, a
-  row that scrolls, trees that mature into bigger ones, or a different garden
-  once the first is full.
+  the ring had and the reason the ring was replaced. Options: a shelf that
+  scrolls, trees that mature into bigger ones, or a second garden once the first
+  is full.
+- **More indicators.** The rail exists so that this list can grow: a climber
+  going up a cliff, a character who falls back a step on a wrong answer, a tower
+  being built, a pet that evolves. One module in `src/lib/indicators/`, one
+  `create(scene, box)`, and Settings picks it up on its own.
 - **The seed is chosen for you.** Six kinds cycle by level. Letting a child pick
   the next seed is a decision they would enjoy making and the point at which the
   garden becomes a thing they own rather than a thing they watch.
-- **The other shapes are still unbuilt** — a climber going up a cliff, a pet
-  that evolves, a tower, a journey along a map. The garden may well be enough;
-  it is worth watching whether it is the thing that gets asked for again.
 
 ## Game controller support
 

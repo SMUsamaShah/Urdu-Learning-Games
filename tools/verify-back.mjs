@@ -79,9 +79,10 @@ if ((await screens()).length !== 0) fail(`the game is still on the stack: ${(awa
 step('the ⌂ button and the back button agree');
 await openGame('Balloons');
 await page.evaluate(() => {
-  const home = window.__game.scene.getScene('Balloons');
-  // The one in stage.js, which every game screen carries.
-  const button = home.children.list.find((c) => c.type === 'Container' && c.x === 72 && c.y === 56);
+  const scene = window.__game.scene.getScene('Balloons');
+  // The one in stage.js, which every game screen carries. Found by name: it
+  // used to be found at x=72, y=56, and moved onto the progress rail.
+  const button = scene.children.list.find((c) => c.name === 'home-button');
   button.emit('pointerdown');
   button.emit('pointerup');
 });

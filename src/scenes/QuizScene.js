@@ -137,7 +137,7 @@ export default class QuizScene extends Phaser.Scene {
       roman: this.instructionRoman,
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     this.promptLayer = this.add.container(this.stageX, this.promptY);
     this.choicesLayer = this.add.container(0, 0);
@@ -270,10 +270,10 @@ export default class QuizScene extends Phaser.Scene {
     if (id !== this.target) {
       wrongAnswer();
       this.streak = 0;
-      // A droop, never a frown. There is no fail state here and the plant must
-      // not look like there is one — it wants watering, which is an invitation
-      // to have another go.
-      this.plant?.wonder();
+      // A wobble, never a frown. There is no fail state here and the rail must
+      // not look like there is one: whatever is standing in it asks to be filled
+      // rather than telling anybody off.
+      this.rail?.wonder();
       // The tile stops bobbing along with the others as it dims, so a dimmed
       // choice reads as set aside rather than as still on offer.
       tile.idle?.stop();
@@ -317,7 +317,7 @@ export default class QuizScene extends Phaser.Scene {
     confetti(this, tile.x, tile.y);
     hop(this, tile);
     dance(this, tile);
-    this.plant?.cheer();
+    this.rail?.cheer();
 
     // Paper across the whole screen is saved for every fifth in a row. It is
     // the biggest thing this app does, and doing it on every single answer
@@ -332,8 +332,8 @@ export default class QuizScene extends Phaser.Scene {
     flyStar(
       this,
       { x: tile.x, y: tile.y },
-      this.stage.plant.flyTo,
-      () => this.stage.plant.catch()
+      this.stage.rail.flyTo,
+      () => this.stage.rail.catch()
     );
 
     this.time.delayedCall(1500, () => this.newRound());

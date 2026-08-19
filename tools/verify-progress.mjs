@@ -1,11 +1,11 @@
 /**
- * Checks the plant: that it is there, that it grows, and that it grows back.
+ * Checks the rail: that it is there, that it fills, and that it empties again.
  *
  * The whole point of this feature is that a child sees one thing get bigger
  * across every game and across days, so the things worth checking are the ones
  * that would quietly break that:
  *
- *   - A screen with no plant on it. It is created in addStage, so a game that
+ *   - A screen with no rail on it. It is created in addStage, so a game that
  *     builds its own chrome would simply not have one, and nobody would notice
  *     until a child asked where their tree went.
  *   - A right answer that waters nothing, or waters twice.
@@ -15,8 +15,9 @@
  *     on; a wrong answer now costs two pours and is allowed to cross back a
  *     level. See the note in src/lib/progress.js for why that changed, and note
  *     that the floor at zero is the part of the old promise that survives.
- *   - A level boundary that does not roll over, or rolls over without the plant
- *     being replanted — the model and the drawing are separate and can disagree.
+ *   - A level boundary that does not roll over, or rolls over without the thing
+ *     in the rail starting again — the model and the drawing are separate and
+ *     can disagree.
  *   - A total that does not survive a reload, which turns a week of progress
  *     into a session's.
  *
@@ -30,7 +31,7 @@
 
 import { fail, openApp, startScene, step } from './harness.mjs';
 
-/** Screens to check carry a plant. Every game, plus the menu. */
+/** Screens to check carry the rail. Every game, plus the menu. */
 const SCREENS = [
   'Home',
   'Flashcards',
@@ -60,7 +61,7 @@ const SCREENS = [
 ];
 
 /** Flashcards is a letter and its word with no furniture at all — see its create(). */
-const NO_PLANT = new Set(['Flashcards']);
+const NO_RAIL = new Set(['Flashcards']);
 
 const KEY = 'urdu-games:progress:v1';
 /** Must match SETBACK in src/lib/progress.js. */
@@ -81,20 +82,22 @@ async function seed(total) {
   await page.waitForTimeout(400);
 }
 
-/** What the plant on the running screen is showing. */
-const plantState = (scene) =>
+/** What the rail on the running screen is showing. */
+const railState = (scene) =>
   page.evaluate((name) => {
     const found = window.__game.scene
       .getScene(name)
-      .children.list.find((child) => child.name === 'progress-plant');
+      .children.list.find((child) => child.name === 'progress-rail');
     if (!found) return null;
     return {
-      step: found.step,
-      growth: found.growth,
+      total: found.total,
       trees: found.trees,
-      species: found.species,
-      drawn: found.drawn,
-      row: found.row,
+      // Whatever the indicator publishes: for the plant, the key of the texture
+      // on the sprite; for the bar and the glass, the level and the fraction
+      // actually drawn. Read off the drawing rather than off the model.
+      drawn: found.indicator?.drawn,
+      row: found.indicator?.row,
+      species: found.indicator?.species,
     };
   }, scene);
 
@@ -107,8 +110,8 @@ const drawnSettles = (scene, was) =>
       ([name, before]) => {
         const found = window.__game.scene
           .getScene(name)
-          .children.list.find((child) => child.name === 'progress-plant');
-        return found && found.drawn !== before;
+          .children.list.find((child) => child.name === 'progress-rail');
+        return found && found.indicator?.drawn !== before;
       },
       [scene, was],
       { timeout: 15000 }
@@ -118,21 +121,21 @@ const drawnSettles = (scene, was) =>
 
 // --- 1. Every screen has one ----------------------------------------------
 
-step('checking every screen carries a plant');
+step('checking every screen carries a rail');
 const missing = [];
 for (const scene of SCREENS) {
   if (scene !== 'Home') await startScene(page, scene);
   await page.waitForTimeout(150);
-  const plant = await plantState(scene);
-  if (NO_PLANT.has(scene)) {
-    if (plant) fail(`${scene} grew a plant it is meant not to have`);
+  const rail = await railState(scene);
+  if (NO_RAIL.has(scene)) {
+    if (rail) fail(`${scene} grew a rail it is meant not to have`);
     continue;
   }
-  if (!plant) missing.push(scene);
-  else if (!plant.drawn) missing.push(`${scene} (drew nothing)`);
+  if (!rail) missing.push(scene);
+  else if (!rail.drawn) missing.push(`${scene} (drew nothing)`);
 }
-for (const scene of missing) fail(`${scene}: no plant — does it call addStage()?`);
-if (!missing.length) step(`${SCREENS.length - NO_PLANT.size} screens, all showing it`);
+for (const scene of missing) fail(`${scene}: no rail — does it call addStage()?`);
+if (!missing.length) step(`${SCREENS.length - NO_RAIL.size} screens, all showing it`);
 
 // --- 2. A right answer waters it, a wrong one takes water back -------------
 
@@ -151,7 +154,7 @@ await startScene(page, 'FindLetter');
 await page.waitForTimeout(600);
 
 step('a wrong answer, tapped for real');
-const drawnBefore = (await plantState('FindLetter')).drawn;
+const drawnBefore = (await railState('FindLetter')).drawn;
 await page.evaluate(() => {
   const scene = window.__game.scene.getScene('FindLetter');
   const wrong = scene.choicesLayer.list.find((t) => t.choiceId !== scene.target);
@@ -161,9 +164,9 @@ await page.waitForTimeout(1000);
 const afterWrong = await model();
 if (afterWrong.total !== 6 - SETBACK) {
   fail(`a wrong answer moved 6 to ${afterWrong.total} — expected ${6 - SETBACK}`);
-} else if ((await plantState('FindLetter')).drawn === drawnBefore) {
-  fail('the total came down but the plant kept the same picture');
-} else step(`  cost ${SETBACK} pours, and the plant shrank back`);
+} else if ((await railState('FindLetter')).drawn === drawnBefore) {
+  fail('the total came down but the rail kept the same picture');
+} else step(`  cost ${SETBACK}, and the rail emptied back`);
 
 step('a wrong answer with nothing left to lose');
 // The floor is what is left of the old promise: a child cannot be put into
@@ -183,7 +186,7 @@ await startScene(page, 'FindLetter');
 await page.waitForTimeout(600);
 
 step('a right answer');
-const before = await plantState('FindLetter');
+const before = await railState('FindLetter');
 await page.evaluate(() => {
   const scene = window.__game.scene.getScene('FindLetter');
   scene.choicesLayer.list.find((t) => t.choiceId === scene.target).emit('pointerup');
@@ -191,8 +194,8 @@ await page.evaluate(() => {
 const grew = await drawnSettles('FindLetter', before.drawn);
 const afterRight = await model();
 if (afterRight.total !== 1) fail(`one right answer counted ${afterRight.total}`);
-else if (!grew) fail('the total went up but the plant never redrew');
-else step(`  counted once, and the pot went from ${before.drawn} to a bigger frame`);
+else if (!grew) fail('the total went up but the rail never redrew');
+else step(`  counted once, and the rail went from ${before.drawn} to a fuller frame`);
 
 // --- 3. The level boundary -------------------------------------------------
 
@@ -205,7 +208,7 @@ await page.evaluate((n) => {
   for (let i = 0; i < n; i++) window.__progress.award(1);
 }, steps - at - 1);
 await page.waitForTimeout(1400);
-const brink = await plantState('FindLetter');
+const brink = await railState('FindLetter');
 if (brink.trees !== 0) fail(`a tree was banked early, at ${brink.trees}`);
 
 const seedBefore = brink.species;
@@ -218,8 +221,8 @@ const replanted = await page
     () => {
       const found = window.__game.scene
         .getScene('FindLetter')
-        .children.list.find((child) => child.name === 'progress-plant');
-      return found && found.trees === 1 && found.step === 0;
+        .children.list.find((child) => child.name === 'progress-rail');
+      return found && found.trees === 1 && found.indicator?.drawn?.endsWith(':0');
     },
     null,
     { timeout: 20000 }
@@ -227,10 +230,10 @@ const replanted = await page
   .then(() => true)
   .catch(() => false);
 if (!replanted) {
-  const now = await plantState('FindLetter');
+  const now = await railState('FindLetter');
   fail(`no replant: ${now.trees} tree(s) banked, pot at step ${now.step}`);
 } else {
-  const after = await plantState('FindLetter');
+  const after = await railState('FindLetter');
   if (after.species === seedBefore) {
     fail(`the next seed is another ${after.species} — it should be a different one`);
   } else if (after.row === rowBefore) {
@@ -243,7 +246,7 @@ if (!replanted) {
 // --- 4. A bad run can cost a tree ------------------------------------------
 
 step('crossing back down a level');
-const treesBefore = (await plantState('FindLetter')).trees;
+const treesBefore = (await railState('FindLetter')).trees;
 await page.evaluate(() => {
   // Two setbacks from the very start of a tree, which is the case that has to
   // reach back into the one before it.
@@ -251,10 +254,10 @@ await page.evaluate(() => {
   window.__progress.setback();
 });
 await page.waitForTimeout(1200);
-const dropped = await plantState('FindLetter');
+const dropped = await railState('FindLetter');
 if (dropped.trees !== treesBefore - 1) {
   fail(`going back a level left ${dropped.trees} trees, not ${treesBefore - 1}`);
-} else if (dropped.row !== `orchard:${treesBefore - 1}`) {
+} else if (dropped.row !== `orchard:rail:${treesBefore - 1}`) {
   fail(`the count dropped to ${dropped.trees} but the row still draws ${dropped.row}`);
 } else step(`  ${treesBefore} trees became ${dropped.trees}, and the row redrew`);
 
@@ -270,7 +273,7 @@ if (restored.total !== saved) {
   fail(`${saved} before the reload, ${restored.total} after — progress is not being saved`);
 } else step(`  ${saved} still there`);
 
-const onMenu = await plantState('Home');
+const onMenu = await railState('Home');
 if (!onMenu || onMenu.trees !== restored.level) {
   fail(`the menu shows ${onMenu?.trees} trees against the saved level ${restored.level}`);
 }
@@ -278,8 +281,8 @@ if (!onMenu || onMenu.trees !== restored.level) {
 // A long way in: the row of finished trees stops growing at eight, and the
 // plant must still draw rather than falling over on an index it has no spot for.
 await seed(200);
-const high = await plantState('Home');
-if (!high?.drawn) fail('a long-played device drew no plant at all');
+const high = await railState('Home');
+if (!high?.drawn) fail('a long-played device drew nothing in the rail at all');
 else step(`  level ${(await model()).level + 1} still draws, with the row of trees capped`);
 
 // --- 6. Starting again -----------------------------------------------------
@@ -287,13 +290,13 @@ else step(`  level ${(await model()).level + 1} still draws, with the row of tre
 await page.evaluate(() => window.__progress.reset());
 await page.waitForTimeout(600);
 const cleared = await model();
-const clearedPlant = await plantState('Home');
+const clearedRail = await railState('Home');
 if (cleared.total !== 0) fail(`reset left ${cleared.total} behind`);
-else if (clearedPlant.trees !== 0 || clearedPlant.step !== 0) {
+else if (clearedRail.trees !== 0 || !/:0$/.test(String(clearedRail.drawn))) {
   fail(
-    `reset cleared the total but the garden still shows ${clearedPlant.trees} ` +
-      `trees and a pot at step ${clearedPlant.step}`
+    `reset cleared the total but the rail still shows ${clearedRail.trees} ` +
+      `finished and is drawing ${clearedRail.drawn}`
   );
-} else step('reset clears the total and the garden');
+} else step('reset clears the total and the rail');
 
 await finish();

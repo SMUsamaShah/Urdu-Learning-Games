@@ -9,7 +9,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
-import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, familyColor, label } from '../lib/theme.js';
 
 /**
  * Join each letter to the same letter wearing a different face.
@@ -50,7 +50,7 @@ import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
 const PAIRS_BY_ROUND = [3, 3, 4, 4, 5, 5, 6];
 
 /** The space the board gets: clear of the ribbon above and the garden at left. */
-const BOARD = { left: 280, right: DESIGN.width - 50, top: 150, bottom: DESIGN.height - 40 };
+const BOARD = { left: RAIL_EDGE + 24, right: DESIGN.width - 50, top: 150, bottom: DESIGN.height - 40 };
 
 const CARD = { size: 132, gap: 18 };
 
@@ -85,7 +85,7 @@ export default class JoinForms extends Phaser.Scene {
       roman: 'Join the same letter',
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     // Under the cards, so a line never draws over a letter.
     this.threads = this.add.graphics();
@@ -272,7 +272,7 @@ export default class JoinForms extends Phaser.Scene {
 
   reject(first, second) {
     wrongAnswer();
-    this.plant?.wonder();
+    this.rail?.wonder();
     // A wobble on both, then everything back as it was. No score to lose and
     // nothing removed from the board — the pair they wanted is still there.
     for (const card of [first, second]) {

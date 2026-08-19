@@ -15,7 +15,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { sayLetter } from '../lib/say.js';
 import { sway } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
-import { COLORS, DESIGN, chunkyGlyphEm, familyColor, label, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, chunkyGlyphEm, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
  * The same question as FindLetter, but the answers float past.
@@ -47,7 +47,7 @@ const RADIUS = 74;
  * sits there: a balloon rising through its face is not charming, it just looks
  * like two things drawn on top of each other.
  */
-const LANE = { left: 268, right: DESIGN.width - 150 };
+const LANE = { left: RAIL_EDGE + 12, right: DESIGN.width - 150 };
 
 export default class Balloons extends Phaser.Scene {
   constructor() {
@@ -78,19 +78,16 @@ export default class Balloons extends Phaser.Scene {
       hills: false,
       instruction: 'pop-balloon',
       roman: 'Pop the balloon',
-      // The garden sits above the balloons, so one drifting past
-      // does not cross its face.
-      plant: { depth: 12 },
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     // A badge holding the letter to look for, in the corner, tappable to hear
     // it again. Taken straight from the reference apps, which all put the
     // target and its replay button in the same corner on every screen — a child
     // who has lost track of the question needs one place to look, and it must
     // not be somewhere the answers drift over.
-    this.promptLayer = this.add.container(212, 66).setDepth(21);
+    this.promptLayer = this.add.container(RAIL_EDGE + 106, 66).setDepth(21);
 
     this.newRound();
   }
@@ -340,14 +337,14 @@ export default class Balloons extends Phaser.Scene {
     this.burst(balloon.x, balloon.y, right, balloon.tint);
 
     if (!right) {
-      // No fail state and no lost turn. It does cost the plant two pours, and
+      // No fail state and no lost turn. It does cost two pours of water, and
       // the balloon still pops — popping is the whole pleasure of this screen
       // and taking it away for a wrong guess would make the game worse.
       sfx.pop();
       wrongAnswer({ sound: false });
       this.streak = 0;
       this.updateStreak();
-      this.plant?.wonder();
+      this.rail?.wonder();
       this.remove(balloon);
       this.time.delayedCall(120, () => {
         if (this.scene.isActive() && !this.locked) {
@@ -363,7 +360,7 @@ export default class Balloons extends Phaser.Scene {
     sfx.sparkle();
     this.streak++;
     this.updateStreak();
-    this.plant?.cheer();
+    this.rail?.cheer();
     this.remove(balloon);
 
     // Every fifth in a row, the whole screen celebrates rather than just the

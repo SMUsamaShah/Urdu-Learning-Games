@@ -14,7 +14,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
-import { COLORS, DESIGN, familyColor, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, familyColor, makeButton } from '../lib/theme.js';
 
 /**
  * Find the letters hiding in the garden.
@@ -50,7 +50,7 @@ const ROUNDS = [
 ];
 
 /** Where letters may hide: clear of the ribbon, the badge and the garden. */
-const FIELD = { left: 330, right: DESIGN.width - 60, top: 190, bottom: DESIGN.height - 50 };
+const FIELD = { left: RAIL_EDGE + 74, right: DESIGN.width - 60, top: 190, bottom: DESIGN.height - 50 };
 /** Muted, but never near the backdrop's own greens — this is a hunt, not camouflage. */
 const TINTS = [0x3f6f4a, 0x6a4a2f, 0x2f5f7a, 0x7a4a6a, 0x8a6a1f, 0x4a4a6a];
 /** How long before an unfound letter starts waving. */
@@ -82,12 +82,11 @@ export default class Hidden extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'find-hidden',
       roman: 'Find them hiding',
-      plant: { x: 116, y: 640, height: 190 },
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
-    this.promptLayer = this.add.container(160, 215);
+    this.promptLayer = this.add.container(RAIL_EDGE + 96, 215);
     this.field = this.add.container(0, 0);
 
     this.newRound();
@@ -254,7 +253,7 @@ export default class Hidden extends Phaser.Scene {
 
     if (letter.letterId !== this.target) {
       wrongAnswer();
-      this.plant?.wonder();
+      this.rail?.wonder();
       this.tweens.add({
         targets: letter,
         angle: letter.angle + 10,

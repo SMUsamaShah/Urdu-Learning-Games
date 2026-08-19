@@ -11,7 +11,7 @@ import { createGuide } from '../lib/guided-trace.js';
 import { hasStrokes } from '../lib/strokes.js';
 import { sayLetter } from '../lib/say.js';
 import { sparkleTrail, sparkleBurst } from '../lib/particles.js';
-import { COLORS, DESIGN, familyColor, label, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, familyColor, label, makeButton } from '../lib/theme.js';
 
 /**
  * Writing the letter with a finger. Two games, depending on the letter.
@@ -94,20 +94,16 @@ export default class Trace extends Phaser.Scene {
       hills: false,
       instruction: 'fill-letter',
       roman: 'Fill the letter',
-      // Smaller and lower than on the quiz screens: a traced letter is 400px
-      // tall and some of them are very wide, so the garden has to keep out of
-      // the way of the thing being drawn.
-      plant: { x: 92, y: 700, height: 176 },
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     // Along the bottom, either side of the progress bar, rather than in the
     // top-right corner where they used to be: that corner now holds the
     // progress ring on every screen in the app, and two things in one place is
     // one of them being unreachable.
     makeButton(this, {
-      x: 250,
+      x: RAIL_EDGE + 106,
       y: DESIGN.height - 49,
       width: 150,
       height: 64,

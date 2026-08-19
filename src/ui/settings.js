@@ -43,6 +43,11 @@ import { expectedClips } from '../lib/clip-list.js';
 import { letters, numbers, words } from '../lib/content.js';
 import { guidedLetters, strokesMatchFont } from '../lib/strokes.js';
 import { reset as resetProgressTotal, state as progressState } from '../lib/progress.js';
+import {
+  currentIndicator,
+  indicatorNames,
+  setIndicator,
+} from '../lib/indicators/index.js';
 
 const el = (html) => {
   const t = document.createElement('template');
@@ -152,8 +157,9 @@ export function openSettings({ onClose } = {}) {
         ${group('Voice', [pageRow('recordings', 'Your recordings', '…')])}
         ${group('Writing', [pageRow('traces', 'Letter traces', traceSummary())])}
         ${group('Progress', [
-          actionRow('progress', 'The garden', progressSummary()),
-          actionRow('reset-progress', 'Clear the garden and start again'),
+          pageRow('indicator', 'Shown as', indicatorName(currentIndicator())),
+          actionRow('progress', 'How far', progressSummary()),
+          actionRow('reset-progress', 'Start again from nothing'),
         ])}
         ${group('App', [
           actionRow('update', 'Check for update'),
@@ -181,13 +187,14 @@ export function openSettings({ onClose } = {}) {
   /**
    * How far the child has got, for the row above the reset.
    *
-   * Written as trees rather than as a level, because trees are what is on the
-   * screen: a parent reading this has just been shown a garden, not a number.
+   * Worded without naming a tree, a glass or a bar: which of those is on screen
+   * is the row above this one, and a summary that contradicts it is worse than
+   * one that is slightly abstract.
    */
   function progressSummary() {
     const { level, step, steps } = progressState();
-    const trees = level === 1 ? '1 tree grown' : `${level} trees grown`;
-    return `${trees} · ${step} of ${steps} to the next`;
+    const done = level === 1 ? '1 filled' : `${level} filled`;
+    return `${done} · ${step} of ${steps} to the next`;
   }
 
   /**
@@ -198,7 +205,7 @@ export function openSettings({ onClose } = {}) {
    * could plausibly hit by accident while looking for the tune.
    */
   function resetProgress() {
-    if (!window.confirm('Clear the garden? This removes every tree grown on this device.')) {
+    if (!window.confirm('Start again from nothing? This clears all progress on this device.')) {
       return;
     }
     resetProgressTotal();
@@ -222,6 +229,7 @@ export function openSettings({ onClose } = {}) {
 
   const PAGE_TITLES = {
     tune: 'Tune',
+    indicator: 'Shown as',
     check: 'Sound check',
     recordings: 'Your recordings',
     traces: 'Letter traces',
@@ -237,6 +245,7 @@ export function openSettings({ onClose } = {}) {
     backEl.setAttribute('aria-label', 'Back');
 
     if (id === 'tune') return void bodyEl.append(tunePage());
+    if (id === 'indicator') return void bodyEl.append(indicatorPage());
     if (id === 'check') return void openSoundCheck();
 
     if (id === 'recordings') {
@@ -265,6 +274,37 @@ export function openSettings({ onClose } = {}) {
       disposePage = built.dispose;
       holder.replaceWith(built.el);
     }
+  }
+
+  const indicatorName = (id) =>
+    indicatorNames().find((i) => i.id === id)?.name ?? id;
+
+  /**
+   * What stands in the rail down the left of every game.
+   *
+   * A list, like the tunes, and for the same reason: it is a thing to look at
+   * rather than a setting to get right, and the difference between them is the
+   * whole point of offering more than one.
+   */
+  function indicatorPage() {
+    return el(`
+      <div class="set-list">
+        <div class="set-card">
+          ${indicatorNames()
+            .map(
+              ({ id, name }) => `<button type="button" class="set-row" data-indicator="${id}"
+                aria-checked="${id === currentIndicator()}" role="radio">
+                <span class="set-row-label">${escapeHtml(name)}</span>
+                <span class="set-row-tick" aria-hidden="true">✓</span>
+              </button>`
+            )
+            .join('')}
+        </div>
+        <p class="set-note">
+          The strip down the left of every game. It shows the same total
+          whichever one is chosen; a change takes effect on the next screen.
+        </p>
+      </div>`);
   }
 
   /**
@@ -374,6 +414,19 @@ export function openSettings({ onClose } = {}) {
   root.addEventListener('click', (event) => {
     const tune = event.target.closest('[data-tune]');
     if (tune) return void chooseTune(tune.dataset.tune);
+
+    const pick = event.target.closest('[data-indicator]');
+    if (pick) {
+      setIndicator(pick.dataset.indicator);
+      for (const row of root.querySelectorAll('[data-indicator]')) {
+        row.setAttribute(
+          'aria-checked',
+          String(row.dataset.indicator === currentIndicator())
+        );
+      }
+      sfx.tap();
+      return;
+    }
 
     const page = event.target.closest('[data-page]');
     if (page) return void openPage(page.dataset.page);

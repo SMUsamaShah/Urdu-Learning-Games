@@ -8,7 +8,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayLetters } from '../lib/say.js';
-import { COLORS, DESIGN, familyColor } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, familyColor } from '../lib/theme.js';
 
 /**
  * Pop them in order.
@@ -39,7 +39,7 @@ const RUN_BY_ROUND = [3, 4, 4, 5, 6];
 
 const BUBBLE = 118;
 /** Where bubbles may sit: clear of the ribbon, the garden and the trail. */
-const FIELD = { left: 300, right: DESIGN.width - 90, top: 205, bottom: 500 };
+const FIELD = { left: RAIL_EDGE + 44, right: DESIGN.width - 90, top: 205, bottom: 500 };
 const TRAIL_Y = DESIGN.height - 96;
 
 export default class InOrder extends Phaser.Scene {
@@ -67,10 +67,9 @@ export default class InOrder extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'in-order',
       roman: 'Pop them in order',
-      plant: { x: 116, y: 640, height: 196 },
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     this.field = this.add.container(0, 0);
     this.trail = this.add.container(0, 0);
@@ -173,7 +172,7 @@ export default class InOrder extends Phaser.Scene {
 
     if (bubble.letterId !== this.run[this.next]) {
       wrongAnswer();
-      this.plant?.wonder();
+      this.rail?.wonder();
       // It stays. Working through the bubbles until one gives is how a child
       // finds out what "next" means, and it must not cost them the board.
       this.tweens.add({

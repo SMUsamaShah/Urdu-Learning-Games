@@ -30,19 +30,21 @@ import { addBanner } from './banner.js';
 import { paperFall } from './celebrate.js';
 import { jig } from './liveliness.js';
 import { starShower } from './particles.js';
-import { addPlant } from './plant.js';
+import { addRail } from './rail.js';
 import { addScenery } from './scenery.js';
-import { COLORS, makeButton } from './theme.js';
+import { COLORS, RAIL, makeButton } from './theme.js';
+
+/** The rail, and everything the rail carries, sits above the game. */
+const RAIL_DEPTH = 3;
 
 /**
- * Where the garden stands on a game screen.
+ * Progress has its own strip down the left of every game screen, and the way
+ * out sits at the top of it. See src/lib/rail.js.
  *
- * The spot the spider used to have. Left, because the answers read right to
- * left and the last tile of a four-wide line-up would otherwise land on it.
- * Scenes that draw something large in the middle — tracing, at 400px tall —
- * move it with `plant: {...}`.
+ * There are no per-scene overrides any more. Every screen had its own idea of
+ * where the character stood — nine different x, y and height triples — and the
+ * whole point of a rail is that it is in the same place on all of them.
  */
-const PLANT = { x: 132, y: 700, height: 300 };
 
 /**
  * Builds a game screen's chrome.
@@ -55,19 +57,25 @@ const PLANT = { x: 132, y: 700, height: 300 };
  * @param {string} [options.instruction] UI string id for the ribbon. No ribbon
  *   without one — the flashcards have nothing to instruct.
  * @param {string} [options.roman] Roman reading of the instruction.
- * @param {object|false} [options.plant] Overrides for the garden's placement,
- *   or false for none.
- * @returns {{banner: *, plant: *}} both possibly null
+ * @param {boolean} [options.rail=true] false for the one screen that is a
+ *   letter and its word with no furniture at all.
+ * @returns {{banner: *, rail: *}} both possibly null
  */
 export function addStage(scene, options = {}) {
-  const { hills = true, instruction, roman, plant = {} } = options;
+  const { hills = true, instruction, roman, rail: wantRail = true } = options;
 
   scene.cameras.main.setBackgroundColor(COLORS.bg);
   addScenery(scene, { hills });
 
-  makeButton(scene, {
-    x: 72,
-    y: 56,
+  const rail = wantRail ? addRail(scene, { depth: RAIL_DEPTH }) : null;
+
+  // Above the rail, not merely after it: the rail is drawn at a depth so that
+  // the game passes behind it, and being added later is not enough to beat a
+  // depth. The way out disappearing under the panel is the one bug this layout
+  // makes easy.
+  const home = makeButton(scene, {
+    x: RAIL.width / 2,
+    y: 62,
     width: 96,
     height: 68,
     color: COLORS.panel,
@@ -76,25 +84,18 @@ export function addStage(scene, options = {}) {
     // and the phone's back button are the same single path. See
     // src/lib/history.js.
     onTap: () => goBack(),
-  }).add(
+  });
+  home.setDepth(RAIL_DEPTH + 1).setName('home-button');
+  home.add(
     scene.add.text(0, 0, '⌂', { fontSize: '34px', color: COLORS.ink }).setOrigin(0.5)
   );
 
   const banner = instruction ? addBanner(scene, { ui: instruction, roman }) : null;
 
-  // After the ribbon and before anything the scene adds, so a tile or a balloon
-  // that overlaps the garden draws on top of it. The answers are what matters.
-  //
-  // It is the same garden on all twenty-four screens because it is the same
-  // total — a child does not have a fishing score and a balloon score, they
-  // have how far they have got.
-  const { x, y, ...rest } = { ...PLANT, ...(plant || {}) };
-  const garden = plant ? addPlant(scene, x, y, rest) : null;
-
   // Leaving mid-word should not leave a voice talking over the menu.
   scene.events.once('shutdown', stopAll);
 
-  return { banner, plant: garden };
+  return { banner, rail };
 }
 
 /**
@@ -109,14 +110,14 @@ export function addStage(scene, options = {}) {
  * caller knows that where this does not.
  *
  * @param {Phaser.Scene} scene
- * @param {{banner: *, plant: *}} stage what addStage returned
+ * @param {{banner: *, rail: *}} stage what addStage returned
  * @param {object} [options]
  * @param {number} [options.duration] how long the stars keep falling
  */
-export function wellDone(scene, { banner, plant }, options = {}) {
+export function wellDone(scene, { banner, rail }, options = {}) {
   paperFall(scene);
   starShower(scene, options.duration ? { duration: options.duration } : {});
-  plant?.cheer();
+  rail?.cheer();
   if (banner) {
     // Said before the jumping starts: a ribbon still reading "find the letter"
     // while it dances is celebrating the wrong thing.

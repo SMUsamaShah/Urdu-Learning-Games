@@ -167,7 +167,7 @@ export default class Flashcards extends Phaser.Scene {
     // No ribbon and no garden: this screen is a letter and its word, and there
     // is nothing to instruct. No hills either — the letter strip already fills
     // the bottom of the screen.
-    addStage(this, { hills: false, plant: false });
+    addStage(this, { hills: false, rail: false });
     this.sequence = sequenceFor('alphabetical');
     this.selectedIndex = 0;
 

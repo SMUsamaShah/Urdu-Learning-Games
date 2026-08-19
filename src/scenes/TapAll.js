@@ -15,7 +15,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
-import { COLORS, DESIGN, familyColor, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, familyColor, makeButton } from '../lib/theme.js';
 
 /**
  * Find every one of them, not just one.
@@ -59,7 +59,7 @@ const ROUNDS = [
 ];
 
 /** The board's area: clear of the ribbon above and the garden at the left. */
-const BOARD = { left: 300, right: DESIGN.width - 50, top: 190, bottom: DESIGN.height - 40 };
+const BOARD = { left: RAIL_EDGE + 44, right: DESIGN.width - 50, top: 190, bottom: DESIGN.height - 40 };
 
 export default class TapAll extends Phaser.Scene {
   constructor() {
@@ -89,13 +89,13 @@ export default class TapAll extends Phaser.Scene {
       roman: 'Tap every one',
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     // The letter being hunted for, in the corner, always there and always
     // tappable. Taken from the reference apps, which put the target in the same
     // place on every screen: a child who has lost the question needs one place
     // to look for it.
-    this.promptLayer = this.add.container(150, 210);
+    this.promptLayer = this.add.container(RAIL_EDGE + 96, 210);
     this.board = this.add.container(0, 0);
 
     this.newRound();
@@ -234,7 +234,7 @@ export default class TapAll extends Phaser.Scene {
 
     if (tile.letterId !== this.target) {
       wrongAnswer();
-      this.plant?.wonder();
+      this.rail?.wonder();
       // Dimmed and set aside rather than removed. Removing it would shrink the
       // board towards the answer, which turns "find them all" into "keep
       // tapping until the board is empty".

@@ -95,11 +95,9 @@ export default class LetterPuzzle extends Phaser.Scene {
       hills: false,
       instruction: 'build-letter',
       roman: 'Build the letter',
-      // A 300px letter across the middle, so the garden keeps low and small.
-      plant: { x: 96, y: 690, height: 168 },
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     this.layer = this.add.container(0, 0);
     this.buildLetter();
@@ -240,7 +238,7 @@ export default class LetterPuzzle extends Phaser.Scene {
       // Back to where it was picked up from. Not left where it fell: a scatter
       // of near-misses over the letter makes the ghost impossible to read.
       wrongAnswer();
-      this.plant?.wonder();
+      this.rail?.wonder();
       this.tweens.add({
         targets: piece,
         x: piece.startX,

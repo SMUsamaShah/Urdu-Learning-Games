@@ -14,7 +14,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob, squash } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
-import { COLORS, familyColor, makeButton } from '../lib/theme.js';
+import { COLORS, RAIL_EDGE, familyColor, makeButton } from '../lib/theme.js';
 
 /**
  * Tap the letter while it is up.
@@ -95,13 +95,12 @@ export default class Whack extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'tap-quick',
       roman: 'Tap it quickly',
-      plant: { x: 116, y: 620, height: 200 },
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     this.fit = fitEmAlone(allLetterGlyphs('isolated'), LETTER_BOX - 24, LETTER_BOX - 30);
-    this.promptLayer = this.add.container(170, 210);
+    this.promptLayer = this.add.container(RAIL_EDGE + 96, 210);
 
     this.buildHoles();
     this.newTarget();
@@ -309,7 +308,7 @@ export default class Whack extends Phaser.Scene {
 
     if (hole.letterId !== this.target) {
       wrongAnswer();
-      this.plant?.wonder();
+      this.rail?.wonder();
       this.streak = 0;
       // More time, not less. The one thing that must not happen here is a
       // child getting it wrong and the game speeding up in response.
@@ -326,7 +325,7 @@ export default class Whack extends Phaser.Scene {
     this.updateStreak();
     popPuff(this, hole.x, hole.y - 40, familyColor(lettersById.get(this.target).shapeFamily));
     sparkleBurst(this, hole.x, hole.y - 40, { count: 24 });
-    this.plant?.cheer();
+    this.rail?.cheer();
     this.hide(hole);
 
     if (this.streak % 5 === 0) {

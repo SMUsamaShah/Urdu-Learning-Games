@@ -9,7 +9,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayLetters } from '../lib/say.js';
-import { COLORS, DESIGN, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, makeButton } from '../lib/theme.js';
 
 /**
  * Put the missing letters back into the caterpillar.
@@ -50,7 +50,7 @@ const ROUNDS = [
 const SEGMENT = 96;
 const GAP = 10;
 /** Where the caterpillar's body is drawn. Clear of the ribbon and the tray. */
-const BODY = { top: 210, right: DESIGN.width - 60, left: 250 };
+const BODY = { top: 210, right: DESIGN.width - 60, left: RAIL_EDGE };
 const TRAY_Y = DESIGN.height - 110;
 
 export default class Caterpillar extends Phaser.Scene {
@@ -109,7 +109,7 @@ export default class Caterpillar extends Phaser.Scene {
       roman: this.instructionRoman ?? 'Fill the gaps',
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     this.body = this.add.container(0, 0);
     this.tray = this.add.container(0, 0);
@@ -297,7 +297,7 @@ export default class Caterpillar extends Phaser.Scene {
     const wanted = this.run[hole];
     if (tile.letterId !== wanted) {
       wrongAnswer();
-      this.plant?.wonder();
+      this.rail?.wonder();
       this.tweens.add({
         targets: tile,
         x: tile.x + 8,

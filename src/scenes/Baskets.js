@@ -9,7 +9,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
-import { COLORS, DESIGN } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE } from '../lib/theme.js';
 
 /**
  * Put each letter in the basket it belongs to.
@@ -49,7 +49,7 @@ const BASKET = { width: 250, height: 150, y: DESIGN.height - 118 };
  */
 const BASKET_COLORS = [0x3f7fd4, 0xd4762f];
 /** Where a letter waiting to be sorted sits. */
-const PILE = { y: 250, left: 300, right: DESIGN.width - 80 };
+const PILE = { y: 250, left: RAIL_EDGE + 44, right: DESIGN.width - 80 };
 /** How close to a basket's middle a letter must be dropped to go in. */
 const SNAP = 150;
 
@@ -74,12 +74,9 @@ export default class Baskets extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'sort-letters',
       roman: 'Sort the letters',
-      // On the market floor at the left rather than up where the spider used to
-      // stand: a spider can sit on an awning and a garden cannot.
-      plant: { x: 104, y: 706, height: 196 },
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     this.baskets = this.add.container(0, 0);
     this.pile = this.add.container(0, 0);
@@ -239,7 +236,7 @@ export default class Baskets extends Phaser.Scene {
 
     if (basket.letterId !== tile.letterId) {
       wrongAnswer();
-      this.plant?.wonder();
+      this.rail?.wonder();
       // The basket shakes it off. Refused rather than punished: the letter goes
       // home and can be tried again, and nothing is counted against anybody.
       this.tweens.add({

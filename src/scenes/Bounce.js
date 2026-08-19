@@ -14,7 +14,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
-import { COLORS, DESIGN, familyColor, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, familyColor, makeButton } from '../lib/theme.js';
 
 /**
  * Catch the letter on the way up.
@@ -42,7 +42,7 @@ const BALL = 116;
 /** Where the balls live: the floor they land on, and how high they go. */
 const FLOOR = DESIGN.height - 118;
 const RISE = { min: 210, max: 330 };
-const LANE = { left: 320, right: DESIGN.width - 110 };
+const LANE = { left: RAIL_EDGE + 64, right: DESIGN.width - 110 };
 
 export default class Bounce extends Phaser.Scene {
   constructor() {
@@ -69,13 +69,12 @@ export default class Bounce extends Phaser.Scene {
     this.stage = addStage(this, {
       instruction: 'catch-bounce',
       roman: 'Catch it bouncing',
-      plant: { x: 116, y: 620, height: 196 },
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     this.fit = fitEmAlone(allLetterGlyphs('isolated'), BALL - 40, BALL - 46);
-    this.promptLayer = this.add.container(168, 212);
+    this.promptLayer = this.add.container(RAIL_EDGE + 96, 212);
 
     this.newRound();
     this.events.once('shutdown', () => this.time.removeAllEvents());
@@ -226,7 +225,7 @@ export default class Bounce extends Phaser.Scene {
 
     if (ball.letterId !== this.target) {
       wrongAnswer();
-      this.plant?.wonder();
+      this.rail?.wonder();
       // It keeps bouncing. Nothing is removed, so the right one is never harder
       // to find because of a wrong guess.
       this.tweens.add({
@@ -248,7 +247,7 @@ export default class Bounce extends Phaser.Scene {
     this.streak++;
     popPuff(this, ball.x, ball.y, familyColor(lettersById.get(this.target).shapeFamily));
     sparkleBurst(this, ball.x, ball.y, { count: 26 });
-    this.plant?.cheer();
+    this.rail?.cheer();
     this.remove(ball);
     this.updateStreak();
     sayLetter(this.target);

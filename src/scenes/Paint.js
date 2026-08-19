@@ -74,10 +74,9 @@ export default class Paint extends Phaser.Scene {
       hills: false,
       instruction: 'colour-in',
       roman: 'Colour it in',
-      plant: { x: 92, y: 700, height: 168 },
     });
     this.banner = this.stage.banner;
-    this.plant = this.stage.plant;
+    this.rail = this.stage.rail;
 
     makeButton(this, {
       x: DESIGN.width - 250,
