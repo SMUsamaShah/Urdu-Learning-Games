@@ -1,10 +1,5 @@
 import Phaser from 'phaser';
-import {
-  allLetterGlyphs,
-  letterGlyph,
-  lettersById,
-  shapeFamilySiblings,
-} from '../lib/content.js';
+import { activeLetters, allLetterGlyphs, letterGlyph, lettersById, shapeFamilySiblings } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
@@ -62,7 +57,9 @@ export default class Bounce extends Phaser.Scene {
   }
 
   create() {
-    this.pool = [...lettersById.keys()].filter((id) => letterGlyph(id));
+    this.pool = activeLetters()
+      .map((letter) => letter.id)
+      .filter((id) => letterGlyph(id));
     this.streak = 0;
     this.balls = [];
 

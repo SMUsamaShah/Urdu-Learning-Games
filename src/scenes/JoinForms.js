@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
-import { allLetterGlyphs, letterForms, letterGlyph, lettersById } from '../lib/content.js';
+import {
+  activeLetters,
+  allLetterGlyphs,
+  letterForms,
+  letterGlyph,
+  lettersById,
+} from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
 import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
@@ -75,9 +81,9 @@ export default class JoinForms extends Phaser.Scene {
   create() {
     // Only letters that actually have a second face. Hamza has one form, so it
     // has nothing to be paired with and must not reach the board.
-    this.pool = [...lettersById.keys()].filter(
-      (id) => letterGlyph(id) && this.partnerForm(id)
-    );
+    this.pool = activeLetters()
+      .map((letter) => letter.id)
+      .filter((id) => letterGlyph(id) && this.partnerForm(id));
     this.round = 0;
 
     this.stage = addStage(this, {

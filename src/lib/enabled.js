@@ -10,12 +10,29 @@
  * different app. Ten is the default, which is what the app did before the rest
  * of the numbers existed.
  *
- * Written here rather than in `content.js` because it is a preference, and
+ * **The switches** turn any individual letter, word or number off. A child
+ * working through the first ten letters still meets ژ in every game otherwise,
+ * and a parent has no way to say "not this week". What is switched off must
+ * appear nowhere — not as an answer, not as a wrong answer, and not inside a
+ * sequence a game generates, which is the part that is easy to miss.
+ *
+ * ## Off, not on
+ *
+ * The set stored is the *disabled* ids, not the enabled ones. Everything is on
+ * unless somebody said otherwise, so a fresh device stores nothing, and — more
+ * importantly — a letter added to `content/letters.json` next month is on for
+ * everybody who already has the app rather than silently missing for them.
+ *
+ * Written here rather than in `content.js` because these are preferences, and
  * preferences in this app live beside the thing they switch — see `music.js`
  * and `indicators/index.js` for the same shape.
  */
 
 const BAND_KEY = 'urdu-games:numbers-band';
+const OFF_KEY = 'urdu-games:disabled';
+
+/** The three things that can be switched off, and nothing else. */
+export const KINDS = ['letter', 'word', 'number'];
 
 /** The bands offered, in the order Settings lists them. */
 export const BANDS = [10, 20, 100];
@@ -47,6 +64,75 @@ export function setNumberBand(value) {
   } catch {
     /* private browsing; it just will not be remembered */
   }
+  for (const listener of listeners) listener();
+}
+
+// ------------------------------------------------------------- the switches
+
+/**
+ * The disabled ids, by kind. Read once and kept, because `isEnabled` is called
+ * inside deal loops and `JSON.parse` on every letter of every round is waste.
+ */
+let off = load();
+
+function load() {
+  const empty = Object.fromEntries(KINDS.map((kind) => [kind, new Set()]));
+  try {
+    const saved = JSON.parse(localStorage.getItem(OFF_KEY) ?? '{}');
+    for (const kind of KINDS) {
+      if (Array.isArray(saved[kind])) empty[kind] = new Set(saved[kind]);
+    }
+  } catch {
+    /* nothing saved, or something unparseable; everything is on */
+  }
+  return empty;
+}
+
+function save() {
+  try {
+    localStorage.setItem(
+      OFF_KEY,
+      JSON.stringify(Object.fromEntries(KINDS.map((kind) => [kind, [...off[kind]]])))
+    );
+  } catch {
+    /* private browsing; it just will not be remembered */
+  }
+}
+
+/**
+ * @param {'letter'|'word'|'number'} kind
+ * @param {string} id
+ */
+export function isEnabled(kind, id) {
+  return !off[kind]?.has(id);
+}
+
+export function setEnabled(kind, id, on) {
+  if (!off[kind]) return;
+  if (on) off[kind].delete(id);
+  else off[kind].add(id);
+  save();
+  for (const listener of listeners) listener();
+}
+
+/** How many of a kind are switched off, for the Settings row. */
+export function disabledCount(kind) {
+  return off[kind]?.size ?? 0;
+}
+
+/** Everything of one kind back on, or of every kind when none is named. */
+export function enableAll(kind) {
+  for (const each of kind ? [kind] : KINDS) off[each] = new Set();
+  save();
+  for (const listener of listeners) listener();
+}
+
+/**
+ * Re-reads storage. For the checks, which write localStorage directly and then
+ * need the running app to notice without a reload.
+ */
+export function reloadEnabled() {
+  off = load();
   for (const listener of listeners) listener();
 }
 

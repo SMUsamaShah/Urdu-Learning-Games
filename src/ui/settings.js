@@ -40,8 +40,17 @@ import { goBack, goBackTo, pushScreen } from '../lib/history.js';
 import * as sfx from '../lib/sfx.js';
 import { summaries } from '../lib/clip-store.js';
 import { expectedClips } from '../lib/clip-list.js';
-import { letters, numbers, words } from '../lib/content.js';
-import { numberBand, setNumberBand, BANDS } from '../lib/enabled.js';
+import { glyphForClip, letters, numbers, words } from '../lib/content.js';
+import { glyphSvg } from './glyph-svg.js';
+import {
+  disabledCount,
+  enableAll,
+  isEnabled,
+  numberBand,
+  setEnabled,
+  setNumberBand,
+  BANDS,
+} from '../lib/enabled.js';
 import { guidedLetters, strokesMatchFont } from '../lib/strokes.js';
 import { reset as resetProgressTotal, state as progressState } from '../lib/progress.js';
 import {
@@ -157,7 +166,12 @@ export function openSettings({ onClose } = {}) {
         ])}
         ${group('Voice', [pageRow('recordings', 'Your recordings', '…')])}
         ${group('Writing', [pageRow('traces', 'Letter traces', traceSummary())])}
-        ${group('Content', [pageRow('numbers', 'Numbers up to', String(numberBand()))])}
+        ${group('Content', [
+          pageRow('numbers', 'Numbers up to', String(numberBand())),
+          pageRow('pick-letter', 'Letters', switchedSummary('letter', letters.length)),
+          pageRow('pick-word', 'Words', switchedSummary('word', words.length)),
+          pageRow('pick-number', 'Numbers', switchedSummary('number', numbers.length)),
+        ])}
         ${group('Progress', [
           pageRow('indicator', 'Shown as', indicatorName(currentIndicator())),
           actionRow('progress', 'How far', progressSummary()),
@@ -233,6 +247,9 @@ export function openSettings({ onClose } = {}) {
     tune: 'Tune',
     indicator: 'Shown as',
     numbers: 'Numbers up to',
+    'pick-letter': 'Letters',
+    'pick-word': 'Words',
+    'pick-number': 'Numbers',
     check: 'Sound check',
     recordings: 'Your recordings',
     traces: 'Letter traces',
@@ -250,6 +267,7 @@ export function openSettings({ onClose } = {}) {
     if (id === 'tune') return void bodyEl.append(tunePage());
     if (id === 'indicator') return void bodyEl.append(indicatorPage());
     if (id === 'numbers') return void bodyEl.append(numbersPage());
+    if (id.startsWith('pick-')) return void bodyEl.append(pickPage(id.slice(5)));
     if (id === 'check') return void openSoundCheck();
 
     if (id === 'recordings') {
@@ -307,6 +325,79 @@ export function openSettings({ onClose } = {}) {
         <p class="set-note">
           The strip down the left of every game. It shows the same total
           whichever one is chosen; a change takes effect on the next screen.
+        </p>
+      </div>`);
+  }
+
+  /**
+   * `28 of 38` for the row on the list, or nothing when none is switched off.
+   *
+   * Silent by default on purpose: a row saying "38 of 38" on every fresh device
+   * invites a parent to go and look at a page where there is nothing to do.
+   */
+  function switchedSummary(kind, total) {
+    const off = disabledCount(kind);
+    return off ? `${total - off} of ${total}` : '';
+  }
+
+  /** The rows of one picking page, shown so the child's word is what is read. */
+  const PICK = {
+    letter: {
+      items: () => letters,
+      glyph: (item) => glyphForClip({ kind: 'letter', id: item.id, form: 'isolated' }),
+      sub: (item) => item.roman,
+    },
+    word: {
+      items: () => words,
+      glyph: (item) => glyphForClip({ kind: 'word', id: item.id }),
+      sub: (item) => item.gloss,
+    },
+    number: {
+      items: () => numbers,
+      glyph: (item) => glyphForClip({ kind: 'number', id: item.id }),
+      sub: (item) => item.roman,
+    },
+  };
+
+  /**
+   * Turn any one letter, word or number off.
+   *
+   * The whole list every time, not the active one: this is the page where you
+   * put something back, so hiding what is off would make that impossible. The
+   * band on the numbers page is a separate control and this page ignores it —
+   * a number switched off individually stays off if the band later widens.
+   *
+   * Each row shows the thing itself rather than its name. A parent picking
+   * letters for the week is looking for ب, and `letterGlyph` draws exactly what
+   * the games draw, so there is no chance of the list and the game disagreeing.
+   */
+  function pickPage(kind) {
+    const spec = PICK[kind];
+    const rows = spec
+      .items()
+      .map((item) => {
+        const glyph = spec.glyph(item);
+        return `<label class="set-row set-row-pick">
+          <span class="set-row-glyph" aria-hidden="true">${glyph ? glyphSvg(glyph) : ''}</span>
+          <span class="set-row-label">${escapeHtml(spec.sub(item) ?? item.id)}</span>
+          <input type="checkbox" class="set-switch" data-pick="${kind}:${item.id}"
+            ${isEnabled(kind, item.id) ? 'checked' : ''}
+            aria-label="${escapeHtml(spec.sub(item) ?? item.id)}" />
+        </label>`;
+      })
+      .join('');
+
+    return el(`
+      <div class="set-list">
+        <div class="set-card">${rows}</div>
+        <div class="set-card">
+          ${actionRow(`all-${kind}`, 'Turn them all back on')}
+        </div>
+        <p class="set-note">
+          Anything switched off appears nowhere — not as an answer, not as a
+          wrong answer, and not inside a sequence a game builds for itself. If
+          fewer than three are left on, the games use all of them again rather
+          than deal a round that cannot be played.
         </p>
       </div>`);
   }
@@ -463,6 +554,7 @@ export function openSettings({ onClose } = {}) {
     }
 
     const band = event.target.closest('[data-band]');
+    // (the picking switches are checkboxes; see the change listener below)
     if (band) {
       setNumberBand(Number(band.dataset.band));
       for (const row of root.querySelectorAll('[data-band]')) {
@@ -486,9 +578,26 @@ export function openSettings({ onClose } = {}) {
     if (act === 'back') return goBack();
     if (act === 'update') return checkUpdate();
     if (act === 'reset-progress') return resetProgress();
+    if (act?.startsWith('all-')) {
+      enableAll(act.slice(4));
+      // Redrawn rather than each box ticked by hand: the page is a list of up
+      // to a hundred and three switches and rebuilding it is one line.
+      clearBody();
+      bodyEl.append(pickPage(act.slice(4)));
+      sfx.correct();
+      return;
+    }
   });
 
   root.addEventListener('change', (event) => {
+    const pick = event.target.dataset?.pick;
+    if (pick) {
+      const [kind, id] = pick.split(':');
+      setEnabled(kind, id, event.target.checked);
+      sfx.tap();
+      return;
+    }
+
     const act = event.target.dataset?.act;
     if (act === 'fps') return setShowFps(event.target.checked);
     if (act === 'music') return setMusicOn(event.target.checked);

@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
-import { activeNumbers, allNumberGlyphs, numberGlyph, numbersById } from '../lib/content.js';
+import {
+  activeNumbers,
+  allNumberGlyphs,
+  inPlay,
+  numberGlyph,
+  numbersById,
+} from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { hop } from '../lib/liveliness.js';
 import { ringBurst } from '../lib/particles.js';
@@ -73,7 +79,10 @@ export default class Numbers extends QuizScene {
     this.countable = activeNumbers()
       .filter((n) => n.value >= 1 && n.value <= COUNTABLE_MAX)
       .map((n) => n.id);
-    this.props = illustratedWords();
+    // The things laid out to be counted are the word pictures, so a word
+    // switched off should not turn up here as scenery either.
+    const shown = inPlay.words();
+    this.props = illustratedWords().filter((id) => shown.has(id));
   }
 
   pickTarget(previous) {

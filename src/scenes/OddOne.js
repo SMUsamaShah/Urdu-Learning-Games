@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import {
+  activeLetters,
   allLetterGlyphs,
   letterGlyph,
   lettersById,
@@ -56,10 +57,10 @@ export default class OddOne extends QuizScene {
 
   onCreated() {
     const byFamily = new Map();
-    for (const [id, letter] of lettersById) {
-      if (!letterGlyph(id)) continue;
+    for (const letter of activeLetters()) {
+      if (!letterGlyph(letter.id)) continue;
       const family = letter.shapeFamily;
-      byFamily.set(family, [...(byFamily.get(family) ?? []), id]);
+      byFamily.set(family, [...(byFamily.get(family) ?? []), letter.id]);
     }
     this.byFamily = byFamily;
     this.families = [...byFamily.entries()]
@@ -84,13 +85,15 @@ export default class OddOne extends QuizScene {
     // `previous` is excluded like every other screen here does it: the same odd
     // letter twice running is a duller round, and it also looks to anything
     // watching from outside like the round never advanced.
-    const strangers = [...lettersById.keys()].filter(
-      (id) =>
-        id !== previous &&
-        letterGlyph(id) &&
-        lettersById.get(id).shapeFamily !== family &&
-        !shapeFamilySiblings(three[0]).includes(id)
-    );
+    const strangers = activeLetters()
+      .map((letter) => letter.id)
+      .filter(
+        (id) =>
+          id !== previous &&
+          letterGlyph(id) &&
+          lettersById.get(id).shapeFamily !== family &&
+          !shapeFamilySiblings(three[0]).includes(id)
+      );
     const odd = Phaser.Utils.Array.GetRandom(strangers);
 
     this.lineUp = Phaser.Utils.Array.Shuffle([...three, odd]);

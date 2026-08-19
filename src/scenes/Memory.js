@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
-import { allLetterGlyphs, lettersById, letterGlyph, wordForLetter } from '../lib/content.js';
+import {
+  activeLetters,
+  allLetterGlyphs,
+  lettersById,
+  letterGlyph,
+  wordForLetter,
+} from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
 import { finished, rightAnswer } from '../lib/flourish.js';
@@ -68,10 +74,12 @@ export default class Memory extends Phaser.Scene {
     // Only letters that can make a pair: the game is a letter next to its
     // picture, so a letter with no word, or a word with no picture, has nothing
     // to be paired with and must not reach the board.
-    this.pool = [...lettersById.keys()].filter((id) => {
-      const word = wordForLetter(id);
-      return letterGlyph(id) && word && hasWordImage(word.id);
-    });
+    this.pool = activeLetters()
+      .map((letter) => letter.id)
+      .filter((id) => {
+        const word = wordForLetter(id);
+        return letterGlyph(id) && word && hasWordImage(word.id);
+      });
 
     this.round = 0;
 

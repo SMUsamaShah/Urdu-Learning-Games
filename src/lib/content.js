@@ -10,7 +10,7 @@ import letterData from '../../content/letters.json';
 import numberData from '../../content/numbers.json';
 import wordData from '../../content/words.json';
 import orderingData from '../../content/orderings.json';
-import { numberBand, BANDS } from './enabled.js';
+import { isEnabled, numberBand, BANDS } from './enabled.js';
 
 // Glyph outlines are fetched rather than imported so the bundler emits them as
 // a separate cacheable asset instead of inlining ~220 KB into the main bundle.
@@ -168,12 +168,50 @@ export function uiGlyph(stringId) {
 }
 
 /**
- * The numbers currently in play: whatever the Settings band allows.
+ * The fewest of a kind a game can be dealt before the switches are ignored.
  *
- * Everything that deals a number goes through this rather than through the raw
- * `numbers` export, so a band of ten cannot be undermined by one game reading
- * the whole file. The raw export stays for Settings and the recorder, which
- * both need the complete list whatever is being taught this week.
+ * A parent who turns off all but one letter has not asked for a matching game
+ * with one card in it; they have asked for something the app cannot give. It
+ * falls back to everything rather than dealing an impossible round, because a
+ * game that cannot be finished looks like a broken app and a game that ignores
+ * a setting looks like a setting that did not save — and the second is the
+ * easier of the two to work out.
+ */
+const ENOUGH = 3;
+
+/** `chosen` unless there is not enough of it to play with. */
+const orAll = (chosen, all) => (chosen.length >= ENOUGH ? chosen : all);
+
+/**
+ * The letters currently in play.
+ *
+ * Everything that *deals* a letter goes through this rather than through the
+ * raw `letters` export. The raw export stays for Settings, the recorder and the
+ * tracing editor, which all need the complete list whatever is being taught
+ * this week — a letter you have switched off is still a letter you might want
+ * to record or draw a stroke path for.
+ */
+export function activeLetters() {
+  return orAll(
+    letters.filter((letter) => isEnabled('letter', letter.id)),
+    letters
+  );
+}
+
+/** The words currently in play. See activeLetters. */
+export function activeWords() {
+  return orAll(
+    words.filter((word) => isEnabled('word', word.id)),
+    words
+  );
+}
+
+/**
+ * The numbers currently in play: what the Settings band allows, less anything
+ * switched off individually.
+ *
+ * The two filters are here together rather than in two places, because "what
+ * may this game deal" has to have one answer.
  */
 export function activeNumbers() {
   const band = numberBand();
@@ -183,13 +221,40 @@ export function activeNumbers() {
   // counts big things in, and a band that says "up to 100" and then hides them
   // would be hiding them for ever.
   const cap = band === BANDS[BANDS.length - 1] ? Infinity : band;
-  return numbers.filter((number) => number.value <= cap);
+  const banded = numbers.filter((number) => number.value <= cap);
+  return orAll(
+    banded.filter((number) => isEnabled('number', number.id)),
+    banded
+  );
 }
 
-/** The word taught alongside a letter, or null where none is suitable. */
+/**
+ * The ids in play, as sets, for filtering a list that came from somewhere else.
+ *
+ * `illustratedWords()` in images.js knows which words have a picture and
+ * nothing about which are being taught this week; the games that start from
+ * that list intersect it with this rather than each writing the same filter.
+ */
+export const inPlay = {
+  letters: () => new Set(activeLetters().map((letter) => letter.id)),
+  words: () => new Set(activeWords().map((word) => word.id)),
+  numbers: () => new Set(activeNumbers().map((number) => number.id)),
+};
+
+/**
+ * The word taught alongside a letter, or null where none is suitable.
+ *
+ * Null also when the word itself is switched off, which is why this is not a
+ * two-line lookup any more: a game that pairs a letter with its picture has to
+ * hear "there is no word for this one" rather than be handed a word the parent
+ * has taken out.
+ */
 export function wordForLetter(letterId) {
   const letter = lettersById.get(letterId);
-  return letter?.word ? (wordsById.get(letter.word) ?? null) : null;
+  if (!letter?.word) return null;
+  const word = wordsById.get(letter.word) ?? null;
+  if (!word) return null;
+  return activeWords().some((active) => active.id === word.id) ? word : null;
 }
 
 /**
@@ -203,7 +268,14 @@ export function wordForLetter(letterId) {
 export function sequenceFor(name) {
   const ordering = orderings[name];
   if (!ordering) throw new Error(`Unknown ordering: ${name}`);
-  return ordering.sequence ?? ordering.groups.flatMap((g) => g.letters);
+  const full = ordering.sequence ?? ordering.groups.flatMap((g) => g.letters);
+  // Filtered here rather than by every caller, because this is the one that
+  // matters most: the games that ask a child to put letters in order build
+  // their run out of a *slice* of this, and a switched-off letter left in
+  // would be dealt as part of a sequence nobody chose to teach.
+  const inPlay = new Set(activeLetters().map((letter) => letter.id));
+  const chosen = full.filter((id) => inPlay.has(id));
+  return orAll(chosen, full);
 }
 
 /**
@@ -219,7 +291,13 @@ export function sequenceFor(name) {
 export function shapeFamilySiblings(letterId) {
   const letter = lettersById.get(letterId);
   if (!letter) return [];
+  // Not `orAll`: an empty family is a normal answer here — plenty of letters
+  // have no sibling at all — and callers already deal with getting none. What
+  // must not happen is a switched-off letter arriving as a wrong answer, which
+  // is exactly where a distractor would hide.
+  const inPlay = new Set(activeLetters().map((l) => l.id));
   return letters
     .filter((l) => l.shapeFamily === letter.shapeFamily && l.id !== letterId)
+    .filter((l) => inPlay.has(l.id))
     .map((l) => l.id);
 }

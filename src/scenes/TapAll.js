@@ -1,10 +1,5 @@
 import Phaser from 'phaser';
-import {
-  allLetterGlyphs,
-  letterGlyph,
-  lettersById,
-  shapeFamilySiblings,
-} from '../lib/content.js';
+import { activeLetters, allLetterGlyphs, letterGlyph, lettersById, shapeFamilySiblings } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
@@ -81,7 +76,9 @@ export default class TapAll extends Phaser.Scene {
   }
 
   create() {
-    this.pool = [...lettersById.keys()].filter((id) => letterGlyph(id));
+    this.pool = activeLetters()
+      .map((letter) => letter.id)
+      .filter((id) => letterGlyph(id));
     this.round = 0;
 
     this.stage = addStage(this, {

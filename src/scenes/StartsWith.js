@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
-import { allLetterGlyphs, letterGlyph, wordsById } from '../lib/content.js';
+import {
+  activeWords,
+  allLetterGlyphs,
+  inPlay,
+  letterGlyph,
+  wordsById,
+} from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import { addWordImage, hasWordImage, queueWordImages } from '../lib/images.js';
@@ -65,11 +71,16 @@ export default class StartsWith extends QuizScene {
   }
 
   onCreated() {
-    for (const word of wordsById.values()) {
+    const lettersInPlay = inPlay.letters();
+    for (const word of activeWords()) {
       // letterIndex is where the taught letter sits inside the word. Zero is
       // the only value this game can use.
       if (word.letterIndex !== 0) continue;
+      // The word being in play is not enough: these pair a *letter* with a
+      // picture, so a letter switched off individually has to drop out even
+      // where the word teaching it is still on.
       if (!word.letter || !letterGlyph(word.letter)) continue;
+      if (!lettersInPlay.has(word.letter)) continue;
       if (!hasWordImage(word.id)) continue;
       // First word wins if a letter somehow has two; the pairing is meant to be
       // stable so a child sees the same example each time.

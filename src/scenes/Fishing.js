@@ -1,5 +1,12 @@
 import Phaser from 'phaser';
-import { allLetterGlyphs, letterGlyph, lettersById, wordsById } from '../lib/content.js';
+import {
+  activeWords,
+  inPlay,
+  allLetterGlyphs,
+  letterGlyph,
+  lettersById,
+  wordsById,
+} from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer, wrongAnswer } from '../lib/flourish.js';
@@ -65,11 +72,16 @@ export default class Fishing extends Phaser.Scene {
   }
 
   create() {
-    for (const word of wordsById.values()) {
+    const lettersInPlay = inPlay.letters();
+    for (const word of activeWords()) {
       // Only words the letter actually begins — the same rule as StartsWith,
       // and for the same reason: ڑ, ھ and ی never start a word.
       if (word.letterIndex !== 0) continue;
       if (!word.letter || !letterGlyph(word.letter) || !hasWordImage(word.id)) continue;
+      // The word being in play is not enough: this pairs a *letter* with a
+      // picture, so a letter switched off individually has to drop out even
+      // where the word teaching it is still on.
+      if (!lettersInPlay.has(word.letter)) continue;
       if (!this.wordFor.has(word.letter)) this.wordFor.set(word.letter, word.id);
     }
     this.pool = [...this.wordFor.keys()];

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { allWordGlyphs, wordGlyph, wordsById } from '../lib/content.js';
+import { allWordGlyphs, inPlay, wordGlyph, wordsById } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import { addWordImage, illustratedWords, queueWordImages } from '../lib/images.js';
@@ -46,7 +46,8 @@ export default class WordPictures extends QuizScene {
   }
 
   onCreated() {
-    this.pool = illustratedWords().filter((id) => wordsById.has(id));
+    const shown = inPlay.words();
+    this.pool = illustratedWords().filter((id) => wordsById.has(id) && shown.has(id));
     // Measured once, from every word in the app rather than from the ones this
     // round happens to use, so the writing does not change size between rounds.
     this.promptFit = fitEmAlone(allWordGlyphs(), PLATE.width - 40, PLATE.height - 16);

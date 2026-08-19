@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
-import { allLetterGlyphs, letterGlyph, lettersById, wordForLetter } from '../lib/content.js';
+import {
+  activeLetters,
+  allLetterGlyphs,
+  letterGlyph,
+  lettersById,
+  wordForLetter,
+} from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
 import { addWordImage, hasWordImage, queueWordImages } from '../lib/images.js';
@@ -56,10 +62,12 @@ export default class Doors extends QuizScene {
   }
 
   onCreated() {
-    this.pool = [...lettersById.keys()].filter((id) => {
-      const word = wordForLetter(id);
-      return letterGlyph(id) && word && hasWordImage(word.id);
-    });
+    this.pool = activeLetters()
+      .map((letter) => letter.id)
+      .filter((id) => {
+        const word = wordForLetter(id);
+        return letterGlyph(id) && word && hasWordImage(word.id);
+      });
     // One em for every letter in the app, so a door cannot be picked by which
     // letter happens to be drawn biggest.
     this.doorFit = fitEmAlone(allLetterGlyphs('isolated'), DOOR.width - 70, DOOR.height - 130);

@@ -19,21 +19,6 @@ editor. Nothing in the code assumes 38 — `letters.length` is read everywhere i
 matters — but the count appears in a few comments and in the Settings row, so
 those want a look.
 
-### Nothing can be switched off
-
-Every letter, word and number in `content/` appears in every game that can use
-it. A child working on the first ten letters still meets ژ, and a parent has no
-way to narrow what the app teaches this week.
-
-What it needs: `src/lib/enabled.js` holding a set of disabled ids in
-localStorage with a change event; filtered views in `content.js`
-(`activeLetters()`, `activeWords()`, `activeNumbers()`) that `sequenceFor()`,
-`shapeFamilySiblings()` and `wordForLetter()` respect, so a generated sequence
-can never contain something switched off; and three list pages in Settings with
-a switch per item. Two rules keep it safe — glyph *sizing* keeps using the full
-set, or letters would change size when a parent disables one, and a game falls
-back to the full set rather than breaking if fewer than two items remain.
-
 ### The Letters screen does not show where the letter is in its word
 
 On the Letters screen the taught letter, its positional forms and the word it

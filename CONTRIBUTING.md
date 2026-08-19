@@ -544,6 +544,29 @@ anchored on the **feet** rather than the bounding box — raising a leg to point
 moves the bounding box but not the part standing on the ground. If you add a
 pose, look at the overlay it prints before believing it.
 
+**Deal from `activeLetters()`, never from `letters`.** A parent can switch any
+letter, word or number off in Settings, and switched off means gone: not an
+answer, not a wrong answer, and not one step of a sequence a game builds for
+itself. `src/lib/content.js` has `activeLetters()`, `activeWords()` and
+`activeNumbers()` for that, and `sequenceFor()`, `shapeFamilySiblings()` and
+`wordForLetter()` already respect them. The raw `letters` / `words` / `numbers`
+exports stay for Settings, the recorder and the tracing editor, which need the
+whole list whatever is being taught this week.
+
+Two exceptions that are deliberate. `allLetterGlyphs()` sizes against the full
+alphabet, or a letter would change size when a sibling is switched off — but
+`allNumberGlyphs()` sizes against the band, because the numbers run to ۱۰۰۰۰۰
+and a screen of ۰–۹ measured against a six-digit number draws every digit tiny.
+And below three items of a kind the filters fall back to everything: a parent
+who leaves two letters on has not asked for a matching game with two cards in
+it, and a game that cannot be finished is harder to diagnose than a setting
+that did not take.
+
+`npm run verify:content` is what holds this. It switches a letter off and looks
+at what all twenty-one letter screens are *holding* rather than what they
+happen to deal — OddOne shows four letters out of thirty-eight a round, so a
+check that watched a round would pass about nine times in ten.
+
 **Every game gets a ribbon.** Set `instruction` and `instructionRoman` on a
 QuizScene subclass, or call `addBanner()` directly. The id is a string in
 `content/ui.json`; a typo there renders an empty ribbon and nothing else, so

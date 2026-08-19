@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
-import { allLetterGlyphs, letterGlyph, lettersById, wordForLetter } from '../lib/content.js';
+import {
+  activeLetters,
+  allLetterGlyphs,
+  letterGlyph,
+  lettersById,
+  wordForLetter,
+} from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
 import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
@@ -69,10 +75,12 @@ export default class ConnectPairs extends Phaser.Scene {
   }
 
   create() {
-    this.pool = [...lettersById.keys()].filter((id) => {
-      const word = wordForLetter(id);
-      return letterGlyph(id) && word && hasWordImage(word.id);
-    });
+    this.pool = activeLetters()
+      .map((letter) => letter.id)
+      .filter((id) => {
+        const word = wordForLetter(id);
+        return letterGlyph(id) && word && hasWordImage(word.id);
+      });
     this.round = 0;
 
     this.stage = addStage(this, {

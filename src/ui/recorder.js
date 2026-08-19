@@ -28,6 +28,7 @@
 
 import './recorder.css';
 import { letters, numbers, words, glyphForClip } from '../lib/content.js';
+import { glyphSvg } from './glyph-svg.js';
 import { expectedClips } from '../lib/clip-list.js';
 import {
   DEFAULT_PROFILE,
@@ -58,15 +59,6 @@ const escapeHtml = (s) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
   );
-
-/** Draws a baked outline as inline SVG, the same shapes the game renders. */
-function glyphSvg(glyph, color = '#2b3047') {
-  if (!glyph?.d) return '';
-  const [x, y, w, h] = glyph.bbox;
-  const pad = Math.max(w, h) * 0.06;
-  return `<svg viewBox="${x - pad} ${y - pad} ${w + pad * 2} ${h + pad * 2}"
-    xmlns="http://www.w3.org/2000/svg"><path d="${glyph.d}" fill="${color}"/></svg>`;
-}
 
 const formatBytes = (n) =>
   n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`;
