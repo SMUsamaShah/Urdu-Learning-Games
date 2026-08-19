@@ -261,18 +261,13 @@ await page.evaluate(() => window.__music.setMusicOn(false));
 
 /** Records over the same clip and reports whether anything was played back. */
 async function recordAgain() {
-  // Back to the same clip every time, and after the last save has finished
-  // moving. Saving steps the selection on to the next clip, and it does that
-  // after an await, so a click sent straight afterwards is silently undone a
-  // moment later: the pass records the *next* letter instead, and the run ends
-  // with more clips on the device than everything after here expects. Waiting
-  // for the step-on to land first is what makes the click stick.
-  await page.waitForSelector('.rec-root .rec-row[data-i="1"][aria-selected="true"]', {
-    timeout: 15000,
-  });
-  await page.click('.rec-root .rec-row[data-i="0"]');
+  // Saving used to step the selection on to the next clip, so this had to click
+  // its way back to the first one and wait for that to stick. The recorder now
+  // stays where it is, which is what the waveform editor wants, so a second
+  // take simply overwrites the same clip — but assert that rather than assume
+  // it, because everything after here expects exactly one clip on the device.
   await page.waitForSelector('.rec-root .rec-row[data-i="0"][aria-selected="true"]', {
-    timeout: 10000,
+    timeout: 15000,
   });
   await page.evaluate(() => {
     window.__audio.stopAll();

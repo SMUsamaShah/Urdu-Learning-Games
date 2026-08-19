@@ -645,8 +645,9 @@ export function buildRecorderPage() {
       // Hearing the take back is the right default — it is how you find out
       // the mic was pointing the wrong way — but it doubles the time each clip
       // takes, and somebody working through a hundred and twenty of them knows
-      // by then whether the mic is working.
-      await play(clip.key);
+      // by then whether the mic is working. The box is beside Export and
+      // Import, because it is a decision made once at the start of a sitting.
+      if (playback) await play(clip.key);
     } else {
       stopAll();
       try {
