@@ -19,20 +19,6 @@ editor. Nothing in the code assumes 38 — `letters.length` is read everywhere i
 matters — but the count appears in a few comments and in the Settings row, so
 those want a look.
 
-### Most tile pictures do not show their game
-
-Only **Balloons**, **Pairs** and **More games** have a picture that says what
-the tile does. The rest are decorative: a goat for "starts with", an open book
-for words, a crayon for writing, a stack of cards for letters, a star for
-shapes, a magnifying glass over coloured dots for find-the-letter. A child who
-cannot read the label has nothing to go on, which is most of the point of a
-picture on a tile.
-
-They want redrawing literally — the picture should be a small scene of the game
-being played, not an object loosely associated with it. `npm run tiles`
-regenerates them from the briefs in `tools/make-tile-art.mjs`; the work is
-mostly in the briefs.
-
 ## The tracing editor
 
 ### The tracer's sliders need a scroll on a phone

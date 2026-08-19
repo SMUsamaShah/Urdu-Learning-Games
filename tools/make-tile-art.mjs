@@ -19,9 +19,24 @@
  *   - **Filling the frame.** Margins are wasted pixels; the tile is small.
  *   - **Nothing at the bottom.** The name sits over the bottom third, on a
  *     scrim this tool bakes in, so the subject belongs above it.
- *   - **No letters, in any script.** The model cannot draw Urdu, and Latin
- *     letters on a screen teaching the Urdu alphabet are worse than no picture.
- *     Asked for, and checked for below by hand — see the note on `--only`.
+ *   - **No letters from the model, in any script.** It cannot draw Urdu, and
+ *     Latin letters on a screen teaching the Urdu alphabet are worse than no
+ *     picture. Asked for, and checked for below by hand — see the note on
+ *     `--only`.
+ *
+ * ## The letters are drawn here, not by the model
+ *
+ * That last rule is why the tiles were decorative for so long: a picture of
+ * "find the letter" is a magnifying glass over *letters*, and letters were the
+ * one thing the generator could not produce. So it does not. The briefs leave
+ * blank places — a plain card, an unmarked balloon, an empty circle — and this
+ * tool paints real Nastaliq into them afterwards, out of content/glyphs.json,
+ * the same outlines the games draw. A tile now shows the thing the game
+ * actually does.
+ *
+ * Slots are in fractions of the tile so they survive a change of TARGET, and
+ * they all sit in the upper two thirds: the bottom third carries the game's
+ * name at runtime and anything under there is invisible.
  *
  * ## Cost and repeatability
  *
@@ -40,6 +55,9 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 import { launchOptions } from './browser.mjs';
 import { CONTENT_DIR, ROOT } from './audio-keys.mjs';
+
+/** The baked outlines, so the tiles can carry real Urdu. See the note above. */
+const GLYPHS = JSON.parse(fs.readFileSync(path.join(CONTENT_DIR, 'glyphs.json'), 'utf8'));
 
 const OUT = path.join(ROOT, 'public', 'images', 'tiles');
 const RAW = path.join(ROOT, '.image-cache', 'tile');
@@ -100,73 +118,222 @@ const STYLE =
  * the model cannot draw Urdu and will cheerfully put English on the tile of an
  * Urdu app if given the chance.
  */
+/**
+ * One per menu tile, keyed by scene — plus `More` for the tile that opens the
+ * rest of them.
+ *
+ * `art` is the brief. Each one names objects, never the lesson: "a caterpillar
+ * with one segment missing" gives something a child can recognise, "a game
+ * about gaps in a sequence" gives whatever the model felt like. Where a game is
+ * about letters — and most of them are — the brief asks for a blank place and
+ * `slots` says what to paint into it.
+ *
+ * A slot is `{letter | number, form, x, y, height}`. `x` and `y` are the centre
+ * of the glyph and `height` its size, all as fractions of the tile, and they
+ * belong in the upper two thirds because the bottom third carries the game's
+ * name at runtime. `light: true` for a slot that lands on a saturated colour.
+ */
 const TILES = {
-  Flashcards:
-    'A neat stack of blank brightly coloured rounded cards fanned out, the ' +
-    'top card plain white and empty.',
-  Trace:
-    'A chubby wooden crayon held upright, drawing one thick curving orange ' +
-    'line with a trail of round dots along it.',
-  FindLetter:
-    'A big round magnifying glass with a wooden handle, held over three plain ' +
-    'coloured circles.',
-  WordPictures:
-    'An open picture book lying flat, a red apple drawn on one page and a ' +
-    'yellow pear on the other. The pages carry only those two little ' +
-    'drawings and no writing whatsoever.',
-  StartsWith:
-    'A friendly white goat standing beside three small blank coloured cards.',
-  Numbers: 'A tall stack of brightly coloured wooden counting blocks, all plain and blank.',
-  Balloons: 'A bunch of five round balloons in bright colours on curling strings, floating.',
-  Memory:
-    'Four blank playing cards face down in a square, one of them tipped up ' +
-    'and turning over to show a plain yellow back.',
-  JoinForms:
-    'Three plain coloured stars of different sizes joined by a thin drawn line ' +
-    'between them.',
-  Sequence: 'Five flat round stepping stones in a rising row across a green lawn.',
-  Doors:
-    'A small red barn seen straight on with its two wooden doors open, a ' +
-    'friendly duck peeking out of the doorway.',
-  TapAll:
-    'A pointing hand tapping the middle one of several bright scattered ' +
-    'circles, with a soft ring of ripples around it.',
-  Caterpillar:
-    'A smiling green caterpillar made of round segments, with one segment ' +
-    'missing from the middle leaving a gap.',
-  LetterPuzzle:
-    'Four brightly coloured jigsaw pieces, three of them joined and one ' +
-    'floating just above its empty slot.',
-  Fishing:
-    'A bamboo fishing rod with its line dipping into a small round pond, one ' +
-    'orange fish jumping.',
-  Baskets:
-    'Two woven baskets side by side, one filled with red balls and one with ' +
-    'blue balls.',
-  Whack:
-    'Three little mounds of earth in a row, a cheerful mole popping up out of ' +
-    'the middle one.',
-  OddOne: 'Three identical red apples in a row and one yellow banana at the end.',
-  InOrder: 'A rising line of soap bubbles of increasing size against a pale sky.',
-  Paint:
-    'An artist palette with blobs of bright paint and a fat brush resting on ' +
-    'it, a few colourful splashes around.',
-  ConnectPairs:
-    'Two columns of coloured dots joined across the gap by three curved ' +
-    'coloured threads.',
-  NumberLine:
-    'A short wooden ladder lying flat with a round red ball resting on each of ' +
-    'the first three rungs.',
-  Hidden:
-    'A big round leafy green bush with two friendly cartoon eyes peeking out ' +
-    'from inside it.',
-  Bounce:
-    'A round red-and-blue ball bouncing off a small trampoline, with a dotted ' +
-    'arc showing its path.',
-  More:
-    'An open wooden treasure chest with brightly coloured toy balls, blocks ' +
-    'and a spinning top spilling out of it.',
+  Flashcards: {
+    art:
+      'A neat stack of blank brightly coloured rounded cards fanned out, the ' +
+      'top card plain white and empty.',
+    // The top card of the fan, which is what the brief keeps empty.
+    slots: [{ letter: 'be', x: 0.62, y: 0.5, height: 0.3 }],
+  },
+  Trace: {
+    art:
+      'A chubby wooden crayon held upright, drawing one thick curving orange ' +
+      'line with a trail of round dots along it.',
+  },
+  FindLetter: {
+    art:
+      'A big round magnifying glass with a wooden handle held over one large ' +
+      'blank white rounded card, the card filling most of the lens and ' +
+      'completely empty.',
+    slots: [{ letter: 'be', x: 0.5, y: 0.4, height: 0.22 }],
+  },
+  WordPictures: {
+    art:
+      'An open picture book lying flat, a red apple drawn on one page and a ' +
+      'yellow pear on the other. The pages carry only those two little ' +
+      'drawings and no writing whatsoever.',
+  },
+  StartsWith: {
+    art:
+      'A friendly white goat standing on the left, and on the right, in the ' +
+      'upper half of the picture, one large blank white rounded card standing ' +
+      'upright and completely empty.',
+    slots: [{ letter: 'be', x: 0.74, y: 0.36, height: 0.26 }],
+  },
+  Numbers: {
+    art:
+      'Two very large brightly coloured wooden counting blocks stacked one on ' +
+      'top of the other and filling the frame, seen straight on, both faces ' +
+      'completely plain and empty.',
+    slots: [
+      { number: 'n1', x: 0.5, y: 0.26, height: 0.16, light: true },
+      { number: 'n2', x: 0.5, y: 0.53, height: 0.16, light: true },
+    ],
+  },
+  Balloons: {
+    art:
+      'Three very large round balloons in bright colours on curling strings, ' +
+      'floating side by side and filling the frame, each one plain with no ' +
+      'markings on it at all.',
+    slots: [
+      { letter: 'alif', x: 0.2, y: 0.32, height: 0.19, light: true },
+      { letter: 'be', x: 0.5, y: 0.28, height: 0.19, light: true },
+      { letter: 'jim', x: 0.8, y: 0.32, height: 0.19, light: true },
+    ],
+  },
+  Memory: {
+    art:
+      'Four blank playing cards face down in a square, one of them tipped up ' +
+      'and turning over to show a plain yellow back.',
+    slots: [
+      { letter: 'be', x: 0.36, y: 0.36, height: 0.14, light: true },
+      { letter: 'be', x: 0.65, y: 0.36, height: 0.14, light: true },
+    ],
+  },
+  JoinForms: {
+    art:
+      'Three plain coloured stars of different sizes joined by a thin drawn ' +
+      'line between them.',
+    // One letter, on the big star. The two small stars were tried and a
+    // positional form eight pixels tall on a phone is a smudge, not a lesson.
+    slots: [{ letter: 'be', x: 0.47, y: 0.36, height: 0.16, light: true }],
+  },
+  Sequence: {
+    art: 'Five flat round stepping stones in a rising row across a green lawn.',
+  },
+  Doors: {
+    art:
+      'A small red barn seen straight on with its two wooden doors open, a ' +
+      'friendly duck peeking out of the doorway.',
+  },
+  TapAll: {
+    art:
+      'Three very large plain coloured circles in a row across the upper half ' +
+      'of the picture, completely empty, and a pointing hand below reaching up ' +
+      'to tap the middle one, with a soft ring of ripples around it.',
+    slots: [
+      { letter: 'be', x: 0.2, y: 0.3, height: 0.16, light: true },
+      { letter: 'be', x: 0.5, y: 0.3, height: 0.16, light: true },
+      { letter: 'te', x: 0.8, y: 0.3, height: 0.16, light: true },
+    ],
+  },
+  Caterpillar: {
+    art:
+      'A smiling green caterpillar seen from the side, made of three very ' +
+      'large plain round segments in a row across the middle of the picture, ' +
+      'with a clear empty gap where a fourth segment should be.',
+    slots: [
+      { letter: 'alif', x: 0.62, y: 0.41, height: 0.13, light: true },
+      { letter: 'be', x: 0.76, y: 0.41, height: 0.13, light: true },
+    ],
+  },
+  LetterPuzzle: {
+    art:
+      'Two very large brightly coloured jigsaw pieces side by side in the ' +
+      'upper half, both plain and unmarked, one of them lifted slightly away ' +
+      'from the other leaving a gap between them.',
+    slots: [
+      { letter: 'be', x: 0.3, y: 0.34, height: 0.17, light: true },
+      { letter: 'te', x: 0.68, y: 0.34, height: 0.17, light: true },
+    ],
+  },
+  Fishing: {
+    art:
+      'A bamboo fishing rod with its line dipping into a small round pond, ' +
+      'and one very large orange fish jumping clear of the water in the upper ' +
+      'half, its broad flat side facing the viewer and completely plain.',
+    slots: [{ letter: 'be', x: 0.58, y: 0.34, height: 0.12, light: true }],
+  },
+  Baskets: {
+    art:
+      'Two woven baskets side by side in the lower half, and above each ' +
+      'basket one very large plain ball hanging in the air about to drop in, ' +
+      'the left ball red and the right ball blue, both completely unmarked.',
+    slots: [
+      { letter: 'be', x: 0.27, y: 0.23, height: 0.15, light: true },
+      { letter: 'te', x: 0.73, y: 0.23, height: 0.15, light: true },
+    ],
+  },
+  Whack: {
+    art:
+      'Three little mounds of earth in a row across the middle of the ' +
+      'picture, a cheerful mole popping up out of the middle one holding a ' +
+      'large blank white rounded sign above its head.',
+    slots: [{ letter: 'be', x: 0.5, y: 0.28, height: 0.18 }],
+  },
+  OddOne: {
+    art: 'Three identical red apples in a row and one yellow banana at the end.',
+  },
+  InOrder: {
+    art: 'A rising line of soap bubbles of increasing size against a pale sky.',
+  },
+  Paint: {
+    art:
+      'An artist palette with blobs of bright paint and a fat brush resting ' +
+      'on it, a few colourful splashes around.',
+  },
+  ConnectPairs: {
+    art:
+      'On the left, two large plain white rounded cards stacked one above the ' +
+      'other and completely empty. On the right, level with them, a red apple ' +
+      'and a yellow pear. A curved coloured thread joins each card across to ' +
+      'the fruit beside it.',
+    slots: [
+      { letter: 'alif', x: 0.24, y: 0.26, height: 0.16 },
+      { letter: 'be', x: 0.24, y: 0.55, height: 0.16 },
+    ],
+  },
+  NumberLine: {
+    art:
+      'Three very large plain wooden discs in a rising row across the upper ' +
+      'half of the picture, like stepping stones going up, each one round and ' +
+      'flat and completely empty, with a thin line drawn between them.',
+    slots: [
+      { number: 'n1', x: 0.22, y: 0.44, height: 0.13 },
+      { number: 'n2', x: 0.5, y: 0.32, height: 0.13 },
+      { number: 'n3', x: 0.78, y: 0.2, height: 0.13 },
+    ],
+  },
+  Hidden: {
+    art:
+      'A big round leafy green bush filling the lower half, with one large ' +
+      'blank white rounded card standing up behind it, its top half showing ' +
+      'above the leaves and completely empty.',
+    slots: [{ letter: 'be', x: 0.5, y: 0.24, height: 0.18 }],
+  },
+  Bounce: {
+    art:
+      'One very large plain blue ball high in the air above a small ' +
+      'trampoline, filling the upper half of the picture and completely ' +
+      'unmarked, with a dotted arc showing the path it bounced along.',
+    slots: [{ letter: 'be', x: 0.5, y: 0.28, height: 0.18, light: true }],
+  },
+  More: {
+    art:
+      'An open wooden treasure chest with brightly coloured toy balls, blocks ' +
+      'and a spinning top spilling out of it.',
+  },
 };
+
+/** The brief for a tile, whichever shape its entry is in. */
+const briefOf = (name) => TILES[name].art;
+
+/**
+ * A slot's outline, out of the baked glyphs.
+ *
+ * Letters default to their isolated form, which is the shape a child meets
+ * first and the one every game shows on a tile or a balloon.
+ */
+function glyphFor(slot) {
+  if (slot.number) return GLYPHS.numbers[slot.number] ?? null;
+  return GLYPHS.letters[slot.letter]?.[slot.form ?? 'isolated'] ?? null;
+}
 
 const key = process.env.OPENAI_API_KEY;
 if (!key) {
@@ -205,7 +372,7 @@ async function generate(name) {
         headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
         body: JSON.stringify({
           model: MODEL,
-          prompt: `${TILES[name]} ${STYLE}`,
+          prompt: `${briefOf(name)} ${STYLE}`,
           size: SIZE,
           quality: 'low',
           n: 1,
@@ -266,9 +433,9 @@ const browser = await chromium.launch(launchOptions());
 const page = await browser.newPage();
 
 /** @returns {Promise<{webp: Buffer, ink: number}>} */
-async function pack(png) {
+async function pack(png, slots = []) {
   const result = await page.evaluate(
-    async ([base64, width, height, radius, scrim]) => {
+    async ([base64, width, height, radius, scrim, marks]) => {
       const image = new Image();
       image.src = `data:image/png;base64,${base64}`;
       await image.decode();
@@ -289,6 +456,37 @@ async function pack(png) {
       // upper two thirds, so the loss comes off the bottom.
       const scale = Math.max(width / image.width, height / image.height);
       ctx.drawImage(image, 0, 0, image.width * scale, image.height * scale);
+
+      // The letters, painted over the picture and under the scrim.
+      //
+      // The same Path2D fill src/lib/glyph.js does at runtime — a baked outline
+      // is font units, y-down, with its bounding box recorded, so it is one
+      // translate and one scale. Each is drawn twice: a fat round-joined stroke
+      // first as a halo, then the fill. Without the halo a dark letter on a
+      // dark balloon disappears, and there is no telling in advance what colour
+      // the generator will have put underneath.
+      for (const mark of marks) {
+        const [bx, by, bw, bh] = mark.bbox;
+        if (!mark.d || bh <= 0) continue;
+        const scale = (mark.height * height) / bh;
+        ctx.save();
+        ctx.translate(mark.x * width - (bw * scale) / 2, mark.y * height - (bh * scale) / 2);
+        ctx.translate(-bx * scale, -by * scale);
+        ctx.scale(scale, scale);
+        const path = new Path2D(mark.d);
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = mark.light ? 'rgba(43,48,71,0.55)' : '#ffffff';
+        // A tenth of the letter's height, half of which shows outside it. In
+        // font units, because the context is scaled — a line specified in
+        // pixels here would land ten times heavier on a glyph with a deep
+        // descender, which is the trap src/lib/glyph.js documents at length.
+        ctx.lineWidth = (mark.height * height * 0.1) / scale;
+        ctx.stroke(path);
+        ctx.fillStyle = mark.light ? '#ffffff' : '#2b3047';
+        ctx.fill(path, 'nonzero');
+        ctx.restore();
+      }
 
       // The scrim the name sits on. Baked in for the same reason as the
       // corners, and because a gradient tuned once here is one that cannot
@@ -313,7 +511,7 @@ async function pack(png) {
       const buffer = new Uint8Array(await blob.arrayBuffer());
       return { webp: [...buffer], ink: dark / (data.length / 4) };
     },
-    [png.toString('base64'), TARGET.width, TARGET.height, RADIUS, SCRIM]
+    [png.toString('base64'), TARGET.width, TARGET.height, RADIUS, SCRIM, slots]
   );
   return { webp: Buffer.from(result.webp), ink: result.ink };
 }
@@ -323,7 +521,17 @@ for (const name of wanted) {
   const rawFile = path.join(RAW, `${name}.png`);
   if (!fs.existsSync(rawFile)) continue;
 
-  const { webp, ink } = await pack(fs.readFileSync(rawFile));
+  // Slots resolved here rather than in the page: a missing glyph is a typo in
+  // a brief, and it should say so by name instead of drawing nothing.
+  const slots = (TILES[name].slots ?? []).map((slot) => {
+    const glyph = glyphFor(slot);
+    if (!glyph) {
+      throw new Error(`${name}: no glyph for ${JSON.stringify(slot)} — check the id and form`);
+    }
+    return { ...slot, d: glyph.d, bbox: glyph.bbox };
+  });
+
+  const { webp, ink } = await pack(fs.readFileSync(rawFile), slots);
   if (ink > 0.14) {
     console.warn(`  ! ${name}: ${(ink * 100).toFixed(0)}% of the top is dark — check this one`);
   }
