@@ -43,7 +43,7 @@ function letterCard(d, x, y, w, h, id, form, { rotate = 0, tone = d.p.base } = {
 /** An empty card: the gap a child is being asked to fill. */
 function blankCard(d, x, y, w, h, { rotate = 0 } = {}) {
   d.rrect(x, y, w, h, w * 0.18, {
-    fill: SLATE,
+    fill: PAPER,
     stroke: d.p.mid,
     lw: 3.5,
     dash: [8, 7],
@@ -198,8 +198,10 @@ const FACES = {
     // A wide letter rather than the tall thin ا the tile used to carry: at
     // 200px an ا is a vertical stroke, and a vertical stroke with a pencil next
     // to it is not a picture of writing.
+    // Light enough to read as a guide, dark enough to survive the wash behind
+    // it — a paler one vanished entirely once the panel stopped being white.
     d.letter('be', 'isolated', -w * 0.03, -h * 0.04, h * 0.42, {
-      fill: p.light, maxWidth: w * 0.74,
+      fill: PAPER, stroke: p.mid, strokeEm: 0.03, maxWidth: w * 0.74,
     });
     // Where the pen has been. It stops under the pencil, so the two are one
     // movement rather than two things sharing a tile.
@@ -250,17 +252,11 @@ const FACES = {
     );
     d.line(kx, ky - h * 0.24, kx, ky + h * 0.22, { stroke: mix(p.base, PAPER, 0.45), lw: 2.5 });
     d.line(kx - w * 0.19, ky, kx + w * 0.19, ky, { stroke: mix(p.base, PAPER, 0.45), lw: 2.5 });
-    const pick = [['pe', true], ['be', false], ['te', false]];
-    pick.forEach(([id, chosen], i) => {
+    const pick = [['pe', p.base], ['be', p.warm], ['te', p.cool]];
+    pick.forEach(([id, tone], i) => {
       const x = w * 0.28 - i * w * 0.28;
-      d.circle(x, h * 0.33, w * 0.125, {
-        fill: chosen ? p.base : SLATE,
-        stroke: chosen ? p.dark : mix(SLATE, '#101423', 0.16),
-        lw: 3.5,
-      });
-      d.letter(id, 'isolated', x, h * 0.33, h * 0.14, {
-        fill: chosen ? PAPER : mix(SLATE, '#101423', 0.5), maxWidth: w * 0.18,
-      });
+      d.circle(x, h * 0.33, w * 0.125, { fill: tone, stroke: mix(tone, '#101423', 0.3), lw: 3.5 });
+      d.letter(id, 'isolated', x, h * 0.33, h * 0.14, { fill: PAPER, maxWidth: w * 0.18 });
     });
   },
 
@@ -271,13 +267,13 @@ const FACES = {
     d.numeral('n3', 0, -h * 0.16, h * 0.3, { fill: p.dark, maxWidth: w * 0.34 });
     for (let i = 0; i < 3; i++) {
       const x = w * 0.26 - i * w * 0.26;
-      d.circle(x, h * 0.31, w * 0.095, { fill: i === 1 ? SUN : p.base });
+      d.circle(x, h * 0.31, w * 0.095, { fill: [p.base, SUN, p.warm][i] });
     }
   },
 
   Balloons(d) {
     const { w, h, p } = d;
-    const tones = [p.base, mix(p.base, SUN, 0.6), mix(p.base, PAPER, 0.42)];
+    const tones = [p.base, p.warm, p.cool];
     const ids = ['alif', 'be', 'jim'];
     ids.forEach((id, i) => {
       const x = w * 0.26 - i * w * 0.26;
@@ -293,12 +289,12 @@ const FACES = {
     const ch = h * 0.36;
     const gx = w * 0.2;
     const gy = h * 0.2;
-    const back = (x, y) => {
-      d.rrect(x, y, cw, ch, cw * 0.18, { fill: p.base, stroke: p.dark, lw: 3 });
-      d.circle(x, y, cw * 0.2, { stroke: mix(p.base, PAPER, 0.55), lw: 3.5 });
+    const back = (x, y, tone) => {
+      d.rrect(x, y, cw, ch, cw * 0.18, { fill: tone, stroke: mix(tone, '#101423', 0.3), lw: 3 });
+      d.circle(x, y, cw * 0.2, { stroke: mix(tone, PAPER, 0.55), lw: 3.5 });
     };
-    back(gx, -gy);
-    back(-gx, gy);
+    back(gx, -gy, p.warm);
+    back(-gx, gy, p.cool);
     letterCard(d, -gx, -gy, cw, ch, 'jim', 'isolated');
     letterCard(d, gx, gy, cw, ch, 'jim', 'isolated');
   },
@@ -376,13 +372,14 @@ const FACES = {
     for (const [fx, fy, id, wanted] of cells) {
       const x = fx * w;
       const y = fy * h;
+      const tone = wanted ? p.base : p.cool;
       d.circle(x, y, w * 0.115, {
-        fill: wanted ? p.pale : SLATE,
-        stroke: wanted ? p.base : mix(SLATE, '#101423', 0.12),
+        fill: mix(tone, PAPER, wanted ? 0.72 : 0.55),
+        stroke: tone,
         lw: 3,
       });
       d.letter(id, 'isolated', x, y, h * 0.13, {
-        fill: wanted ? p.dark : mix(SLATE, '#101423', 0.35), maxWidth: w * 0.16,
+        fill: mix(tone, '#101423', 0.35), maxWidth: w * 0.16,
       });
       if (wanted) tick(d, x + w * 0.09, y + h * 0.09, w * 0.055);
     }
@@ -504,13 +501,11 @@ const FACES = {
       const x = w * 0.32 - i * w * 0.215;
       const y = odd ? -h * 0.02 : h * 0.0;
       d.circle(x, y, w * 0.105, {
-        fill: odd ? p.base : SLATE,
-        stroke: odd ? p.dark : mix(SLATE, '#101423', 0.14),
+        fill: odd ? p.base : mix(p.cool, PAPER, 0.35),
+        stroke: mix(odd ? p.base : p.cool, '#101423', 0.3),
         lw: 3,
       });
-      d.letter(id, 'isolated', x, y, h * 0.13, {
-        fill: odd ? PAPER : mix(SLATE, '#101423', 0.45), maxWidth: w * 0.15,
-      });
+      d.letter(id, 'isolated', x, y, h * 0.13, { fill: PAPER, maxWidth: w * 0.15 });
       if (odd) d.circle(x, y, w * 0.155, { stroke: p.base, lw: 4, dash: [9, 7] });
     });
   },
@@ -519,17 +514,17 @@ const FACES = {
   InOrder(d) {
     const { w, h, p } = d;
     const seats = [
-      [-0.26, 0.24, 0.15, 'n1'],
-      [0.04, 0.02, 0.17, 'n2'],
-      [0.3, -0.24, 0.13, 'n3'],
+      [-0.26, 0.24, 0.15, 'n1', p.cool],
+      [0.04, 0.02, 0.17, 'n2', p.base],
+      [0.3, -0.24, 0.13, 'n3', p.warm],
     ];
-    for (const [fx, fy, fr, id] of seats) {
+    for (const [fx, fy, fr, id, tone] of seats) {
       const x = fx * w;
       const y = fy * h;
       const r = fr * w;
-      d.circle(x, y, r, { fill: mix(p.pale, PAPER, 0.4), stroke: p.base, lw: 3.5 });
+      d.circle(x, y, r, { fill: mix(tone, PAPER, 0.62), stroke: tone, lw: 3.5 });
       d.arc(x, y, r * 0.68, Math.PI * 1.05, Math.PI * 1.45, { stroke: PAPER, lw: 4 });
-      d.numeral(id, x, y, h * 0.15, { fill: p.dark, maxWidth: r * 1.2 });
+      d.numeral(id, x, y, h * 0.15, { fill: mix(tone, '#101423', 0.35), maxWidth: r * 1.2 });
     }
     d.circle(-w * 0.36, -h * 0.3, w * 0.04, { fill: p.pale });
     d.circle(w * 0.36, h * 0.32, w * 0.03, { fill: p.pale });
@@ -539,7 +534,9 @@ const FACES = {
   Paint(d) {
     const { w, h, p } = d;
     const at = h * 0.02;
-    d.letter('ain', 'isolated', -w * 0.05, -h * 0.03, h * 0.46, { fill: SLATE, maxWidth: w * 0.56 });
+    d.letter('ain', 'isolated', -w * 0.05, -h * 0.03, h * 0.46, {
+      fill: PAPER, stroke: p.mid, strokeEm: 0.028, maxWidth: w * 0.56,
+    });
     d.inside(
       (ctx) => ctx.rect(-w, at, w * 2, h),
       () => d.letter('ain', 'isolated', -w * 0.05, -h * 0.03, h * 0.46, { fill: p.base, maxWidth: w * 0.56 })
@@ -557,22 +554,22 @@ const FACES = {
     const left = [-0.28, 0.0, 0.28].map((f) => ({ x: -w * 0.28, y: h * f }));
     d.line(right[0].x, right[0].y, left[1].x, left[1].y, { stroke: p.base, lw: 5 });
     d.line(right[1].x, right[1].y, left[0].x, left[0].y, { stroke: p.light, lw: 5, dash: [9, 8] });
-    const pad = (at, id, form, filled) => {
+    const pad = (at, id, form, filled, tone) => {
       d.rrect(at.x, at.y, w * 0.3, h * 0.24, w * 0.07, {
-        fill: filled ? p.base : PAPER,
-        stroke: filled ? p.dark : p.light,
+        fill: filled ? tone : mix(tone, PAPER, 0.78),
+        stroke: mix(tone, '#101423', 0.28),
         lw: 3.5,
       });
       d.letter(id, form, at.x, at.y, h * 0.14, {
-        fill: filled ? PAPER : p.dark, maxWidth: w * 0.2,
+        fill: filled ? PAPER : mix(tone, '#101423', 0.4), maxWidth: w * 0.2,
       });
     };
-    pad(right[0], 'wao', 'isolated', true);
-    pad(right[1], 'be', 'isolated', false);
-    pad(right[2], 'sin', 'isolated', false);
-    pad(left[0], 'be', 'initial', false);
-    pad(left[1], 'wao', 'final', true);
-    pad(left[2], 'sin', 'initial', false);
+    pad(right[0], 'wao', 'isolated', true, p.base);
+    pad(right[1], 'be', 'isolated', false, p.warm);
+    pad(right[2], 'sin', 'isolated', false, p.cool);
+    pad(left[0], 'be', 'initial', false, p.warm);
+    pad(left[1], 'wao', 'final', true, p.base);
+    pad(left[2], 'sin', 'initial', false, p.cool);
   },
 
   // The counting line, with one number away.
@@ -599,7 +596,9 @@ const FACES = {
   // Something behind the bush.
   Hidden(d) {
     const { w, h, p } = d;
-    d.letter('khe', 'isolated', w * 0.02, -h * 0.11, h * 0.44, { fill: p.base, maxWidth: w * 0.56 });
+    d.letter('khe', 'isolated', w * 0.02, -h * 0.11, h * 0.44, {
+      fill: PAPER, stroke: p.dark, strokeEm: 0.028, maxWidth: w * 0.56,
+    });
     d.ground(h * 0.34, mix(GRASS, '#101423', 0.12));
     d.circle(-w * 0.24, h * 0.26, w * 0.17, { fill: LEAF });
     d.circle(w * 0.02, h * 0.2, w * 0.21, { fill: mix(LEAF, PAPER, 0.15) });
@@ -614,8 +613,8 @@ const FACES = {
     d.ctx.beginPath();
     d.ctx.moveTo(-w * 0.4, h * 0.24);
     d.ctx.quadraticCurveTo(-w * 0.1, -h * 0.42, w * 0.18, h * 0.24);
-    d.ctx.strokeStyle = p.light;
-    d.ctx.lineWidth = 4;
+    d.ctx.strokeStyle = p.mid;
+    d.ctx.lineWidth = 5;
     d.ctx.setLineDash([9, 9]);
     d.ctx.stroke();
     d.ctx.setLineDash([]);

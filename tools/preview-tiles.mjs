@@ -39,7 +39,8 @@ const drew = await page.evaluate(
     const content = await import('/src/lib/content.js');
     await content.loadGlyphs();
     const { GAMES, MORE_TILE, artName } = await import('/src/lib/games.js');
-    const { paintTileFace } = await import('/src/lib/tile-faces.js');
+    // Through the app's own painter, not a copy of it. See tilePanel().
+    const { paintTilePanel, tilePanel } = await import('/src/lib/game-tile.js');
 
     const shown = [...GAMES, MORE_TILE];
     const rows = Math.ceil(shown.length / columns);
@@ -60,9 +61,7 @@ const drew = await page.evaluate(
     ctx.fillStyle = '#fdf3e3';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const inset = Math.round(Math.min(tile.width, tile.height) * 0.055);
-    const panel = { width: tile.width - inset * 2, height: tile.height - inset * 2 };
-    const radius = Math.round(Math.min(panel.width, panel.height) * 0.13);
+    const panel = tilePanel(tile.width, tile.height);
 
     const missing = [];
     shown.forEach((game, i) => {
@@ -74,14 +73,7 @@ const drew = await page.evaluate(
       ctx.beginPath();
       ctx.roundRect(-tile.width / 2, -tile.height / 2, tile.width, tile.height, 26);
       ctx.fill();
-      ctx.beginPath();
-      ctx.roundRect(-panel.width / 2, -panel.height / 2, panel.width, panel.height, radius);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.clip();
-      if (!paintTileFace(ctx, artName(game), { ...panel, color: game.color })) {
-        missing.push(artName(game));
-      }
+      if (!paintTilePanel(ctx, game, panel)) missing.push(artName(game));
       ctx.restore();
     });
     return { count: shown.length, missing, width: canvas.width / scale, height: canvas.height / scale };

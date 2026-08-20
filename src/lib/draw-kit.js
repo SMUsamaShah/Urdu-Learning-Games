@@ -63,7 +63,59 @@ export function palette(color) {
     mid: mix(base, PAPER, 0.28),
     light: mix(base, PAPER, 0.62),
     pale: mix(base, PAPER, 0.86),
+    // Two more hues, a triad around the game's own.
+    //
+    // Tones of one colour is what made the first set of tiles read as muted:
+    // twenty-five pictures each drawn in one hue plus grey, where the app they
+    // are chasing puts four or five real colours in every icon. Rotating the
+    // hue rather than picking from a list keeps a tile's three colours related
+    // to each other and to the tile next to it, which is the thing a fixed
+    // rainbow palette loses.
+    warm: rotate(base, 138),
+    cool: rotate(base, -138),
   };
+}
+
+/**
+ * The same colour, `degrees` around the wheel, at a saturation and lightness
+ * that suit a large flat shape.
+ *
+ * Clamped rather than preserved: several of the games' colours are muddy —
+ * 0x7d6a3f is a khaki — and rotating a muddy hue gives another muddy colour,
+ * which is exactly the problem this is here to fix.
+ */
+function rotate(css, degrees) {
+  const [r, g, b] = channels(css).map((v) => v / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const span = max - min;
+  let hue = 0;
+  if (span > 0) {
+    if (max === r) hue = ((g - b) / span) % 6;
+    else if (max === g) hue = (b - r) / span + 2;
+    else hue = (r - g) / span + 4;
+  }
+  hue = (hue * 60 + degrees + 360) % 360;
+  return hsl(hue, 0.62, 0.55);
+}
+
+/** An HSL colour as `#rrggbb`. */
+function hsl(hue, saturation, lightness) {
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const second = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
+  const offset = lightness - chroma / 2;
+  const sector = Math.floor(hue / 60) % 6;
+  const rgb = [
+    [chroma, second, 0],
+    [second, chroma, 0],
+    [0, chroma, second],
+    [0, second, chroma],
+    [second, 0, chroma],
+    [chroma, 0, second],
+  ][sector];
+  return `#${rgb
+    .map((v) => Math.round((v + offset) * 255).toString(16).padStart(2, '0'))
+    .join('')}`;
 }
 
 // ------------------------------------------------------------------- the pen

@@ -21,6 +21,18 @@ those want a look.
 
 ## Screens
 
+### The rail may not be the right shape at all
+
+The progress rail is a panel down the left of every game screen. It has just
+gone from 256 pixels wide to 160, and the open question is whether it should be
+a panel at all: **a small bar in the top-left corner would probably do more**,
+and would give the whole left edge back.
+
+Not a small change — the rail owns the home button, the indicators are drawn to
+a tall narrow box, and every screen lays out from `RAIL_EDGE`. What the bar
+should *show* is the more interesting half and worth deciding first: level,
+streak, how far through a run, something to tap.
+
 ### The other twenty-two games still want a prop
 
 `src/lib/props.js` has two: a woven basket and a caterpillar. Both were chosen

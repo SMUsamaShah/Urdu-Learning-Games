@@ -60,6 +60,68 @@ export function iconGlyph(game) {
 }
 
 /**
+ * The panel a tile's drawing goes on, inset so the card shows as a frame.
+ *
+ * Exported with the painter below because `npm run preview-tiles` draws the
+ * same twenty-five tiles onto a sheet, and it used to work this out for itself.
+ * That was harmless while both painted a plain white panel and stopped being
+ * harmless the moment one of them did anything else: the sheet went on showing
+ * white cards for a change that had already landed in the app. A preview that
+ * can disagree with the thing it previews is worse than no preview.
+ */
+export function tilePanel(width, height) {
+  const inset = Math.round(Math.min(width, height) * FRAME);
+  const panel = { width: width - inset * 2, height: height - inset * 2 };
+  panel.radius = Math.round(Math.min(panel.width, panel.height) * 0.13);
+  return panel;
+}
+
+/**
+ * The panel and the drawing on it, into a context whose origin is the tile's
+ * centre.
+ *
+ * @returns {boolean} whether a drawing was found. False means the caller should
+ *   fall back to the letter the tile carries.
+ */
+export function paintTilePanel(ctx, game, panel) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(-panel.width / 2, -panel.height / 2, panel.width, panel.height, panel.radius);
+  // Not white. A picture on white is a diagram; the tiles this menu is chasing
+  // are little scenes, and the first thing that made ours read as muted was
+  // twenty-five drawings on twenty-five white cards. A wash of the game's own
+  // colour, palest at the bottom where the ground usually goes, gives every
+  // tile some air in it and still leaves the drawing the strongest thing on it.
+  const wash = ctx.createLinearGradient(0, -panel.height / 2, 0, panel.height / 2);
+  wash.addColorStop(0, tint(game.color, 0.62));
+  wash.addColorStop(0.62, tint(game.color, 0.87));
+  wash.addColorStop(1, tint(game.color, 0.96));
+  ctx.fillStyle = wash;
+  ctx.fill();
+  // Clipped, so a drawing can run its ground and its water to the edge of the
+  // panel rather than stopping short of it in a way no illustration would.
+  ctx.clip();
+  const drawn = paintTileFace(ctx, artName(game), {
+    width: panel.width,
+    height: panel.height,
+    color: game.color,
+  });
+  ctx.restore();
+  return drawn;
+}
+
+/** The game's colour, mixed that far towards white. */
+function tint(color, towards) {
+  const to = (shift) => {
+    const channel = (color >> shift) & 0xff;
+    return Math.round(channel + (255 - channel) * towards)
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${to(16)}${to(8)}${to(0)}`;
+}
+
+/**
  * How thick the coloured frame is, as a fraction of the tile.
  *
  * A fraction rather than a pixel count because the same tile is drawn at 234px
@@ -82,11 +144,7 @@ const FRAME = 0.055;
  * @returns {(game: object, x: number, y: number, onTap: () => void) => Phaser.GameObjects.Container}
  */
 export function tileMaker(scene, games, { width, height, role = 'tile' }) {
-  // The white panel the drawing lives on, inset so the coloured card shows as
-  // a frame around it.
-  const inset = Math.round(Math.min(width, height) * FRAME);
-  const panel = { width: width - inset * 2, height: height - inset * 2 };
-  panel.radius = Math.round(Math.min(panel.width, panel.height) * 0.13);
+  const panel = tilePanel(width, height);
 
   // Where the letter goes on a tile with no drawing. The line is as deep as it
   // is because Nastaliq's vertical range is enormous: گنتی and لکھو reach two
@@ -102,21 +160,7 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
    * why this is not five objects.
    */
   const paintFace = (game) => (ctx) => {
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(-panel.width / 2, -panel.height / 2, panel.width, panel.height, panel.radius);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-    // Clipped, so a drawing can run its ground and its water to the edge of the
-    // panel rather than stopping short of it in a way no illustration would.
-    ctx.clip();
-    const drawn = paintTileFace(ctx, artName(game), {
-      width: panel.width,
-      height: panel.height,
-      color: game.color,
-    });
-    ctx.restore();
-    if (drawn) return;
+    if (paintTilePanel(ctx, game, panel)) return;
 
     // No drawing: the letter the tile used to carry, centred on the panel.
     const glyph = iconGlyph(game);
