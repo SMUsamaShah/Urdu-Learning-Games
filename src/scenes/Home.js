@@ -17,9 +17,8 @@ import { ringBurst } from '../lib/particles.js';
 import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 import { queueBackdrop } from '../lib/backdrops.js';
-import { queueTileArt } from '../lib/tiles.js';
 import { running as chaloRunning, startRun, stopRun } from '../lib/chalo.js';
-import { FEATURED, GAMES, MORE, MORE_TILE } from '../lib/games.js';
+import { FEATURED, MORE, MORE_TILE } from '../lib/games.js';
 
 /**
  * The menu.
@@ -70,9 +69,6 @@ export default class Home extends Phaser.Scene {
 
   preload() {
     queueBackdrop(this);
-    // Every tile's picture, including the panel's — the panel opens on a tap
-    // and has no loading screen of its own to hide behind.
-    queueTileArt(this, [...GAMES, MORE_TILE]);
   }
 
   create() {

@@ -194,6 +194,16 @@ export const GAMES = [
   },
 ];
 
+/**
+ * What a game's drawing is filed under in tile-faces.js.
+ *
+ * The scene key, except for the tile that opens the panel of extra games —
+ * that one starts no scene, so it carries an explicit `art` instead.
+ */
+export function artName(game) {
+  return game.art ?? game.scene;
+}
+
 export const FEATURED = GAMES.filter((game) => game.featured);
 export const MORE = GAMES.filter((game) => !game.featured);
 

@@ -50,7 +50,7 @@ than a judgement.
 
 ### The Urdu I wrote has not been read by a native speaker
 
-The instruction ribbons and tile names were written by me and are the least
+The instruction ribbons and screen names were written by me and are the least
 trustworthy text in the app. The three I am least sure of:
 
 - **اس سے شروع** — "starts with this"
