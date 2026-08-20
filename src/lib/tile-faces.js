@@ -201,7 +201,7 @@ const FACES = {
     // Light enough to read as a guide, dark enough to survive the wash behind
     // it — a paler one vanished entirely once the panel stopped being white.
     d.letter('be', 'isolated', -w * 0.03, -h * 0.04, h * 0.42, {
-      fill: PAPER, stroke: p.mid, strokeEm: 0.03, maxWidth: w * 0.74,
+      fill: mix(p.base, PAPER, 0.42), maxWidth: w * 0.74,
     });
     // Where the pen has been. It stops under the pencil, so the two are one
     // movement rather than two things sharing a tile.
@@ -535,7 +535,7 @@ const FACES = {
     const { w, h, p } = d;
     const at = h * 0.02;
     d.letter('ain', 'isolated', -w * 0.05, -h * 0.03, h * 0.46, {
-      fill: PAPER, stroke: p.mid, strokeEm: 0.028, maxWidth: w * 0.56,
+      fill: mix(p.base, PAPER, 0.55), maxWidth: w * 0.56,
     });
     d.inside(
       (ctx) => ctx.rect(-w, at, w * 2, h),
@@ -597,7 +597,7 @@ const FACES = {
   Hidden(d) {
     const { w, h, p } = d;
     d.letter('khe', 'isolated', w * 0.02, -h * 0.11, h * 0.44, {
-      fill: PAPER, stroke: p.dark, strokeEm: 0.028, maxWidth: w * 0.56,
+      fill: p.dark, maxWidth: w * 0.56,
     });
     d.ground(h * 0.34, mix(GRASS, '#101423', 0.12));
     d.circle(-w * 0.24, h * 0.26, w * 0.17, { fill: LEAF });

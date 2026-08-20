@@ -105,37 +105,30 @@ export const COLORS = {
 };
 
 /**
- * How heavy the outline is, as a fraction of the font's em.
+ * Glyph options for a letter that has to stand out on a coloured tile.
  *
- * Not a number of pixels, and that distinction is the whole point. A glyph's
- * display height says nothing about how thick its strokes are: گنتی has a deep
- * descender on its ی, so fitting it into a 44px label scales it down about ten
- * times harder than a bare ب at the same height. A line specified in pixels
- * then lands ten times heavier on it — measured at 103‰ of the em against 32‰
- * for the ب — which is why the word read as fuzzy black rather than as white
- * with an edge.
+ * There used to be a heavy dark outline here, on the argument that a white
+ * letter on a mid-tone tile has weak edges and a child picking between ب and ت
+ * is working entirely from edges. The argument was right about what matters and
+ * wrong about the remedy: Nastaliq's strokes are thin where the pen turns, and
+ * an outline thick enough to read as an edge closes the counters and turns the
+ * letter into a blot. The dots on ث and the join inside ک went first.
  *
- * In em units every glyph gets the same outline relative to the pen that drew
- * it, whatever box it was squeezed into.
- */
-const OUTLINE_EM = 0.032;
-
-/**
- * Glyph options that give a letter the heavy outline preschool apps use.
- *
- * The outline is not decoration: a white letter on a mid-tone tile has weak
- * edges, and a child picking between ب and ت is working entirely from edges.
+ * So: no outline, and the edges come from contrast instead. Every tile this
+ * lands on is a `familyColor` at full saturation, which white sits on cleanly.
+ * If a paler tile ever wants one of these, darken the tile rather than drawing
+ * a line round the letter.
  *
  * Sized by the font's em rather than by the glyph's bounding box, because
- * everything wearing this outline sits next to something else — a row of menu
- * tiles, four answers, a caterpillar — and has to come out the same size as its
- * neighbours rather than filling the same box. See fitEmAlone() in glyph.js.
+ * everything using this sits next to something else — a row of menu tiles, four
+ * answers, a caterpillar — and has to come out the same size as its neighbours
+ * rather than filling the same box. See fitEmAlone() in glyph.js.
  *
  * @param {number} em pixels per em, normally from one of the fitters
  * @param {string} [fill]
  */
 export function chunkyGlyphEm(em, fill = '#ffffff') {
-  return { em, color: fill, stroke: COLORS.outlineCss, strokeEm: OUTLINE_EM };
+  return { em, color: fill };
 }
 
 /** One hue per shape family, so a family reads as a group at a glance. */
