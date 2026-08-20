@@ -2,6 +2,7 @@ import { glyphUpem, letterGlyph, numberGlyph } from './content.js';
 import { fitEmLine, paintGlyph } from './glyph.js';
 import { artName } from './games.js';
 import { paintTileFace } from './tile-faces.js';
+import { hasTileArt, tileArtImage } from './tiles.js';
 import { squash } from './liveliness.js';
 import { COLORS, makeButton } from './theme.js';
 
@@ -83,7 +84,7 @@ export function tilePanel(width, height) {
  * @returns {boolean} whether a drawing was found. False means the caller should
  *   fall back to the letter the tile carries.
  */
-export function paintTilePanel(ctx, game, panel) {
+export function paintTilePanel(ctx, game, panel, picture = null) {
   ctx.save();
   ctx.beginPath();
   ctx.roundRect(-panel.width / 2, -panel.height / 2, panel.width, panel.height, panel.radius);
@@ -101,11 +102,24 @@ export function paintTilePanel(ctx, game, panel) {
   // Clipped, so a drawing can run its ground and its water to the edge of the
   // panel rather than stopping short of it in a way no illustration would.
   ctx.clip();
-  const drawn = paintTileFace(ctx, artName(game), {
-    width: panel.width,
-    height: panel.height,
-    color: game.color,
-  });
+  // The picture if there is one, the drawing if there is not. Bled to the edges
+  // of the panel rather than inset: these are illustrations of a whole scene and
+  // a margin round one reads as a photograph in a frame.
+  const drawn = picture
+    ? Boolean(
+        ctx.drawImage(
+          picture,
+          -panel.width / 2,
+          -panel.height / 2,
+          panel.width,
+          panel.height
+        ) ?? true
+      )
+    : paintTileFace(ctx, artName(game), {
+        width: panel.width,
+        height: panel.height,
+        color: game.color,
+      });
   ctx.restore();
   return drawn;
 }
@@ -160,7 +174,7 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
    * why this is not five objects.
    */
   const paintFace = (game) => (ctx) => {
-    if (paintTilePanel(ctx, game, panel)) return;
+    if (paintTilePanel(ctx, game, panel, tileArtImage(scene, game))) return;
 
     // No drawing: the letter the tile used to carry, centred on the panel.
     const glyph = iconGlyph(game);
@@ -197,7 +211,13 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
       // drawing is a fraction of it, so it is the one number that decides how
       // big the writing on a tile comes out. verify:sizing reads it to check
       // that one role is never drawn at two sizes.
-      paintKey: `${role}-face:em${Math.round(panel.height)}:${artName(game)}`,
+      // `art` or `drawn` in the key: a tile whose picture had not loaded when
+      // the menu was built would otherwise share a cached texture with the same
+      // tile drawn from the picture, and the menu would keep whichever it made
+      // first for the rest of the session.
+      paintKey:
+        `${role}-face:em${Math.round(panel.height)}:${artName(game)}` +
+        (hasTileArt(game) ? ':art' : ':drawn'),
     });
     // Named so a check can find the tiles among everything else on the menu
     // without knowing where they were laid out. `role` also tells the menu's

@@ -1,0 +1,33 @@
+{
+  "tiles": {
+    "Balloons": "images/tiles/Balloons.webp",
+    "Baskets": "images/tiles/Baskets.webp",
+    "Bounce": "images/tiles/Bounce.webp",
+    "BuildWord": "images/tiles/BuildWord.webp",
+    "Caterpillar": "images/tiles/Caterpillar.webp",
+    "ConnectPairs": "images/tiles/ConnectPairs.webp",
+    "Doors": "images/tiles/Doors.webp",
+    "FillLetter": "images/tiles/FillLetter.webp",
+    "FindLetter": "images/tiles/FindLetter.webp",
+    "Fishing": "images/tiles/Fishing.webp",
+    "Flashcards": "images/tiles/Flashcards.webp",
+    "Hidden": "images/tiles/Hidden.webp",
+    "InOrder": "images/tiles/InOrder.webp",
+    "JoinForms": "images/tiles/JoinForms.webp",
+    "JoinWord": "images/tiles/JoinWord.webp",
+    "LetterPuzzle": "images/tiles/LetterPuzzle.webp",
+    "Memory": "images/tiles/Memory.webp",
+    "More": "images/tiles/More.webp",
+    "NumberLine": "images/tiles/NumberLine.webp",
+    "Numbers": "images/tiles/Numbers.webp",
+    "OddOne": "images/tiles/OddOne.webp",
+    "Paint": "images/tiles/Paint.webp",
+    "Sequence": "images/tiles/Sequence.webp",
+    "Spelling": "images/tiles/Spelling.webp",
+    "StartsWith": "images/tiles/StartsWith.webp",
+    "TapAll": "images/tiles/TapAll.webp",
+    "Trace": "images/tiles/Trace.webp",
+    "Whack": "images/tiles/Whack.webp",
+    "WordPictures": "images/tiles/WordPictures.webp"
+  }
+}

@@ -18,7 +18,8 @@ import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { running as chaloRunning, startRun, stopRun } from '../lib/chalo.js';
-import { FEATURED, MORE, MORE_TILE, SPELLING, SPELLING_TILE } from '../lib/games.js';
+import { FEATURED, GAMES, MORE, MORE_TILE, SPELLING, SPELLING_TILE } from '../lib/games.js';
+import { queueTileArt } from '../lib/tiles.js';
 
 /**
  * The menu.
@@ -69,6 +70,11 @@ export default class Home extends Phaser.Scene {
 
   preload() {
     queueBackdrop(this);
+    // Every tile's picture, the panels' included: they are all on screen at
+    // once and a menu that fills in tile by tile while a child is already
+    // reaching for one is worse than a menu that takes another moment. About
+    // 10 KB each.
+    queueTileArt(this, [...GAMES, SPELLING_TILE, MORE_TILE]);
   }
 
   create() {

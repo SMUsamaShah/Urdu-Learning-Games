@@ -32,6 +32,7 @@
     "test": "eslint . && node --test \"tests/**/*.test.mjs\"",
     "lint": "eslint .",
     "backgrounds": "node tools/make-backgrounds.mjs",
+    "tiles": "node tools/make-tile-art.mjs",
     "forms": "node tools/preview-forms.mjs",
     "verify:trace-studio": "node tools/verify-trace-studio.mjs",
     "verify:traces": "node tools/verify-traces.mjs",

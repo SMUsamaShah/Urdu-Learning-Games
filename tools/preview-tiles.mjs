@@ -38,11 +38,34 @@ const drew = await page.evaluate(
   async ([tile, columns]) => {
     const content = await import('/src/lib/content.js');
     await content.loadGlyphs();
-    const { GAMES, MORE_TILE, artName } = await import('/src/lib/games.js');
+    const { GAMES, MORE_TILE, SPELLING_TILE, artName } = await import('/src/lib/games.js');
     // Through the app's own painter, not a copy of it. See tilePanel().
     const { paintTilePanel, tilePanel } = await import('/src/lib/game-tile.js');
+    const manifest = (await import('/content/tiles.json')).default;
 
-    const shown = [...GAMES, MORE_TILE];
+    // The generated pictures, decoded here rather than through Phaser: this
+    // sheet has no scene and no loader, and the painter takes the picture as an
+    // argument precisely so both callers can find it their own way.
+    const pictures = {};
+    await Promise.all(
+      Object.entries(manifest.tiles ?? {}).map(async ([name, file]) => {
+        const image = new Image();
+        image.src = `/${file}`;
+        try {
+          await image.decode();
+          pictures[name] = image;
+        } catch {
+          /* a tile with no picture falls back to its drawing, which is the point */
+        }
+      })
+    );
+
+    // The two tiles that are not games — the spelling group and the rest —
+    // are on the menu and so they are on the sheet. Left out, this sheet showed
+    // twenty-eight of the twenty-nine pictures and the missing one was the
+    // Spelling tile, which is exactly the sort of thing a preview exists to
+    // catch rather than to hide.
+    const shown = [...GAMES, SPELLING_TILE, MORE_TILE];
     const rows = Math.ceil(shown.length / columns);
     const gap = 18;
     const pad = 24;
@@ -73,10 +96,18 @@ const drew = await page.evaluate(
       ctx.beginPath();
       ctx.roundRect(-tile.width / 2, -tile.height / 2, tile.width, tile.height, 26);
       ctx.fill();
-      if (!paintTilePanel(ctx, game, panel)) missing.push(artName(game));
+      if (!paintTilePanel(ctx, game, panel, pictures[artName(game)] ?? null)) {
+        missing.push(artName(game));
+      }
       ctx.restore();
     });
-    return { count: shown.length, missing, width: canvas.width / scale, height: canvas.height / scale };
+    return {
+      count: shown.length,
+      missing,
+      drawn: shown.filter((game) => !pictures[artName(game)]).map((game) => artName(game)),
+      width: canvas.width / scale,
+      height: canvas.height / scale,
+    };
   },
   [TILE, COLUMNS]
 );
@@ -89,5 +120,6 @@ await page.locator('#sheet').screenshot({ path: OUT });
 await browser.close();
 
 console.log(`${drew.count} tiles → ${OUT}`);
+if (drew.drawn.length) console.log(`falling back to the drawing: ${drew.drawn.join(', ')}`);
 if (drew.missing.length) console.log(`no drawing for: ${drew.missing.join(', ')}`);
 for (const error of errors) console.log(`console: ${error}`);
