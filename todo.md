@@ -46,6 +46,23 @@ What it must not be used for: the letterforms themselves. A dot in the wrong
 place teaches a child the wrong letter, and a generated glyph cannot be checked
 by the pipeline the way a baked one is.
 
+### Two tiles say something slightly wrong
+
+Every one of the twenty-nine generated tiles carries its letter with the right
+dots — that was read, letter by letter, before they were committed. Two say
+something a bit off about the *game* rather than the letter, and neither is
+worth a re-roll on its own:
+
+- **Sequence** asked for two cards showing different letters and a blank third.
+  It drew ت on both, so a tile about what comes next shows the same letter
+  twice.
+- **JoinWord** asked for "a short Urdu word" on its plaque and got جملہ, which
+  is a correct word correctly spelled but means "sentence". ج's own word in this
+  app is جہاز.
+
+The fix in both cases is a more specific scene line, and the cache makes a
+single-tile re-roll cheap: `node tools/make-tile-art.mjs --force --only Sequence`.
+
 ## Screens
 
 ### The rail may not be the right shape at all
