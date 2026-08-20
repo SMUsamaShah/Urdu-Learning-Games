@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import {
   allLetterGlyphs,
   allWordGlyphs,
+  brokenWord,
   letterForms,
   letterGlyph,
   lettersById,
@@ -122,7 +123,16 @@ const FORM_LABELS = {
  */
 const HERO_BOX = { top: 130, width: 320, height: 270 };
 const FORM_BOX = { top: 152, size: 128 };
-const WORD_BOX = { top: 392, width: 300, height: 126 };
+const WORD_BOX = { top: 386, width: 300, height: 112 };
+
+/**
+ * The word spelled out one letter at a time, under the word itself.
+ *
+ * A cell per letter, sized across the whole alphabet like everything else here,
+ * because a row where ہ comes out twice the size of ل is a row that says the
+ * letters are different sizes. Five cells is the widest word in the app.
+ */
+const BROKEN_BOX = { top: 494, cell: 52, gap: 10 };
 
 /**
  * Marks something as tappable-to-hear.
@@ -519,7 +529,7 @@ export default class Flashcards extends Phaser.Scene {
       // zuad, zoe, wao, hamza, bari-ye) have no word a three-year-old can
       // picture, and teaching a bad one is worse than teaching none.
       card.add(
-        label(this, MAIN_X, 460, 'No starter word for this letter yet', { size: 16 })
+        label(this, MAIN_X, 468, 'No starter word for this letter yet', { size: 16 })
       );
       return;
     }
@@ -527,7 +537,7 @@ export default class Flashcards extends Phaser.Scene {
     const panelW = 620;
     const wordPanel = this.add.graphics();
     wordPanel.fillStyle(COLORS.panelLight, 1);
-    wordPanel.fillRoundedRect(MAIN_X - panelW / 2, 386, panelW, 172, 24);
+    wordPanel.fillRoundedRect(MAIN_X - panelW / 2, 378, panelW, 202, 24);
     card.add(wordPanel);
 
     // Picture on the right, word on the left: the same right-to-left reading
@@ -538,12 +548,12 @@ export default class Flashcards extends Phaser.Scene {
     // right thing (halwa, roti, wardi), and a child reads a picture of the
     // actual object far more readily than a tiny pictogram.
     const pictureX = MAIN_X + panelW / 2 - 84;
-    const picture = addWordImage(this, pictureX, 462, word.id, 124);
+    const picture = addWordImage(this, pictureX, 470, word.id, 124);
     if (picture) {
       card.add(picture);
     } else if (word.emoji) {
       card.add(
-        this.add.text(pictureX, 462, word.emoji, { fontSize: '76px' }).setOrigin(0.5)
+        this.add.text(pictureX, 470, word.emoji, { fontSize: '76px' }).setOrigin(0.5)
       );
     }
 
@@ -583,14 +593,76 @@ export default class Flashcards extends Phaser.Scene {
 
     const wordKey = clipKeys.word(word.id);
     card.add(
-      makeTappable(this, this.add.zone(MAIN_X, 472, panelW, 172).setOrigin(0.5), () => {
+      makeTappable(this, this.add.zone(MAIN_X, 479, panelW, 202).setOrigin(0.5), () => {
         if (wordGlyphImage?.active) jig(this, wordGlyphImage, { angle: 6 });
         if (picture?.active) hop(this, picture, { height: 16 });
         play(wordKey);
       })
     );
     if (hasClip(wordKey)) {
-      card.add(speakerIcon(this, MAIN_X - panelW / 2 + 34, 410, 22));
+      card.add(speakerIcon(this, MAIN_X - panelW / 2 + 34, 404, 22));
+    }
+
+    // --- The word taken apart ----------------------------------------------
+    //
+    // ب ک ر ی under بکری. The joined-up word is what a child will meet on a
+    // page, and it is also the thing that hides every letter they have learned:
+    // AlQalam Taj reshapes ک into a long rising stroke and fuses it to what
+    // follows, so a child who knows ک perfectly well cannot find it in there.
+    // Spelling the word out is the bridge between the flashcard and the page.
+    //
+    // The taught letter is purple here as it is everywhere else on this screen,
+    // and this row is where that colour finally works for *every* word — the
+    // word above can only be coloured where the typeface leaves the letter
+    // separable, which is nine words of thirty-seven.
+    const broken = brokenWord(word.id);
+    if (broken) {
+      const { cell, gap } = BROKEN_BOX;
+      const spread = broken.length * cell + (broken.length - 1) * gap;
+      // Right to left: the first letter of the word is the rightmost cell,
+      // which is where a reader of Urdu starts.
+      const right = MAIN_X - 60 + spread / 2 - cell / 2;
+      const brokenFit = fitEmAlone(allLetterGlyphs('isolated'), cell - 14, cell - 14);
+      const middle = BROKEN_BOX.top + cell / 2;
+
+      broken.forEach((id, index) => {
+        const glyph = letterGlyph(id, 'isolated');
+        if (!glyph) return;
+        const x = right - index * (cell + gap);
+        const taught = index === word.letterIndex;
+
+        // A cell for every letter, not only the taught one. The plate behind
+        // is white, so a white cell is no cell at all and the row reads as
+        // four letters loose on the panel rather than as a word taken apart.
+        const box = this.add.graphics();
+        box.fillStyle(taught ? COLORS.taught : COLORS.bg, taught ? 0.14 : 1);
+        box.fillRoundedRect(x - cell / 2, BROKEN_BOX.top, cell, cell, 12);
+        card.add(box);
+
+        const piece = addGlyph(
+          this,
+          x,
+          middle,
+          `broken:em${Math.round(brokenFit.em)}:${id}${taught ? ':taught' : ''}`,
+          glyph,
+          { em: brokenFit.em, color: taught ? COLORS.taughtCss : COLORS.ink }
+        );
+        card.add(piece);
+        // Left to right in time, so the row assembles the way the word is
+        // written rather than arriving all at once as a block of shapes.
+        popIn(this, piece, { delay: 760 + index * 90, duration: 300 });
+
+        card.add(
+          makeTappable(
+            this,
+            this.add.zone(x, middle, cell, cell).setOrigin(0.5),
+            () => {
+              if (piece.active) jig(this, piece);
+              sayLetter(id, { word: false, sound: true });
+            }
+          )
+        );
+      });
     }
 
     // letterIndex is not always 0. R, do-chashmi-he and choti-ye never begin a
@@ -600,7 +672,7 @@ export default class Flashcards extends Phaser.Scene {
         ? 'starts with'
         : `has ${letter.roman} at position ${word.letterIndex + 1} of`;
     card.add(
-      label(this, MAIN_X - 60, 528, `${position} · ${word.roman} — ${word.gloss}`, {
+      label(this, MAIN_X - 60, 560, `${position} · ${word.roman} — ${word.gloss}`, {
         size: 16,
       })
     );

@@ -25,6 +25,9 @@ export const lettersById = new Map(letters.map((l) => [l.id, l]));
 export const numbersById = new Map(numbers.map((n) => [n.id, n]));
 export const wordsById = new Map(words.map((w) => [w.id, w]));
 
+/** Which letter a character belongs to. See brokenWord(). */
+const lettersByChar = new Map(letters.map((l) => [l.char, l]));
+
 /** @type {{upem:number, letters:object, numbers:object, words:object}|null} */
 let glyphs = null;
 
@@ -148,6 +151,37 @@ export function taughtCluster(wordId) {
   const at = word.letterIndex;
   const exact = glyph.clusters.find((c) => c.from === at && c.to === at + 1);
   return exact?.d || null;
+}
+
+/**
+ * A word taken apart into the letters it is written with.
+ *
+ * بکری is ب ک ر ی — four letters that the typeface then joins and reshapes
+ * until none of them looks like the letter on its own flashcard. That is the
+ * hardest thing about learning to read Urdu and the app was showing only the
+ * joined-up result, so a child who knows ب had no way to see it in the word.
+ *
+ * Returns letter ids in writing order, so the first letter is the one drawn
+ * furthest right.
+ *
+ * **All or nothing.** چائے is written with ئ — hamza sitting on a ی — which is
+ * not one of the thirty-eight letters and has no glyph of its own. Rather than
+ * drop that character and show a word with a letter missing, the whole word
+ * gives back null and the screen simply does not offer the row, the same way
+ * taughtCluster() declines a word it cannot colour honestly.
+ *
+ * @returns {string[]|null}
+ */
+export function brokenWord(wordId) {
+  const word = wordsById.get(wordId);
+  if (!word) return null;
+  const ids = [];
+  for (const char of word.word) {
+    const letter = lettersByChar.get(char);
+    if (!letter) return null;
+    ids.push(letter.id);
+  }
+  return ids;
 }
 
 export function wordGlyph(wordId) {

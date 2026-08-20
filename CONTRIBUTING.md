@@ -605,6 +605,16 @@ colour both and say the second was the first. `tests/content.test.mjs` asserts
 that nine, exactly — a font change that quietly took it to three would leave the
 screen working and teaching nothing.
 
+**And the same word taken apart.** Under بکری the screen spells out ب ک ر ی, a
+cell per letter, right to left, with the taught letter's cell tinted. This is
+the other half of the same lesson and it is the half that works everywhere: the
+word above can only be coloured where the typeface leaves a letter separable,
+while `brokenWord()` looks each character up in `letters.json` and gets the
+whole alphabet's worth. It is also all-or-nothing — چائے is written with ئ,
+which is not one of the thirty-eight letters and has no glyph, so that one word
+declines the row rather than showing itself with a gap. `tests/content.test.mjs`
+names it, so a second word joining it is loud.
+
 **Every game gets a ribbon.** Set `instruction` and `instructionRoman` on a
 QuizScene subclass, or call `addBanner()` directly. The id is a string in
 `content/ui.json`; a typo there renders an empty ribbon and nothing else, so

@@ -127,6 +127,43 @@ describe('words', () => {
   });
 });
 
+describe('words taken apart', () => {
+  /**
+   * The Letters screen spells each word out — ب ک ر ی under بکری — by looking
+   * every character up in letters.json. Two things can go wrong quietly.
+   */
+  const lettersByChar = new Map(letters.map((l) => [l.char, l]));
+
+  test('the taught letter really is at the index the word claims', () => {
+    // letterIndex says where in the word the letter being taught sits, and the
+    // spelled-out row tints that cell. Off by one and the row confidently
+    // colours the wrong letter, which is the only outcome worse than not
+    // showing the row at all.
+    for (const word of words) {
+      const letter = letters.find((l) => l.id === word.letter);
+      const at = [...word.word][word.letterIndex];
+      assert.equal(
+        at,
+        letter.char,
+        `${word.id}: index ${word.letterIndex} of ${word.word} is ${at}, not ${letter.char}`
+      );
+    }
+  });
+
+  test('exactly one word cannot be taken apart, and it is چائے', () => {
+    // چائے is written with ئ — hamza carried on a ی — which is not one of the
+    // thirty-eight letters and has no glyph of its own, so that word declines
+    // the row rather than showing itself with a letter missing. Asserted by
+    // name because a *second* word turning up here means either a new word was
+    // added with a character the alphabet does not have, or آ finally arrived
+    // and this list should shrink.
+    const unbreakable = words
+      .filter((word) => [...word.word].some((char) => !lettersByChar.has(char)))
+      .map((word) => word.id);
+    assert.deepEqual(unbreakable, ['chaaye']);
+  });
+});
+
 describe('word clusters', () => {
   /**
    * How many of the words let the taught letter be coloured on its own.
