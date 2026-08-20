@@ -19,6 +19,33 @@ editor. Nothing in the code assumes 38 — `letters.length` is read everywhere i
 matters — but the count appears in a few comments and in the Settings row, so
 those want a look.
 
+## Pictures
+
+### gpt-image-2 can draw Urdu, and nothing in the app assumes that yet
+
+The tile pictures were generated once and abandoned partly because an image
+model could not draw Nastaliq — it would put Latin letters on the tile of an
+Urdu app. That is no longer true. Asked for three balloons carrying ا, ب and ج,
+`gpt-image-2` drew all three correctly; asked for a magnifying glass over a row
+of letters it drew ا پ ت ث with the right dot counts and the right dot
+positions, which is a real sentence in Urdu rather than a decorative squiggle.
+
+The letters are Naskh-ish rather than Nastaliq, and the dots come out as
+diamonds. That is fine for a picture and wrong for anything a child is meant to
+read as the app's own letterforms — those come from the baked font and always
+should. But it opens things the app currently cannot do:
+
+- **Word pictures for words that have none.** Already generated, but the model
+  can now be asked for a scene containing the written word.
+- **Backdrops with signage**, market stalls, shop fronts, a book with real
+  words on the page. `JoinWord`'s backdrop is an open book with blank pages
+  precisely because Latin text was the risk.
+- **Anything a prompt can describe involving a letter**, without compositing.
+
+What it must not be used for: the letterforms themselves. A dot in the wrong
+place teaches a child the wrong letter, and a generated glyph cannot be checked
+by the pipeline the way a baked one is.
+
 ## Screens
 
 ### The rail may not be the right shape at all
@@ -89,6 +116,11 @@ trustworthy text in the app. The three I am least sure of:
 - **اس سے شروع** — "starts with this"
 - **چھپن چھپائی** — hide and seek
 - **لکیر پر چلو** — "follow the line"
+
+And the six the spelling games added, which are newer and less checked still:
+**ہجے** (spelling), **لفظ بناؤ** (build the word), **لفظ** (word), **کون سا حرف
+غائب؟** (which letter is missing), **غائب حرف** (missing letter), **یہ کون سا
+لفظ ہے؟** (which word is this) and **جوڑ کر** (joined up)
 
 They are grammatical as far as I can tell; whether they are what somebody would
 actually say to a child is a different question.
