@@ -34,6 +34,8 @@ import { armBrowseTimer, noteFinished } from './chalo.js';
 import { addRail } from './rail.js';
 import { addScenery } from './scenery.js';
 import { COLORS, RAIL, makeButton } from './theme.js';
+import { randomPraise } from './praise.js';
+import { sayPraise } from './say.js';
 
 /** The rail, and everything the rail carries, sits above the game. */
 const RAIL_DEPTH = 3;
@@ -127,10 +129,18 @@ export function wellDone(scene, { banner, rail }, options = {}) {
   // The one moment every game agrees is "an activity finished", which is what a
   // چلو run waits for. Nothing in the scenes changes for it.
   noteFinished(scene);
+  // One of eight phrases rather than شاباش every time. Twenty times a session,
+  // the same word stops being praise and becomes a noise the screen makes —
+  // and nobody watching a child play says the same thing twenty times.
+  const praise = randomPraise();
+  // Shown and said, and they have to be the same phrase: a ribbon reading کمال
+  // while the voice says شاباش teaches that the writing and the sound are
+  // unrelated, which is the opposite of the lesson.
+  sayPraise(praise.id);
   if (banner) {
     // Said before the jumping starts: a ribbon still reading "find the letter"
     // while it dances is celebrating the wrong thing.
-    banner.setInstruction('well-done', 'Well done!');
+    banner.setInstruction(praise.id, praise.english);
     jig(scene, banner, { angle: 4, repeats: 5 });
   }
 }

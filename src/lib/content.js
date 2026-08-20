@@ -124,6 +124,9 @@ export function glyphForClip({ kind, id, form }) {
   if (kind === 'name') return nameGlyph(id);
   if (kind === 'word') return wordGlyph(id);
   if (kind === 'number') return numberGlyph(id);
+  // Praise phrases are ui strings: they are shown on the ribbon as well as
+  // spoken, so they are baked the way every other piece of on-screen Urdu is.
+  if (kind === 'ui') return uiGlyph(id);
   return null;
 }
 

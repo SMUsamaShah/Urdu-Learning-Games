@@ -12,6 +12,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { PRAISE } from '../src/lib/praise.js';
 import {
   AUDIO_EXTENSIONS,
   ROOT,
@@ -28,7 +29,7 @@ const manifest = fs.existsSync(manifestPath)
   : null;
 
 describe('clip list', () => {
-  test('covers every letter twice, plus every word and number', () => {
+  test('covers every letter twice, plus every word, number and phrase', () => {
     const { letters } = readContent('letters.json');
     const { words } = readContent('words.json');
     const { numbers } = readContent('numbers.json');
@@ -38,7 +39,11 @@ describe('clip list', () => {
     assert.equal(clips.filter((c) => c.key.endsWith('/sound')).length, letters.length);
     assert.equal(count('word/'), words.length);
     assert.equal(count('number/'), numbers.length);
-    assert.equal(clips.length, letters.length * 2 + words.length + numbers.length);
+    assert.equal(count('praise/'), PRAISE.length);
+    assert.equal(
+      clips.length,
+      letters.length * 2 + words.length + numbers.length + PRAISE.length
+    );
   });
 
   test('keys are unique', () => {
@@ -72,6 +77,7 @@ describe('clip list', () => {
         kind === 'letter' ? glyphs.letters[id]?.[form]
         : kind === 'name' ? glyphs.names[id]
         : kind === 'word' ? glyphs.words[id]
+        : kind === 'ui' ? glyphs.ui[id]
         : glyphs.numbers[id];
       assert.ok(glyph?.d, `no baked glyph for ${clip.key} (${kind}/${id})`);
     }

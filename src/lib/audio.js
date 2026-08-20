@@ -296,4 +296,5 @@ export const clipKeys = {
   letterSound: (id) => `letter/${id}/sound`,
   word: (id) => `word/${id}`,
   number: (id) => `number/${id}`,
+  praise: (id) => `praise/${id}`,
 };

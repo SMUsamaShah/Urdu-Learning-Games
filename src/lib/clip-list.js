@@ -12,11 +12,17 @@
  * phone would not resolve against a manifest built on a desktop, which is a
  * failure that would only appear after somebody had recorded a hundred clips.
  *
+ * Praise is the one group that is not derived from content/: the phrases live
+ * in src/lib/praise.js, which is a plain module with no filesystem or bundler
+ * dependency, so importing it keeps this file as portable as it was.
+ *
  * Keys are paths (`letter/be/name`); slugs are the same with slashes turned into
  * dashes, and are what filenames use. Nothing ever parses a filename back into a
  * key — the expected list is always derived from content and then matched
  * against what exists — so ids containing dashes are not ambiguous.
  */
+
+import { PRAISE } from './praise.js';
 
 export function slugFor(key) {
   return key.replace(/\//g, '-');
@@ -80,6 +86,22 @@ export function expectedClips({ letters, numbers, words }) {
       urdu: word.word,
       glyph: { kind: 'word', id: word.id },
       say: `The word: “${word.word}” (${word.roman} — ${word.gloss})`,
+    });
+  }
+
+  // Praise last. It is the only group a parent can record in five minutes and
+  // hear immediately in every game, so it is worth being the thing still on
+  // screen when they get bored of the alphabet — but it is also the group the
+  // app can most afford to be missing, which is why it does not come first.
+  for (const praise of PRAISE) {
+    clips.push({
+      key: `praise/${praise.id}`,
+      slug: slugFor(`praise/${praise.id}`),
+      group: 'Praise',
+      roman: praise.roman,
+      urdu: praise.urdu,
+      glyph: { kind: 'ui', id: praise.id },
+      say: `Encouragement: “${praise.urdu}” (${praise.roman} — ${praise.english}) — say it like you mean it`,
     });
   }
 

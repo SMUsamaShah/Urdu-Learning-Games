@@ -55,6 +55,17 @@ export function sayWord(wordId) {
   return playSequence([clipKeys.word(wordId)].filter(hasClip), GAP_MS);
 }
 
+/**
+ * Says one phrase of praise.
+ *
+ * Takes the id rather than picking one, because the caller has already shown
+ * the phrase on the ribbon and the voice has to be saying what is written
+ * there — see randomPraise() in praise.js.
+ */
+export function sayPraise(praiseId) {
+  return playSequence([clipKeys.praise(praiseId)].filter(hasClip), GAP_MS);
+}
+
 export function sayNumber(numberId) {
   return playSequence([clipKeys.number(numberId)].filter(hasClip), GAP_MS);
 }

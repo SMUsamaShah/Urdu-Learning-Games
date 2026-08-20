@@ -51,6 +51,20 @@ export const INSTRUCTIONS = [
   'count-gaps',
   'find-hidden',
   'catch-bounce',
+  // And the praise, because the ribbon is where it is shown: wellDone() swaps
+  // the instruction for one of these. Listed out rather than spread in from
+  // praise.js so that a phrase added there and forgotten here is caught — see
+  // tests/praise.test.mjs. Measuring all eight alongside the instructions costs
+  // the instructions 0.7% of their em, which is the price of بالکل ٹھیک never
+  // running off the end of the ribbon.
+  'well-done',
+  'bohat-achay',
+  'kamal',
+  'zabardast',
+  'wah',
+  'shandaar',
+  'bilkul-theek',
+  'aafreen',
 ];
 
 /**

@@ -310,6 +310,41 @@
       "id": "trace-letter",
       "text": "لکیر پر چلو",
       "roman": "lakeer par chalo"
+    },
+    {
+      "id": "bohat-achay",
+      "text": "بہت اچھے",
+      "roman": "bohat achay"
+    },
+    {
+      "id": "kamal",
+      "text": "کمال",
+      "roman": "kamal"
+    },
+    {
+      "id": "zabardast",
+      "text": "زبردست",
+      "roman": "zabardast"
+    },
+    {
+      "id": "wah",
+      "text": "واہ",
+      "roman": "wah"
+    },
+    {
+      "id": "shandaar",
+      "text": "شاندار",
+      "roman": "shandaar"
+    },
+    {
+      "id": "bilkul-theek",
+      "text": "بالکل ٹھیک",
+      "roman": "bilkul theek"
+    },
+    {
+      "id": "aafreen",
+      "text": "آفرین",
+      "roman": "aafreen"
     }
   ]
 }
