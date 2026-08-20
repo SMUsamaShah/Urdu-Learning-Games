@@ -346,6 +346,10 @@ function cardTexture(scene, { width, height, color, shape, rim, paint, paintKey 
  * @param {string} [config.paintKey] Identifies what `paint` will draw, so two
  *   buttons that paint differently do not share a cached texture. Required
  *   whenever `paint` is given.
+ * @param {boolean} [config.press=true] The squash-under-the-finger tween. Off
+ *   for anything that is going to be dragged: the press tween and the drag's
+ *   own lift both animate `scale`, and `pointerout` fires the moment the finger
+ *   leaves the tile's bounds — which on a drag is immediately.
  * @returns {Phaser.GameObjects.Container}
  */
 export function makeButton(scene, config) {
@@ -360,6 +364,7 @@ export function makeButton(scene, config) {
     onTap,
     paint,
     paintKey,
+    press: wantPress = true,
   } = config;
   const container = scene.add.container(x, y);
 
@@ -376,6 +381,7 @@ export function makeButton(scene, config) {
   container.setInteractive({ useHandCursor: true });
 
   const press = (scale) =>
+    wantPress &&
     scene.tweens.add({ targets: container, scale, duration: 90, ease: 'Quad.easeOut' });
 
   container.on('pointerdown', () => press(0.94));

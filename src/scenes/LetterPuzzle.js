@@ -40,6 +40,18 @@ import { DESIGN, familyColor, label, PLAY } from '../lib/theme.js';
  * the letter — a bowl, a tooth, a tail. A 2×2 grid on ک gives two pieces that
  * are almost entirely empty.
  *
+ * ## Not on the shared drag helper, and on purpose
+ *
+ * `src/lib/dragging.js` is where the other five drag screens get their carrying
+ * from. This one is not, because its vocabulary is inverted: everywhere else
+ * `homeX`/`homeY` is *where a tile came from* and a refused drop swims back to
+ * it, while here it is *where the piece belongs in the letter* and the tray is
+ * the temporary place. Renaming to fit would touch every line of the layout for
+ * the sake of removing twenty, and this screen also lifts a piece to full size
+ * as it is picked up — so what is being dragged is the piece as it will look in
+ * the letter rather than a thumbnail of it — which is a difference worth having
+ * rather than one to flatten.
+ *
  * ## Forgiving on purpose
  *
  * The snap radius is large and a piece dropped anywhere else swims back to the

@@ -16,7 +16,8 @@ import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
-import { bob, hop, popIn, squash } from '../lib/liveliness.js';
+import { armDragging, carry, nearest, refuse, swimHome } from '../lib/dragging.js';
+import { bob, hop, popIn } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, PLAY, familyColor, makeButton } from '../lib/theme.js';
 
@@ -44,16 +45,22 @@ import { COLORS, DESIGN, PLAY, familyColor, makeButton } from '../lib/theme.js';
  * out would make this a matching exercise, which is a real thing a child can do
  * and is not this.
  *
- * ## Tapping, not dragging
+ * ## Carried, not tapped
  *
- * Same as the caterpillar, and for the same reason: a three-year-old's drag
- * ends wherever their finger leaves the glass. There is exactly one slot being
- * asked for at any moment and it is the one that is pulsing, so a tap has all
- * the meaning a drag would have and none of the ways to miss.
+ * The letter is picked up and put in the slot. Tapping would be easier to play
+ * and it is a different act: choosing rather than placing, and placing is what
+ * this game is about.
  *
- * A wrong tap wobbles the letter and costs nothing. Two of them in one round
- * turn the hint on for that round — a child who is stuck should be helped where
- * they are stuck, not on the next round and not in a settings page.
+ * **A letter dropped on its own slot is accepted whichever slot that is.** The
+ * pulse marks the next empty one because reading right to left is the habit
+ * being built, but a child who spots the ی at the end and puts it there is
+ * right, and a game that refuses them is arguing with somebody who has just
+ * understood it.
+ *
+ * A wrong slot shakes the letter off and it swims home; a drop in mid-air just
+ * swims home. Two misses in one round turn the hint on for that round — a child
+ * who is stuck should be helped where they are stuck, not on the next round and
+ * not in a settings page.
  */
 
 /** A slot in the word being built, and the gap between two of them. */
@@ -93,6 +100,11 @@ export default class BuildWord extends Phaser.Scene {
 
     this.board = this.add.container(0, 0);
     this.tray = this.add.container(0, 0);
+
+    armDragging(this, {
+      canLift: (tile) => !this.locked && !tile.used,
+      onDrop: (tile) => this.drop(tile),
+    });
 
     this.newRound();
   }
@@ -252,7 +264,9 @@ export default class BuildWord extends Phaser.Scene {
         // question — ب and ت differ only by their dots — and colouring them
         // alike is the honest way to say so.
         color: familyColor(lettersById.get(id)?.shapeFamily),
-        onTap: () => this.tap(tile),
+        // No press tween: this one is dragged, and the press would fight the
+        // lift. See makeButton.
+        press: false,
       });
       tile.letterId = id;
       tile.used = false;
@@ -262,18 +276,25 @@ export default class BuildWord extends Phaser.Scene {
           color: COLORS.onColor,
         })
       );
-      tile.on('pointerdown', () => squash(this, tile));
       this.tray.add(tile);
       popIn(this, tile, { delay: 420 + index * 60, duration: 280 });
       tile.idle = bob(this, tile, { distance: 4, duration: 2200, delay: index * 160 });
+      // Armed after popIn, so the home it swims back to is where it settled
+      // rather than the scaled-down point it started from.
+      this.time.delayedCall(420 + index * 60 + 300, () => carry(this, tile));
     });
   }
 
   // ------------------------------------------------------------------- play
 
-  /** The slot being asked for, or null once the word is whole. */
+  /**
+   * The slot being asked for: the first empty one, reading right to left.
+   *
+   * A hint rather than a rule — see the note at the top. Any letter may go into
+   * its own slot at any time, and this is only what pulses.
+   */
   get nextSlot() {
-    return this.slots[this.filled] ?? null;
+    return this.slots.find((slot) => !slot.filledWith) ?? null;
   }
 
   markNext() {
@@ -283,22 +304,24 @@ export default class BuildWord extends Phaser.Scene {
     }
   }
 
-  tap(tile) {
-    if (this.locked || tile.used) return;
-    const slot = this.nextSlot;
-    if (!slot) return;
+  /**
+   * A letter has been let go somewhere.
+   *
+   * Three outcomes and none of them costs anything: it lands in its own slot,
+   * it is shaken off by the wrong slot, or it was dropped in mid-air and simply
+   * goes back to the tray.
+   */
+  drop(tile) {
+    if (this.locked || tile.used) return swimHome(this, tile);
+
+    const empty = this.slots.filter((slot) => !slot.filledWith);
+    const slot = nearest(empty, tile);
+    if (!slot) return swimHome(this, tile);
 
     if (tile.letterId !== slot.letterId) {
       wrongAnswer();
       this.rail?.wonder();
-      this.tweens.add({
-        targets: tile,
-        x: tile.x + 8,
-        duration: 60,
-        yoyo: true,
-        repeat: 2,
-        ease: 'Sine.easeInOut',
-      });
+      refuse(this, tile, slot);
       // Nothing is taken away and nothing is marked wrong. But being stuck is
       // worth noticing: after the second miss the slots show what goes in them
       // for the rest of this round.
@@ -316,16 +339,15 @@ export default class BuildWord extends Phaser.Scene {
     rightAnswer();
     sfx.sparkle();
 
-    // The letter flies to its place rather than vanishing here and appearing
-    // there: the whole point is that it belongs *in that slot*.
+    // The last few pixels are done for them. A letter that snaps into place
+    // rewards a drag that was close enough, which is every drag at this age.
     this.tweens.add({
       targets: tile,
       x: slot.x,
       y: slot.y,
-      scaleX: 0.8,
-      scaleY: 0.8,
+      scale: 0.8,
       alpha: 0,
-      duration: 320,
+      duration: 220,
       ease: 'Quad.easeInOut',
       onComplete: () => {
         slot.filledWith = slot.letterId;

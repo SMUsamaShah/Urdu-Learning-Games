@@ -7,6 +7,7 @@ import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
+import { armDragging, carry, nearest, refuse, swimHome } from '../lib/dragging.js';
 import { bob, hop } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
@@ -82,18 +83,14 @@ export default class Baskets extends Phaser.Scene {
     this.baskets = this.add.container(0, 0);
     this.pile = this.add.container(0, 0);
 
-    this.input.on('drag', (pointer, tile, x, y) => {
-      if (tile.sorted) return;
-      tile.setPosition(x, y);
+    armDragging(this, {
+      canLift: (tile) => !tile.sorted && !this.locked,
+      // Says the letter as it is picked up. A child sorting ب from ت is being
+      // asked a question about dots, and hearing which one they are holding is
+      // the difference between sorting and guessing.
+      onLift: (tile) => sayLetter(tile.letterId, { word: false }),
+      onDrop: (tile) => this.drop(tile),
     });
-    this.input.on('dragstart', (pointer, tile) => {
-      if (tile.sorted) return;
-      sfx.tap();
-      tile.idle?.stop();
-      tile.setDepth(30).setScale(1.1);
-      sayLetter(tile.letterId, { word: false });
-    });
-    this.input.on('dragend', (pointer, tile) => this.drop(tile));
 
     this.newRound();
   }
@@ -197,8 +194,7 @@ export default class Baskets extends Phaser.Scene {
       );
 
       tile.setSize(110, 110);
-      tile.setInteractive({ draggable: true, useHandCursor: true });
-      this.input.setDraggable(tile);
+      carry(this, tile);
       tile.idle = bob(this, tile, { distance: 4, duration: 2200, delay: index * 160 });
 
       this.pile.add(tile);
@@ -210,23 +206,17 @@ export default class Baskets extends Phaser.Scene {
 
   drop(tile) {
     if (tile.sorted || this.locked) return;
-    tile.setDepth(0).setScale(1);
+    tile.setDepth(0);
 
-    const basket = this.baskets.list.find(
-      (b) => Phaser.Math.Distance.Between(tile.x, tile.y, b.x, b.y) < SNAP
-    );
+    const basket = nearest(this.baskets.list, tile, SNAP);
+    const rebob = () => {
+      tile.idle = bob(this, tile, { distance: 4, duration: 2200 });
+    };
 
     if (!basket) {
       // Dropped in mid-air. Back to the pile rather than left floating, so what
       // is still to be sorted stays legible as a row.
-      this.tweens.add({
-        targets: tile,
-        x: tile.homeX,
-        y: tile.homeY,
-        duration: 240,
-        ease: 'Back.easeOut',
-      });
-      tile.idle = bob(this, tile, { distance: 4, duration: 2200 });
+      swimHome(this, tile, { onArrive: rebob });
       return;
     }
 
@@ -235,22 +225,8 @@ export default class Baskets extends Phaser.Scene {
       this.rail?.wonder();
       // The basket shakes it off. Refused rather than punished: the letter goes
       // home and can be tried again, and nothing is counted against anybody.
-      this.tweens.add({
-        targets: basket,
-        x: basket.x0 + 10,
-        duration: 60,
-        yoyo: true,
-        repeat: 2,
-        ease: 'Sine.easeInOut',
-      });
-      this.tweens.add({
-        targets: tile,
-        x: tile.homeX,
-        y: tile.homeY,
-        duration: 300,
-        ease: 'Back.easeOut',
-      });
-      tile.idle = bob(this, tile, { distance: 4, duration: 2200 });
+      refuse(this, tile, basket);
+      this.time.delayedCall(300, rebob);
       return;
     }
 

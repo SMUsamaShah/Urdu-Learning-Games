@@ -4,6 +4,7 @@ import { milestone, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { confetti, dance, flyStar } from '../lib/celebrate.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { queueBackdrop } from '../lib/backdrops.js';
+import { armDragging, carry, nearest, swimHome } from '../lib/dragging.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { COLORS, label, makeButton, PLAY } from '../lib/theme.js';
@@ -65,6 +66,18 @@ export default class QuizScene extends Phaser.Scene {
     this.stageX = PLAY.centerX;
     /** Shape of a choice: 'card', or 'star' for the games whose answers float. */
     this.tileShape = 'card';
+    /**
+     * Where a choice can be dragged to, or null for the usual tap.
+     *
+     * A function returning `{x, y}` — the hole this screen's answer belongs in.
+     * Set it and the line-up becomes draggable: a tile let go near that point
+     * is the same as having chosen it, and one let go anywhere else swims back.
+     *
+     * Only for the screens that *have* a hole. "Which letter is this" has
+     * nowhere to drop, and inventing a target to drag onto would be a worse
+     * game than tapping. See src/lib/dragging.js.
+     */
+    this.dragTarget = null;
     /** The ribbon at the top. Subclasses set these; see content/ui.json. */
     this.instruction = null;
     this.instructionRoman = null;
@@ -128,6 +141,16 @@ export default class QuizScene extends Phaser.Scene {
 
   create() {
     this.streak = 0;
+    if (this.dragTarget) {
+      armDragging(this, {
+        canLift: () => !this.locked,
+        onDrop: (tile) => {
+          const target = this.dragTarget();
+          if (target && nearest([target], tile)) this.choose(tile.choiceId, tile);
+          else swimHome(this, tile);
+        },
+      });
+    }
     this.locked = false;
     this.target = null;
 
@@ -190,7 +213,10 @@ export default class QuizScene extends Phaser.Scene {
         height,
         color: this.tileColor(id),
         shape: this.tileShape,
-        onTap: () => this.choose(id, tile),
+        onTap: this.dragTarget ? undefined : () => this.choose(id, tile),
+        // The press tween and the drag's lift both animate scale, and
+        // `pointerout` fires the moment a drag leaves the tile.
+        press: !this.dragTarget,
       });
       tile.setAngle(index % 2 ? this.tileTilt : -this.tileTilt);
       // Named so a verification run can pick a tile without hunting by pixel.
@@ -202,7 +228,7 @@ export default class QuizScene extends Phaser.Scene {
       // rather than after the answer has been judged, so it lands within a
       // frame of the tap — a tile that does not move when pressed feels broken
       // whatever the app does a moment later.
-      tile.on('pointerdown', () => squash(this, tile));
+      if (!this.dragTarget) tile.on('pointerdown', () => squash(this, tile));
 
       // Each one drops in a beat after the last, so the line-up assembles
       // itself instead of being there already. It also stops a child tapping
@@ -220,6 +246,9 @@ export default class QuizScene extends Phaser.Scene {
           duration: 2000,
           delay: index * 220,
         });
+        // Armed once it has landed, so the home a refused drag swims back to is
+        // where the tile settled rather than where popIn started it.
+        if (this.dragTarget) carry(this, tile);
       });
     });
   }

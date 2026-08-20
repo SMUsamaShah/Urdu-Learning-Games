@@ -29,14 +29,44 @@ const QUIZZES = [
   { key: 'StartsWith', rounds: 8 },
   { key: 'Doors', rounds: 8 },
   { key: 'OddOne', rounds: 8 },
-  { key: 'FillLetter', rounds: 8 },
   { key: 'JoinWord', rounds: 8 },
 ];
 
 const { page, finish } = await openApp({
   name: 'game',
-  timeoutMs: 300000,
+  timeoutMs: 420000,
 });
+
+/**
+ * Carrying something across the board with a real mouse.
+ *
+ * Half the screens in this app are drags now, and Phaser's drag events only
+ * fire for a pointer that actually moves — emitting `pointerup` on a tile the
+ * way the tap checks do would test nothing at all on those screens. So this
+ * presses, moves in steps, and lets go, in page coordinates worked out from
+ * where the canvas happens to be.
+ *
+ * The canvas is measured per call rather than once: several checks below start
+ * a scene between drags, and Phaser resizes the canvas when the scale manager
+ * reflows.
+ */
+async function dragTo(from, tx, ty, settle = 400) {
+  const geo = await page.evaluate(() => {
+    const box = window.__game.canvas.getBoundingClientRect();
+    return { left: box.left, top: box.top, scale: box.width / window.__game.scale.width };
+  });
+  const at = (x, y) => [geo.left + x * geo.scale, geo.top + y * geo.scale];
+  const [sx, sy] = at(from.x, from.y);
+  const [ex, ey] = at(tx, ty);
+  await page.mouse.move(sx, sy);
+  await page.mouse.down();
+  for (let i = 1; i <= 8; i++) {
+    await page.mouse.move(sx + ((ex - sx) * i) / 8, sy + ((ey - sy) * i) / 8);
+    await page.waitForTimeout(16);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(settle);
+}
 
 // ---------------------------------------------------------------- the menu
 
@@ -945,17 +975,42 @@ for (const KEY of ['Caterpillar', 'NumberLine']) {
     step(`${first.run.length} in the run, ${first.holes.length} holes, ${trayIds.length} in the tray`);
   }
 
-  const tapTray = (letterId) =>
+  /** Where a tray letter and the gap being asked for are, on the board. */
+  const places = (letterId) =>
     page.evaluate(([k, id]) => {
       const scene = window.__game.scene.getScene(k);
-      scene.tray.list.find((t) => t.letterId === id && !t.used)?.emit('pointerup');
+      const tile = scene.tray.list.find((t) => t.letterId === id && !t.used);
+      const hole = scene.segments.find((seg) => seg.index === scene.nextHole);
+      return tile && hole ? { tile: { x: tile.x, y: tile.y }, hole: { x: hole.x, y: hole.y } } : null;
     }, [KEY, letterId]);
+
+  /** Carries a tray letter into the gap the board is asking for. */
+  const dragTray = async (letterId) => {
+    const where = await places(letterId);
+    if (!where) return false;
+    await dragTo(where.tile, where.hole.x, where.hole.y);
+    return true;
+  };
+
+  // A tap does nothing at all now. Worth asserting rather than assuming: the
+  // tap handler is one line to add back by accident, and a game that quietly
+  // accepts both is a game nobody notices has stopped being a drag.
+  const tapped = await page.evaluate((k) => {
+    const scene = window.__game.scene.getScene(k);
+    const tile = scene.tray.list.find((t) => !t.used);
+    if (!tile) return false;
+    tile.emit('pointerup');
+    return true;
+  }, KEY);
+  await page.waitForTimeout(400);
+  if (tapped && (await board()).filled !== 0) {
+    fail(`${KEY}: tapping a tray letter filled a hole — these are dragged now`);
+  }
 
   // A wrong tray letter must not fill the hole it was aimed at.
   const wrong = trayIds.find((id) => !first.holes.some((h) => first.run[h] === id));
   if (wrong) {
-    await tapTray(wrong);
-    await page.waitForTimeout(400);
+    await dragTray(wrong);
     const after = await board();
     if (after.filled !== 0) fail('a wrong tray letter filled a hole');
     else step('a wrong tray letter fills nothing');
@@ -964,8 +1019,8 @@ for (const KEY of ['Caterpillar', 'NumberLine']) {
   // Holes fill in reading order, so the answers have to be given in that order.
   step(`${KEY}: filling every hole`);
   for (const hole of first.holes) {
-    await tapTray(first.run[hole]);
-    await page.waitForTimeout(700);
+    await dragTray(first.run[hole]);
+    await page.waitForTimeout(400);
   }
   const moved = await page
     .waitForFunction(
@@ -1299,7 +1354,7 @@ if (!process.exitCode) {
 
 step('BuildWord: spelling a word from its letters');
 await start('BuildWord');
-await page.waitForTimeout(600);
+await page.waitForTimeout(900);
 
 const deal = await page.evaluate(() => {
   const scene = window.__game.scene.getScene('BuildWord');
@@ -1316,7 +1371,9 @@ else {
   // Every letter of the word has to be in the tray, or the round cannot be
   // finished. The tray may hold more — the distractors — but never fewer.
   const missing = deal.letters.filter(
-    (id, i) => deal.tray.filter((t) => t === id).length < deal.letters.slice(0, i + 1).filter((l) => l === id).length
+    (id, i) =>
+      deal.tray.filter((t) => t === id).length <
+      deal.letters.slice(0, i + 1).filter((l) => l === id).length
   );
   if (missing.length) fail(`BuildWord wants ${missing.join()} and the tray has none`);
 
@@ -1324,42 +1381,147 @@ else {
   // would still play — it would just teach a child to spell left to right.
   const rightmost = Math.max(...deal.slotX);
   if (deal.slotX[0] !== rightmost) {
-    fail(`BuildWord puts the word's first letter at x=${deal.slotX[0]}, not at the right-hand end (${rightmost})`);
+    fail(
+      `BuildWord puts the word's first letter at x=${deal.slotX[0]}, not at the ` +
+        `right-hand end (${rightmost})`
+    );
   } else step(`  ${deal.letters.length} letters, first one at the right-hand end`);
 }
 
-// A wrong letter changes nothing.
-const wrong = await page.evaluate(() => {
-  const scene = window.__game.scene.getScene('BuildWord');
-  const bad = scene.tray.list.find((t) => t.letterId !== scene.letters[scene.filled]);
-  if (!bad) return 'none available';
-  bad.emit('pointerup');
-  return null;
-});
-await page.waitForTimeout(500);
-const afterWrong = await page.evaluate(() => window.__game.scene.getScene('BuildWord').filled);
-if (wrong) step(`  (no wrong letter in the tray this round)`);
-else if (afterWrong !== 0) fail(`a wrong letter filled a slot — ${afterWrong} placed`);
-else step('  a wrong letter fills nothing');
-
-// And then the whole word, in order.
-for (let i = 0; i < (deal.letters?.length ?? 0); i++) {
-  await page.evaluate(() => {
+/** Where a tray letter and a slot are, right now. */
+const spellingBoard = () =>
+  page.evaluate(() => {
     const scene = window.__game.scene.getScene('BuildWord');
-    const want = scene.letters[scene.filled];
-    scene.tray.list.find((t) => t.letterId === want && !t.used)?.emit('pointerup');
+    return {
+      filled: scene.filled,
+      total: scene.slots.length,
+      tray: scene.tray.list.map((t) => ({
+        id: t.letterId,
+        used: t.used,
+        x: t.x,
+        y: t.y,
+        homeX: Math.round(t.homeX ?? -1),
+      })),
+      slots: scene.slots.map((slot) => ({
+        id: slot.letterId,
+        x: slot.x,
+        y: slot.y,
+        filled: Boolean(slot.filledWith),
+      })),
+    };
   });
-  await page.waitForTimeout(650);
+
+// A tap does nothing. This screen was a tap game a commit ago and the handler
+// is one line to reintroduce, so it is asserted rather than assumed.
+await page.evaluate(() => {
+  window.__game.scene.getScene('BuildWord').tray.list.find((t) => !t.used)?.emit('pointerup');
+});
+await page.waitForTimeout(400);
+if ((await spellingBoard()).filled !== 0) {
+  fail('BuildWord: tapping a tray letter filled a slot — these are dragged now');
+} else step('  a tap does nothing');
+
+// Dropped in mid-air: nothing filled, and the letter is back where it started.
+// This is the commonest thing a small finger does and the one that loses a tile
+// off the board entirely if swimHome is wrong.
+let board = await spellingBoard();
+const stray = board.tray.find((t) => !t.used);
+await dragTo(stray, 360, 300);
+board = await spellingBoard();
+const returned = board.tray.find((t) => t.id === stray.id);
+if (board.filled !== 0) fail('BuildWord: a letter dropped in mid-air filled a slot');
+else if (Math.round(returned.x) !== returned.homeX) {
+  fail(`BuildWord: a letter dropped in mid-air was left at x=${Math.round(returned.x)}, not back at ${returned.homeX}`);
+} else step('  a letter dropped in mid-air goes back to the tray');
+
+// The wrong slot refuses it.
+board = await spellingBoard();
+const carried = board.tray.find((t) => !t.used);
+const wrongSlot = board.slots.find((slot) => slot.id !== carried.id && !slot.filled);
+if (wrongSlot) {
+  await dragTo(carried, wrongSlot.x, wrongSlot.y);
+  board = await spellingBoard();
+  if (board.filled !== 0) fail('BuildWord: a letter went into the wrong slot');
+  else step('  the wrong slot refuses it');
+}
+
+// And then the whole word. Deliberately last letter first: a letter belongs in
+// its own slot whichever order it is placed in, and a game that insisted on
+// right-to-left would fail here.
+for (const index of [...deal.letters.keys()].reverse()) {
+  board = await spellingBoard();
+  const slot = board.slots[index];
+  const tile = board.tray.find((t) => t.id === slot.id && !t.used);
+  if (!tile || slot.filled) continue;
+  await dragTo(tile, slot.x, slot.y, 500);
 }
 
 const done = await page.evaluate(() => {
   const scene = window.__game.scene.getScene('BuildWord');
   const keys = scene.board.list.map((item) => item.texture?.key).filter(Boolean);
-  return { filled: scene.filled, total: scene.slots.length, joined: keys.some((k) => k.startsWith('build-word:')) };
+  return {
+    filled: scene.filled,
+    total: scene.slots.length,
+    joined: keys.some((k) => k.startsWith('build-word:')),
+  };
 });
-if (done.filled !== done.total) fail(`BuildWord: ${done.filled} of ${done.total} slots filled after tapping every letter`);
-else if (!done.joined) fail('BuildWord: the word was spelled and the joined word never appeared');
-else step(`  spelled, and ${deal.word} appeared joined up`);
+if (done.filled !== done.total) {
+  fail(`BuildWord: ${done.filled} of ${done.total} slots filled after carrying every letter`);
+} else if (!done.joined) {
+  fail('BuildWord: the word was spelled and the joined word never appeared');
+} else step(`  spelled back to front, and ${deal.word} appeared joined up`);
+
+// --- The missing letter is carried into its hole -----------------------------
+//
+// FillLetter is a QuizScene, so everything about picking an answer is already
+// covered by the loop at the top of this file — except that this one is the
+// only quiz whose answer is dragged rather than tapped. That seam
+// (`dragTarget` in QuizScene) is what gets checked here.
+
+step('FillLetter: dropping the letter into the gap');
+await start('FillLetter');
+await page.waitForTimeout(900);
+
+const gap = () =>
+  page.evaluate(() => {
+    const scene = window.__game.scene.getScene('FillLetter');
+    return {
+      target: scene.target,
+      streak: scene.streak,
+      drop: scene.dragTarget(),
+      tiles: scene.choicesLayer.list.map((t) => ({
+        id: t.choiceId,
+        x: t.x,
+        y: t.y,
+        homeX: Math.round(t.homeX ?? -1),
+      })),
+    };
+  });
+
+let fill = await gap();
+if (!fill.tiles.length) fail('FillLetter offered no choices');
+else {
+  await page.evaluate(() => {
+    window.__game.scene.getScene('FillLetter').choicesLayer.list[0].emit('pointerup');
+  });
+  await page.waitForTimeout(400);
+  if ((await gap()).streak !== 0) fail('FillLetter: tapping a choice answered the round');
+  else step('  a tap does nothing');
+
+  const loose = fill.tiles[0];
+  await dragTo(loose, 300, 660);
+  fill = await gap();
+  const back = fill.tiles.find((t) => t.id === loose.id);
+  if (fill.streak !== 0) fail('FillLetter: a choice dropped in mid-air was accepted');
+  else if (Math.round(back.x) !== back.homeX) {
+    fail(`FillLetter: a choice dropped in mid-air was left at x=${Math.round(back.x)}`);
+  } else step('  a choice dropped in mid-air goes back');
+
+  const right = fill.tiles.find((t) => t.id === fill.target);
+  await dragTo(right, fill.drop.x, fill.drop.y, 900);
+  if ((await gap()).streak !== 1) fail('FillLetter: the right letter dropped in the gap was not accepted');
+  else step('  and the right one, dropped in the gap, answers the round');
+}
 
 // --- The furniture stays on the screen ---------------------------------------
 //

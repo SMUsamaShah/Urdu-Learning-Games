@@ -7,7 +7,8 @@ import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { addStage, wellDone } from '../lib/stage.js';
-import { bob, hop, popIn, squash } from '../lib/liveliness.js';
+import { armDragging, carry, nearest, refuse, swimHome } from '../lib/dragging.js';
+import { bob, hop, popIn } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayLetters } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, makeButton, PLAY } from '../lib/theme.js';
@@ -122,6 +123,11 @@ export default class Caterpillar extends Phaser.Scene {
 
     this.body = this.add.container(0, 0);
     this.tray = this.add.container(0, 0);
+
+    armDragging(this, {
+      canLift: (tile) => !this.locked && !tile.used,
+      onDrop: (tile) => this.drop(tile),
+    });
 
     this.newRound();
   }
@@ -283,7 +289,9 @@ export default class Caterpillar extends Phaser.Scene {
         width: 116,
         height: 116,
         color: COLORS.panelLight,
-        onTap: () => this.tap(tile),
+        // Dragged, not tapped: the press tween would fight the lift. See
+        // makeButton and src/lib/dragging.js.
+        press: false,
       });
       tile.letterId = id;
       tile.used = false;
@@ -297,10 +305,12 @@ export default class Caterpillar extends Phaser.Scene {
           { em, color: COLORS.ink }
         )
       );
-      tile.on('pointerdown', () => squash(this, tile));
       this.tray.add(tile);
       popIn(this, tile, { delay: 300 + index * 60, duration: 280 });
       tile.idle = bob(this, tile, { distance: 4, duration: 2100, delay: index * 180 });
+      // Armed once it has landed, so the home it swims back to is where it
+      // settled rather than the scaled-down point popIn started it from.
+      this.time.delayedCall(300 + index * 60 + 300, () => carry(this, tile));
     });
   }
 
@@ -319,25 +329,31 @@ export default class Caterpillar extends Phaser.Scene {
     }
   }
 
-  tap(tile) {
-    if (this.locked || tile.used) return;
+  /**
+   * A letter has been let go somewhere.
+   *
+   * Unlike the spelling board, this one only accepts the hole being asked for.
+   * The order **is** the alphabet, and letting a child drop ط into the ط-shaped
+   * gap four along would be a different, easier game — matching rather than
+   * counting on.
+   */
+  drop(tile) {
+    if (this.locked || tile.used) return swimHome(this, tile);
     const hole = this.nextHole;
-    if (hole === null) return;
+    if (hole === null) return swimHome(this, tile);
+
+    const segment = this.segments.find((s) => s.index === hole);
+    // Dropped in mid-air, or nowhere near a gap: back to the tray, no comment.
+    if (!segment || !nearest([segment], tile)) return swimHome(this, tile);
 
     const wanted = this.run[hole];
     if (tile.letterId !== wanted) {
       wrongAnswer();
       this.rail?.wonder();
-      this.tweens.add({
-        targets: tile,
-        x: tile.x + 8,
-        duration: 60,
-        yoyo: true,
-        repeat: 2,
-        ease: 'Sine.easeInOut',
-      });
-      // Nothing is taken away and nothing is marked wrong. The tray letter is
-      // still there to be tried again once they have looked at the run.
+      // Refused rather than punished: the gap shakes it off, the letter goes
+      // home, and it is still there to be tried again once they have looked at
+      // the run.
+      refuse(this, tile, segment);
       return;
     }
 
@@ -347,17 +363,15 @@ export default class Caterpillar extends Phaser.Scene {
     rightAnswer();
     sfx.sparkle();
 
-    const segment = this.segments.find((s) => s.index === hole);
-    // The tray letter flies to its place rather than vanishing and reappearing:
-    // the whole lesson is that it belongs *there*.
+    // The last few pixels are done for them, so a drag that was close enough
+    // lands square in the gap.
     this.tweens.add({
       targets: tile,
       x: segment.x,
       y: segment.y,
-      scaleX: 0.8,
-      scaleY: 0.8,
+      scale: 0.8,
       alpha: 0,
-      duration: 340,
+      duration: 220,
       ease: 'Quad.easeInOut',
       onComplete: () => {
         segment.filledWith = wanted;

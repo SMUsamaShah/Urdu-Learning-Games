@@ -28,6 +28,12 @@ import { lettersById } from '../lib/content.js';
  * Letters screen already shows under every word, so a child arrives here having
  * seen this exact layout before.
  *
+ * ## Carried into the hole
+ *
+ * The socket in the row is a real place, so the letter is dragged into it
+ * rather than tapped. That is the one thing this screen has that the other
+ * pick-one games do not, and it is why this one drags and they do not.
+ *
  * ## The picture is the clue
  *
  * Without it this would be a memory test — nothing on screen says which word
@@ -58,6 +64,14 @@ export default class FillLetter extends QuizScene {
     this.wordId = null;
     /** Which letter of the word has been taken out. */
     this.gap = 0;
+    // The empty socket in the row. Worked out from the same numbers that draw
+    // it, rather than remembered when it is drawn, so the two cannot disagree.
+    this.dragTarget = () => {
+      const letters = brokenWord(this.wordId) ?? [];
+      const step = ROW.size + ROW.gap;
+      const right = (letters.length * step - ROW.gap) / 2 - ROW.size / 2;
+      return { x: this.stageX + right - this.gap * step, y: this.promptY + ROW.y };
+    };
   }
 
   preload() {
