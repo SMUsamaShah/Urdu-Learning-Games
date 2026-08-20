@@ -132,6 +132,22 @@ const BACKDROPS = {
     'A sunny market yard: a plain sandy floor across the bottom third, a low ' +
     'stone wall behind it, one striped awning at the far left edge, wide pale ' +
     'sky above.',
+  // --- Spelling. Their own places, so a child can tell at a glance that they
+  // have left the alphabet games behind.
+  BuildWord:
+    'A child\'s desk seen flat on: a warm pale wooden desktop across the ' +
+    'bottom third, a soft cream wall above it, one small potted plant at the ' +
+    'far left edge and a few pencils lying at the far right edge. Nothing at ' +
+    'all in the middle — a picture and a row of letter tiles are drawn there.',
+  FillLetter:
+    'A quiet classroom corner: a pale mint wall filling most of the picture, ' +
+    'a low bookshelf with a few books along the very bottom edge, one small ' +
+    'globe at the far right edge. Very plain and light.',
+  JoinWord:
+    'An open picture book laid flat and seen from above, filling the whole ' +
+    'frame: two blank cream pages with a soft crease down the middle, a thin ' +
+    'ribbon bookmark at the far left edge, and nothing printed on the pages ' +
+    'at all. No text, no drawings on the pages.',
   Whack:
     'A grassy field seen close up: flat green grass filling the lower two ' +
     'thirds with a few small daisies, a hedge along the very top of the grass ' +

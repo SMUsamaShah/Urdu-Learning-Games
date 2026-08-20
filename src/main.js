@@ -13,6 +13,9 @@ import StartsWith from './scenes/StartsWith.js';
 import Doors from './scenes/Doors.js';
 import TapAll from './scenes/TapAll.js';
 import Caterpillar from './scenes/Caterpillar.js';
+import BuildWord from './scenes/BuildWord.js';
+import FillLetter from './scenes/FillLetter.js';
+import JoinWord from './scenes/JoinWord.js';
 import LetterPuzzle from './scenes/LetterPuzzle.js';
 import Fishing from './scenes/Fishing.js';
 import Baskets from './scenes/Baskets.js';
@@ -90,6 +93,9 @@ const game = new Phaser.Game({
     Doors,
     TapAll,
     Caterpillar,
+    BuildWord,
+    FillLetter,
+    JoinWord,
     LetterPuzzle,
     Fishing,
     Baskets,

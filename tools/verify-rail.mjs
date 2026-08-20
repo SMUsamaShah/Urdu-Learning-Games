@@ -47,6 +47,9 @@ const GAMES = [
   'NumberLine',
   'Hidden',
   'Bounce',
+  'BuildWord',
+  'FillLetter',
+  'JoinWord',
   'Trace',
 ];
 

@@ -627,6 +627,107 @@ const FACES = {
     d.letter('lam', 'isolated', w * 0.16, h * 0.06, h * 0.2, { fill: PAPER, maxWidth: w * 0.26 });
   },
 
+  // A word being built out of its letters, right to left.
+  BuildWord(d) {
+    const { w, h, p } = d;
+    d.ellipse(0, -h * 0.24, w * 0.15, h * 0.16, { fill: FRUIT });
+    d.line(0, -h * 0.38, w * 0.01, -h * 0.46, { stroke: '#7a5230', lw: 5 });
+    d.ellipse(w * 0.08, -h * 0.45, w * 0.08, h * 0.04, { fill: LEAF, rotate: -0.4 });
+    // Two letters placed and one slot still empty. The empty one is on the
+    // left, because the row fills right to left the way the script is read.
+    const cell = w * 0.24;
+    const ids = ['be', 'kaf', null];
+    ids.forEach((id, i) => {
+      const x = w * 0.27 - i * (cell + w * 0.03);
+      if (!id) {
+        d.rrect(x, h * 0.12, cell, cell, cell * 0.18, {
+          fill: PAPER, stroke: p.base, lw: 4, dash: [8, 7],
+        });
+        return;
+      }
+      d.rrect(x, h * 0.12, cell, cell, cell * 0.18, { fill: [p.base, p.warm][i], stroke: mix([p.base, p.warm][i], '#101423', 0.3), lw: 3 });
+      d.letter(id, 'isolated', x, h * 0.12, h * 0.14, { fill: PAPER, maxWidth: cell * 0.7 });
+    });
+    // And the letter waiting in the tray below.
+    d.rrect(-w * 0.27, h * 0.38, cell * 0.9, cell * 0.9, cell * 0.16, {
+      fill: p.cool, stroke: mix(p.cool, '#101423', 0.3), lw: 3,
+    });
+    d.letter('re', 'isolated', -w * 0.27, h * 0.38, h * 0.12, { fill: PAPER, maxWidth: cell * 0.6 });
+  },
+
+  // A row with a hole in it, and the letters that might fill it.
+  FillLetter(d) {
+    const { w, h, p } = d;
+    const cell = w * 0.2;
+    ['be', null, 're'].forEach((id, i) => {
+      const x = w * 0.24 - i * (cell + w * 0.03);
+      if (!id) {
+        d.rrect(x, -h * 0.16, cell, cell, cell * 0.18, {
+          fill: PAPER, stroke: p.base, lw: 4.5, dash: [7, 6],
+        });
+        d.circle(x, -h * 0.16, cell * 0.12, { fill: p.base });
+        return;
+      }
+      d.rrect(x, -h * 0.16, cell, cell, cell * 0.18, { fill: PAPER, stroke: p.light, lw: 3 });
+      d.letter(id, 'isolated', x, -h * 0.16, h * 0.12, { fill: p.dark, maxWidth: cell * 0.7 });
+    });
+    // Three to choose from, one of them the answer.
+    [['kaf', p.base], ['te', p.warm], ['sin', p.cool]].forEach(([id, tone], i) => {
+      const x = w * 0.26 - i * w * 0.26;
+      d.rrect(x, h * 0.28, w * 0.21, h * 0.22, w * 0.05, {
+        fill: tone, stroke: mix(tone, '#101423', 0.3), lw: 3,
+      });
+      d.letter(id, 'isolated', x, h * 0.28, h * 0.13, { fill: PAPER, maxWidth: w * 0.15 });
+    });
+  },
+
+  // The same letters, loose and then joined.
+  JoinWord(d) {
+    const { w, h, p } = d;
+    const cell = w * 0.19;
+    ['be', 'kaf', 're'].forEach((id, i) => {
+      const x = w * 0.23 - i * (cell + w * 0.025);
+      d.rrect(x, -h * 0.24, cell, cell, cell * 0.2, { fill: PAPER, stroke: p.light, lw: 3 });
+      d.letter(id, 'isolated', x, -h * 0.24, h * 0.11, { fill: p.dark, maxWidth: cell * 0.7 });
+    });
+    // An arrow down, and the word they turn into.
+    d.line(0, -h * 0.06, 0, h * 0.04, { stroke: p.mid, lw: 5 });
+    d.poly(
+      [
+        [-w * 0.05, h * 0.02],
+        [w * 0.05, h * 0.02],
+        [0, h * 0.12],
+      ],
+      { fill: p.mid }
+    );
+    d.rrect(0, h * 0.32, w * 0.74, h * 0.28, w * 0.07, {
+      fill: PAPER, stroke: p.base, lw: 4,
+    });
+    d.word('bakri', 0, h * 0.32, h * 0.16, { fill: p.dark, maxWidth: w * 0.6 });
+  },
+
+  // The door to the spelling games.
+  Spelling(d) {
+    const { w, h, p } = d;
+    // A word half built, big, because this tile stands for all three.
+    const cell = w * 0.26;
+    [['be', p.base], ['kaf', p.warm], [null, null]].forEach(([id, tone], i) => {
+      const x = w * 0.29 - i * (cell + w * 0.02);
+      if (!id) {
+        d.rrect(x, -h * 0.06, cell, cell, cell * 0.18, {
+          fill: PAPER, stroke: p.base, lw: 4.5, dash: [8, 7],
+        });
+        return;
+      }
+      d.rrect(x, -h * 0.06, cell, cell, cell * 0.18, {
+        fill: tone, stroke: mix(tone, '#101423', 0.3), lw: 3.5,
+      });
+      d.letter(id, 'isolated', x, -h * 0.06, h * 0.16, { fill: PAPER, maxWidth: cell * 0.72 });
+    });
+    d.rrect(0, h * 0.34, w * 0.66, h * 0.22, w * 0.06, { fill: p.pale, stroke: p.light, lw: 3 });
+    d.word('bakri', 0, h * 0.34, h * 0.13, { fill: p.dark, maxWidth: w * 0.54 });
+  },
+
   // The door to the rest of them.
   More(d) {
     const { w, h, p } = d;

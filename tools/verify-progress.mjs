@@ -57,6 +57,9 @@ const SCREENS = [
   'NumberLine',
   'Hidden',
   'Bounce',
+  'BuildWord',
+  'FillLetter',
+  'JoinWord',
   'Trace',
 ];
 

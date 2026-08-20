@@ -66,7 +66,6 @@ export const GAMES = [
     ui: 'balloons',
     roman: 'Balloons',
     color: 0xb4576d,
-    featured: true,
     icon: { letter: 'mim', form: 'isolated' },
   },
   {
@@ -192,6 +191,33 @@ export const GAMES = [
     color: 0xd4913f,
     icon: { letter: 'lam', form: 'isolated' },
   },
+  // --- Spelling. Behind their own tile rather than out here with the rest: a
+  // child arrives at these after the alphabet, and mixing them into a menu of
+  // twenty-four letter games would bury them.
+  {
+    scene: 'FillLetter',
+    ui: 'missing',
+    roman: 'Missing letter',
+    color: 0x2f8f8a,
+    group: 'spelling',
+    icon: { letter: 'kaf', form: 'isolated' },
+  },
+  {
+    scene: 'BuildWord',
+    ui: 'spell',
+    roman: 'Build the word',
+    color: 0x3f7fd4,
+    group: 'spelling',
+    icon: { letter: 'be', form: 'isolated' },
+  },
+  {
+    scene: 'JoinWord',
+    ui: 'joined',
+    roman: 'Joined up',
+    color: 0x8a6ad0,
+    group: 'spelling',
+    icon: { letter: 'jim', form: 'isolated' },
+  },
 ];
 
 /**
@@ -205,7 +231,33 @@ export function artName(game) {
 }
 
 export const FEATURED = GAMES.filter((game) => game.featured);
-export const MORE = GAMES.filter((game) => !game.featured);
+
+/**
+ * Spelling: its own group behind its own tile.
+ *
+ * The first games in this app that are about *words* rather than letters, and
+ * they want to be found together. See src/lib/spelling.js for what makes
+ * spelling a different job in Urdu than it is in English.
+ */
+export const SPELLING = GAMES.filter((game) => game.group === 'spelling');
+
+/** Everything not on the front page and not in a group of its own. */
+export const MORE = GAMES.filter((game) => !game.featured && !game.group);
+
+/**
+ * The ninth tile: the one that opens the spelling games.
+ *
+ * Shaped like a game so the grid stays one grid. It costs a place on the front
+ * page and Balloons is the one that gave it up — the most arcade and the least
+ * teaching of the nine that were there, and it has only moved one tap away.
+ */
+export const SPELLING_TILE = {
+  art: 'Spelling',
+  ui: 'spelling',
+  roman: `Spelling (${SPELLING.length})`,
+  color: 0xc9713f,
+  icon: { letter: 'be', form: 'initial' },
+};
 
 /**
  * The tenth tile: the one that opens the rest.
@@ -235,7 +287,7 @@ export const MORE_TILE = {
 export function missingIcons() {
   // The More tile too: it is not a game, and it is still a tile with a letter
   // on it when its picture is missing.
-  return [...GAMES, MORE_TILE]
+  return [...GAMES, SPELLING_TILE, MORE_TILE]
     .filter((game) => game.icon && !letterGlyph(game.icon.letter, game.icon.form))
     .map((game) => `${game.ui}: ${game.icon.letter} ${game.icon.form}`);
 }

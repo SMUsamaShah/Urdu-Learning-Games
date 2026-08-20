@@ -53,6 +53,9 @@ const LETTER_SCREENS = [
   'ConnectPairs',
   'Hidden',
   'Bounce',
+  'BuildWord',
+  'FillLetter',
+  'JoinWord',
   'Trace',
 ];
 
@@ -229,6 +232,11 @@ for (const scene of LETTER_SCREENS) {
         'run',
         'tray',
         'letters',
+        // The spelling screens: the word being spelled, and the row of slots
+        // it is being spelled into. A word whose letters include a disabled one
+        // must not be dealt at all — the child would be asked for a letter that
+        // is not in the tray and cannot be.
+        'slots',
         'cards',
         'balls',
         'byFamily',

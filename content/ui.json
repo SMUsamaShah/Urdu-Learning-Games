@@ -345,6 +345,41 @@
       "id": "aafreen",
       "text": "آفرین",
       "roman": "aafreen"
+    },
+    {
+      "id": "spelling",
+      "text": "ہجے",
+      "roman": "hijje"
+    },
+    {
+      "id": "build-word",
+      "text": "لفظ بناؤ",
+      "roman": "lafz banao"
+    },
+    {
+      "id": "spell",
+      "text": "لفظ",
+      "roman": "lafz"
+    },
+    {
+      "id": "fill-letter-word",
+      "text": "کون سا حرف غائب؟",
+      "roman": "kaun sa harf ghaib"
+    },
+    {
+      "id": "missing",
+      "text": "غائب حرف",
+      "roman": "ghaib harf"
+    },
+    {
+      "id": "join-word",
+      "text": "یہ کون سا لفظ ہے؟",
+      "roman": "yeh kaun sa lafz hai"
+    },
+    {
+      "id": "joined",
+      "text": "جوڑ کر",
+      "roman": "jor kar"
     }
   ]
 }

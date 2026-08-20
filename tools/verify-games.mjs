@@ -29,6 +29,8 @@ const QUIZZES = [
   { key: 'StartsWith', rounds: 8 },
   { key: 'Doors', rounds: 8 },
   { key: 'OddOne', rounds: 8 },
+  { key: 'FillLetter', rounds: 8 },
+  { key: 'JoinWord', rounds: 8 },
 ];
 
 const { page, finish } = await openApp({
@@ -49,13 +51,16 @@ const { page, finish } = await openApp({
  */
 step('checking every game is reachable from the menu');
 const menu = await page.evaluate(async () => {
-  const { FEATURED, GAMES, MORE, missingIcons } = await import('/src/lib/games.js');
+  const { FEATURED, GAMES, MORE, SPELLING, missingIcons } = await import('/src/lib/games.js');
   const { loadGlyphs } = await import('/src/lib/content.js');
   await loadGlyphs();
   const registered = window.__game.scene.scenes.map((s) => s.scene.key);
   return {
     listed: GAMES.map((g) => g.scene),
-    shown: [...FEATURED, ...MORE].map((g) => g.scene),
+    // Three lists now: the front page, the spelling group behind its own tile,
+    // and everything else behind "more games". A game in none of them is a game
+    // that exists and cannot be reached.
+    shown: [...FEATURED, ...SPELLING, ...MORE].map((g) => g.scene),
     unknown: GAMES.filter((g) => !registered.includes(g.scene)).map((g) => g.scene),
     missingIcons: missingIcons(),
   };
@@ -1282,6 +1287,79 @@ if (!process.exitCode) {
     else step('board finished and a new one dealt');
   }
 }
+
+// --- Building a whole word --------------------------------------------------
+//
+// The quiz games above are all one tap; this one is a word's worth of taps in a
+// fixed order, and the order is the game. Three things can go wrong quietly: the
+// slot being asked for could be the wrong end of the word (Urdu is written right
+// to left and the row is built from the right), a wrong letter could be accepted,
+// and the joined word at the end could fail to appear — leaving the child with a
+// row of separate letters and no sign that they spell anything.
+
+step('BuildWord: spelling a word from its letters');
+await start('BuildWord');
+await page.waitForTimeout(600);
+
+const deal = await page.evaluate(() => {
+  const scene = window.__game.scene.getScene('BuildWord');
+  return {
+    word: scene.wordId,
+    letters: scene.letters,
+    tray: scene.tray.list.map((t) => t.letterId),
+    slotX: scene.slots.map((slot) => Math.round(slot.x)),
+  };
+});
+
+if (!deal.letters?.length) fail('BuildWord dealt no letters at all');
+else {
+  // Every letter of the word has to be in the tray, or the round cannot be
+  // finished. The tray may hold more — the distractors — but never fewer.
+  const missing = deal.letters.filter(
+    (id, i) => deal.tray.filter((t) => t === id).length < deal.letters.slice(0, i + 1).filter((l) => l === id).length
+  );
+  if (missing.length) fail(`BuildWord wants ${missing.join()} and the tray has none`);
+
+  // The first letter of the word is the rightmost slot. Getting this backwards
+  // would still play — it would just teach a child to spell left to right.
+  const rightmost = Math.max(...deal.slotX);
+  if (deal.slotX[0] !== rightmost) {
+    fail(`BuildWord puts the word's first letter at x=${deal.slotX[0]}, not at the right-hand end (${rightmost})`);
+  } else step(`  ${deal.letters.length} letters, first one at the right-hand end`);
+}
+
+// A wrong letter changes nothing.
+const wrong = await page.evaluate(() => {
+  const scene = window.__game.scene.getScene('BuildWord');
+  const bad = scene.tray.list.find((t) => t.letterId !== scene.letters[scene.filled]);
+  if (!bad) return 'none available';
+  bad.emit('pointerup');
+  return null;
+});
+await page.waitForTimeout(500);
+const afterWrong = await page.evaluate(() => window.__game.scene.getScene('BuildWord').filled);
+if (wrong) step(`  (no wrong letter in the tray this round)`);
+else if (afterWrong !== 0) fail(`a wrong letter filled a slot — ${afterWrong} placed`);
+else step('  a wrong letter fills nothing');
+
+// And then the whole word, in order.
+for (let i = 0; i < (deal.letters?.length ?? 0); i++) {
+  await page.evaluate(() => {
+    const scene = window.__game.scene.getScene('BuildWord');
+    const want = scene.letters[scene.filled];
+    scene.tray.list.find((t) => t.letterId === want && !t.used)?.emit('pointerup');
+  });
+  await page.waitForTimeout(650);
+}
+
+const done = await page.evaluate(() => {
+  const scene = window.__game.scene.getScene('BuildWord');
+  const keys = scene.board.list.map((item) => item.texture?.key).filter(Boolean);
+  return { filled: scene.filled, total: scene.slots.length, joined: keys.some((k) => k.startsWith('build-word:')) };
+});
+if (done.filled !== done.total) fail(`BuildWord: ${done.filled} of ${done.total} slots filled after tapping every letter`);
+else if (!done.joined) fail('BuildWord: the word was spelled and the joined word never appeared');
+else step(`  spelled, and ${deal.word} appeared joined up`);
 
 // --- The furniture stays on the screen ---------------------------------------
 //

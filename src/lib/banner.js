@@ -51,6 +51,9 @@ export const INSTRUCTIONS = [
   'count-gaps',
   'find-hidden',
   'catch-bounce',
+  'build-word',
+  'fill-letter-word',
+  'join-word',
   // And the praise, because the ribbon is where it is shown: wellDone() swaps
   // the instruction for one of these. Listed out rather than spread in from
   // praise.js so that a phrase added there and forgotten here is caught — see

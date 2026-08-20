@@ -38,6 +38,21 @@ const ROWS = 2;
 const PER_PAGE = COLUMNS * ROWS;
 
 const PANEL = { width: 1120, height: 600, y: 376 };
+
+/**
+ * The panel, sized to what is actually going in it.
+ *
+ * Fifteen games need two rows and the paging dots under them. Three need one
+ * row and no dots, and drawn at the full height they sat in the top corner of a
+ * mostly empty cream rectangle, which reads as a page that failed to load
+ * rather than as a short list.
+ */
+function panelFor(count) {
+  const rows = Math.max(1, Math.min(ROWS, Math.ceil(count / COLUMNS)));
+  const dots = count > PER_PAGE ? 46 : 0;
+  const height = HEADER + 40 + rows * TILE.height + (rows - 1) * ROW_GAP + 40 + dots;
+  return { width: PANEL.width, height, y: PANEL.y - (PANEL.height - height) / 2 };
+}
 /** The coloured title bar across the top of the panel. */
 const HEADER = 84;
 /**
@@ -52,9 +67,14 @@ const ROW_GAP = 22;
  * @param {Phaser.Scene} scene
  * @param {object[]} games tiles to show, in order
  * @param {(game: object) => void} onPick
+ * @param {{title?: string}} [options] the ui.json string across the header.
+ *   Defaults to "more games" because that is what this was built for; it is a
+ *   parameter because it now also holds the spelling group, and a panel that
+ *   says "more games" over the spelling games would be lying about where you
+ *   are.
  * @returns {Phaser.GameObjects.Container} destroy it to close the panel
  */
-export function openGamesPanel(scene, games, onPick) {
+export function openGamesPanel(scene, games, onPick, { title = 'more-games' } = {}) {
   const layer = scene.add.container(0, 0).setDepth(60);
   // Everything that dismisses the panel goes through the history, so the phone's
   // back button and the ← in the corner are one path. See src/lib/history.js.
@@ -72,26 +92,27 @@ export function openGamesPanel(scene, games, onPick) {
   dim.on('pointerup', close);
   layer.add(dim);
 
+  const box = panelFor(games.length);
   const card = scene.add.graphics();
-  const left = (DESIGN.width - PANEL.width) / 2;
-  const top = PANEL.y - PANEL.height / 2;
+  const left = (DESIGN.width - box.width) / 2;
+  const top = box.y - box.height / 2;
   card.fillStyle(COLORS.shadow, 0.3);
-  card.fillRoundedRect(left, top + 10, PANEL.width, PANEL.height, 34);
+  card.fillRoundedRect(left, top + 10, box.width, box.height, 34);
   // A coloured bar across the top, the paper below it. Without the bar the
   // panel is a cream rectangle on a cream menu behind a grey wash, and its top
   // edge — the one thing that says "this is a separate place you can leave" —
   // is the faintest line on screen.
   card.fillStyle(COLORS.accent, 1);
-  card.fillRoundedRect(left, top, PANEL.width, PANEL.height, 34);
+  card.fillRoundedRect(left, top, box.width, box.height, 34);
   card.fillStyle(COLORS.bg, 1);
-  card.fillRoundedRect(left, top + HEADER, PANEL.width, PANEL.height - HEADER, 34);
-  card.fillRect(left, top + HEADER, PANEL.width, 34);
+  card.fillRoundedRect(left, top + HEADER, box.width, box.height - HEADER, 34);
+  card.fillRect(left, top + HEADER, box.width, 34);
   layer.add(card);
 
-  const heading = uiGlyph('more-games');
+  const heading = uiGlyph(title);
   if (heading) {
     layer.add(
-      addGlyph(scene, DESIGN.width / 2, top + HEADER / 2, 'ui:more-games:52', heading, {
+      addGlyph(scene, DESIGN.width / 2, top + HEADER / 2, `ui:${title}:52`, heading, {
         height: 52,
         color: COLORS.onColor,
       })
@@ -119,7 +140,7 @@ export function openGamesPanel(scene, games, onPick) {
   layer.add(board);
 
   const dots = [];
-  const dotsY = top + PANEL.height - 40;
+  const dotsY = top + box.height - 40;
   for (let i = 0; i < pages; i++) {
     // Right to left, like everything else here: the first page is the
     // rightmost dot.
@@ -138,7 +159,7 @@ export function openGamesPanel(scene, games, onPick) {
   const arrow = (x, step, glyph) => {
     const button = makeButton(scene, {
       x,
-      y: PANEL.y + 6,
+      y: box.y + 6,
       width: 74,
       height: 132,
       color: COLORS.panel,
@@ -188,7 +209,7 @@ export function openGamesPanel(scene, games, onPick) {
     // Forward is leftward. The tiles run right to left, so a left-pointing
     // arrow is the one that carries on rather than the one that goes back.
     arrow(left + 48, 1, '‹');
-    arrow(left + PANEL.width - 48, -1, '›');
+    arrow(left + box.width - 48, -1, '›');
   } else {
     dots.forEach((dot) => dot.destroy());
   }

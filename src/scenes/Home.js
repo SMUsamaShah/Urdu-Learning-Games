@@ -18,7 +18,7 @@ import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { running as chaloRunning, startRun, stopRun } from '../lib/chalo.js';
-import { FEATURED, MORE, MORE_TILE } from '../lib/games.js';
+import { FEATURED, MORE, MORE_TILE, SPELLING, SPELLING_TILE } from '../lib/games.js';
 
 /**
  * The menu.
@@ -93,7 +93,7 @@ export default class Home extends Phaser.Scene {
     const COLUMNS = 5;
     const gap = 26;
     const rowGap = 24;
-    const shown = [...FEATURED, MORE_TILE];
+    const shown = [...FEATURED, SPELLING_TILE, MORE_TILE];
     const rows = Math.ceil(shown.length / COLUMNS);
     // Two limits, and the tighter one wins. Width alone used to decide this,
     // which was true right up until چلو pushed the grid's top down by ninety
@@ -123,7 +123,9 @@ export default class Home extends Phaser.Scene {
     const tiles = shown.map((game, index) =>
       makeTile(game, places[index].x, places[index].y, () => {
         sfx.whoosh();
-        this.leave(() => (game.scene ? this.openGame(game.scene) : this.openMore()));
+        this.leave(() =>
+          game.scene ? this.openGame(game.scene) : this.openPanel(game)
+        );
       })
     );
 
@@ -319,14 +321,28 @@ export default class Home extends Phaser.Scene {
     this.scene.start(key);
   }
 
+  /**
+   * A group of games, over the menu.
+   *
+   * Two tiles open one of these now — spelling and the rest — so which set and
+   * which heading come from the tile that was tapped rather than from here.
+   */
+  openPanel(tile) {
+    const spelling = tile.art === 'Spelling';
+    this.openMore(spelling ? SPELLING : MORE, spelling ? 'spelling' : 'more-games');
+  }
+
   /** The other fifteen, over the menu. */
-  openMore() {
+  openMore(games = MORE, title = 'more-games') {
     if (this.morePanel?.active) return;
     // Picking a game from the panel *replaces* it: the panel is on its way out
     // in the same gesture, and leaving it in the history would make back from
     // the game reopen the panel rather than land on the menu.
-    this.morePanel = openGamesPanel(this, MORE, (game) =>
-      this.openGame(game.scene, replaceScreen)
+    this.morePanel = openGamesPanel(
+      this,
+      games,
+      (game) => this.openGame(game.scene, replaceScreen),
+      { title }
     );
     // Opening the panel is not leaving the menu — the menu is still there
     // behind it and is not rebuilt when the panel closes, so the latch has to
