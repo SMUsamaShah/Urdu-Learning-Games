@@ -19,6 +19,27 @@ editor. Nothing in the code assumes 38 — `letters.length` is read everywhere i
 matters — but the count appears in a few comments and in the Settings row, so
 those want a look.
 
+## Screens
+
+### The other twenty-two games still want a prop
+
+`src/lib/props.js` has two: a woven basket and a caterpillar. Both were chosen
+because the picture was saying nothing — two rounded rectangles for "sort into
+baskets", a row of white circles for a game named after an animal.
+
+The rest have not been looked at with the same eye. Worth a pass, in rough order
+of how little the current picture says:
+
+- **Whack** — flat brown ellipses on grass. Mounds with a rim, and something
+  actually popping out of them.
+- **TapAll**, **Hidden**, **Bounce** — plates and balls on a meadow.
+- **Fishing** — the fish are an ellipse and a triangle. They are not bad, but
+  they are the whole screen.
+
+Not a rewrite each: the point of `draw-kit.js` is that one prop is an afternoon.
+And not all of them need one — Doors already has a house, Memory's cards *are*
+the game, FindLetter's stars are right as they are.
+
 ## The tracing editor
 
 ### The tracer's sliders need a scroll on a phone
