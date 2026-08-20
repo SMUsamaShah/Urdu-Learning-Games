@@ -70,10 +70,34 @@ It pads the cut generously rather than gating flush, because a softly-starting
 consonant shaved off the front is far worse than a clip that runs slightly long,
 and it only ever turns a take *up*.
 
-`npm run verify:polish` is the check that matters there, and the studio's own
-verification cannot replace it: that drives a synthetic microphone, which emits
-a continuous tone with no silence in it, so the trimming runs and asserts
-nothing. The polish check builds audio with known silence at both ends instead.
+**"The room" means two different things, and keeping them apart matters.** The
+*noise floor* — hiss, a fridge, the street — is `take-polish.js`'s job, and its
+expander opens 14 dB above whatever floor it measured. *Reverberation* — the
+same voice arriving again off the walls — is `src/lib/dereverb.js`'s, and it
+needs a spectral method because a tail sits 10 to 25 dB below the voice, which
+on any real take is far above where that expander is already wide open. For a
+long time only the first existed while the file said it "reduced the room",
+which is how the app came to be described as fixing reverb it had never touched.
+
+`dereverb.js` measures the room from the recording — the decay after the word
+stops, backward-integrated — and subtracts a prediction of the tail bin by bin.
+It **declines** a dry take, and that is the safety property: there is no upside
+to suppressing a room that is not there, and the downside is a hollow voice.
+Two rules make the measurement mean anything: start the fit *below* the word
+(a syllable's own release reads as a room, and scales with how long the word
+was), and stop it before the decay flattens onto the microphone.
+
+Two checks, and they answer different questions. `tests/dereverb.test.mjs` runs
+in Node against a dry syllable convolved with a room of a *stated* T60, so it
+can assert that the measurement is right and that the voice gains 6 dB on the
+room — the old check could not have failed on reverb at all, because its test
+signal was white noise plus a syllable with no reverb in it. `npm run
+verify:polish` then runs the whole pipeline in a browser at a phone's sample
+rate, and asserts the reverberant take trims to nearly the same length as the
+dry one; with the suppression switched off it comes out 0.4s longer, because an
+untouched tail holds the trim gate open. The studio's own verification replaces
+neither: it drives a synthetic microphone emitting a continuous tone, so the
+trimming runs and asserts nothing.
 
 Recording tips:
 

@@ -251,4 +251,144 @@ for (const testCase of CASES) {
   }
 }
 
+// --- The room, as opposed to the noise floor ---------------------------------
+//
+// Everything above is about hiss. This is about reverberation, and it is here
+// because for months the app said it reduced "the room" while measuring only
+// the noise floor — and the check could not catch that, because its test signal
+// was white noise plus a syllable and contained no reverb at all.
+//
+// So this one convolves a real decaying room onto the take, through the
+// browser's own convolver at the sample rate a phone actually records at, and
+// asks the two questions the unit tests cannot ask end to end: does the whole
+// pipeline notice the room, and does it leave a dry take alone.
+
+step('a word recorded in a reverberant room');
+
+const T60 = 0.7;
+
+const room = await page.evaluate(
+  async ([lead, speech, tail, t60]) => {
+    const { polishTake } = await import('/src/lib/take-polish.js');
+    const ctx = new AudioContext();
+
+    const encode = (buffer) =>
+      new Promise((resolve) => {
+        const destination = ctx.createMediaStreamDestination();
+        const recorder = new MediaRecorder(destination.stream);
+        const chunks = [];
+        recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+        recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType }));
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(destination);
+        source.onended = () => recorder.state === 'recording' && recorder.stop();
+        recorder.start();
+        source.start();
+      });
+
+    const rate = ctx.sampleRate;
+    const total = Math.round((lead + speech + tail) * rate);
+    const dry = ctx.createBuffer(1, total, rate);
+    const data = dry.getChannelData(0);
+    const noise = 10 ** (-52 / 20);
+    for (let i = 0; i < total; i++) data[i] = (Math.random() * 2 - 1) * noise;
+    const from = Math.round(lead * rate);
+    const to = Math.round((lead + speech) * rate);
+    for (let i = from; i < to; i++) {
+      const t = (i - from) / (to - from);
+      const envelope = Math.sin(Math.PI * t) ** 1.4;
+      const phase = (2 * Math.PI * 190 * i) / rate;
+      const voice = Math.sin(phase) + 0.4 * Math.sin(phase * 2) + 0.2 * Math.sin(phase * 3);
+      data[i] += (voice / 1.6) * 0.45 * envelope;
+    }
+
+    // A room: the direct sound, then noise decaying at exactly the rate that
+    // gives the T60 asked for. Through the browser's convolver rather than a
+    // loop, because a 0.7s impulse against a 2s take at 48kHz is four billion
+    // multiplies and the browser has a node that does it properly.
+    const impulseLength = Math.round(t60 * 1.2 * rate);
+    const impulse = ctx.createBuffer(1, impulseLength, rate);
+    const tap = impulse.getChannelData(0);
+    tap[0] = 1;
+    for (let i = Math.round(0.004 * rate); i < impulseLength; i++) {
+      tap[i] = (Math.random() * 2 - 1) * 0.5 * 10 ** ((-3 * i) / (t60 * rate));
+    }
+
+    const offline = new OfflineAudioContext(1, total, rate);
+    const source = offline.createBufferSource();
+    source.buffer = dry;
+    const convolver = offline.createConvolver();
+    // Off, or the node rescales the impulse and the direct sound stops being
+    // the direct sound.
+    convolver.normalize = false;
+    convolver.buffer = impulse;
+    source.connect(convolver).connect(offline.destination);
+    source.start();
+    const rendered = await offline.startRendering();
+
+    // Normalised, because a convolution sums thousands of taps and lands past
+    // full scale, which a microphone never does — it clips instead.
+    const wet = ctx.createBuffer(1, total, rate);
+    const wetData = wet.getChannelData(0);
+    const renderedData = rendered.getChannelData(0);
+    let peak = 0;
+    for (let i = 0; i < total; i++) peak = Math.max(peak, Math.abs(renderedData[i]));
+    for (let i = 0; i < total; i++) wetData[i] = (renderedData[i] / peak) * 0.7;
+
+    const polish = async (buffer) => {
+      const original = await encode(buffer);
+      const polished = await polishTake(ctx, original, original.type);
+      if (!polished) return null;
+      const out = await ctx.decodeAudioData(await polished.blob.arrayBuffer());
+      return { duration: out.duration, roomT60: polished.roomT60 };
+    };
+
+    return { wet: await polish(wet), dry: await polish(dry) };
+  },
+  [LEAD, SPEECH, TAIL, T60]
+);
+
+if (!room.wet || !room.dry) {
+  fail('the reverberant or the dry take was declined outright');
+} else {
+  step(
+    `  reverberant: ${room.wet.duration.toFixed(2)}s, room ` +
+      `${room.wet.roomT60 === null ? 'not found' : `${room.wet.roomT60.toFixed(2)}s`} · ` +
+      `dry: ${room.dry.duration.toFixed(2)}s, room ` +
+      `${room.dry.roomT60 === null ? 'not found' : `${room.dry.roomT60.toFixed(2)}s`}`
+  );
+
+  if (room.wet.roomT60 === null) {
+    fail(`a take convolved with a ${T60}s room came back reporting no room at all`);
+  } else if (room.wet.roomT60 < T60 * 0.5 || room.wet.roomT60 > T60 * 1.6) {
+    fail(
+      `a ${T60}s room was measured as ${room.wet.roomT60.toFixed(2)}s — far enough out that ` +
+        'the subtraction depth is set from the wrong number'
+    );
+  }
+
+  // A dry take must be left alone. This is the safety property: the cost of
+  // suppressing a room that is not there is a hollowed-out voice, and there is
+  // no upside at all.
+  if (room.dry.roomT60 !== null) {
+    fail(
+      `a dry take was treated as a ${room.dry.roomT60.toFixed(2)}s room — it will come back ` +
+        'thinner than it went in for no reason'
+    );
+  }
+
+  // And the effect that matters end to end. The trim keeps going while the
+  // level stays above the release gate, so an untouched reverb tail holds the
+  // gate open and the clip comes out long. With the room suppressed it should
+  // land near where the dry take lands.
+  const stretch = room.wet.duration - room.dry.duration;
+  if (stretch > 0.35) {
+    fail(
+      `the reverberant take trimmed to ${room.wet.duration.toFixed(2)}s against the dry ` +
+        `take's ${room.dry.duration.toFixed(2)}s — the tail is still holding the gate open`
+    );
+  }
+}
+
 await finish();

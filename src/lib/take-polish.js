@@ -1,6 +1,22 @@
 /**
- * Tidies a recording after it has been made: trims silence, reduces the room,
- * evens the level.
+ * Tidies a recording after it has been made: takes the room off, trims the
+ * silence, evens the level.
+ *
+ * ## Two different things are both called "the room"
+ *
+ * Worth separating up front, because conflating them is how this file spent
+ * months claiming to do something it did not.
+ *
+ *   - **The noise floor** — hiss, a fridge, the street. Constant, broadband,
+ *     under everything. Handled here, by measuring it and setting every
+ *     threshold relative to it.
+ *   - **Reverberation** — the same voice arriving again off the walls, decaying
+ *     over half a second or more. Handled by src/lib/dereverb.js, which is a
+ *     separate job needing a spectral method, and which did not exist until
+ *     somebody asked whether the reverb fix worked and the honest answer was
+ *     no. The expander below opens 14 dB above the noise floor; a reverb tail
+ *     sits 10 to 25 dB below the *voice*, which on any real take is far above
+ *     that, so nothing here has ever touched it.
  *
  * These have to happen after capture rather than through microphone
  * constraints, because neither is knowable while recording. You cannot trim to
@@ -15,7 +31,7 @@
  * a three-year-old will not wait through. Trimming is what makes a sequence of
  * separately recorded clips sound like one sentence.
  *
- * ## Everything here is measured against the room, not against the peak
+ * ## Everything here is measured against the noise floor, not against the peak
  *
  * This is the assumption the first version of this file got wrong, and it is
  * worth stating plainly: **a recording made on a phone contains no silence.**
@@ -50,6 +66,8 @@
  * slightly long is a small problem; a recording that vanished because the
  * tidying threw is the parent's voice gone.
  */
+
+import { dereverb } from './dereverb.js';
 
 /**
  * Frame length for the level envelope. Long enough that one glottal pulse does
@@ -138,23 +156,58 @@ const MAX_GAIN = 6;
 const NOISE_CEILING_DB = -32;
 
 /**
- * Studio-ish cleanup that is safe to do in a browser without a noise print.
+ * The hiss, not the reverberation.
  *
- * This is not magic spectral repair. The reliable win for these one-word phone
- * takes is removing the noise you hear before and after the word, and reducing
- * the hiss between quiet syllable parts without putting a robot gate on the
- * voice. A soft downward expander does that: anything down near the measured
- * room floor is pushed lower, while samples that clearly belong to the voice are
- * left alone.
+ * A soft downward expander: anything down near the measured noise floor is
+ * pushed lower, while samples that clearly belong to the voice are left alone.
+ * That removes the noise you hear before and after the word without putting a
+ * robot gate on it.
+ *
+ * It does nothing whatever to reverb, and the numbers say why: it is fully open
+ * 14 dB above the noise floor — around -26 dBFS on a typical phone take — while
+ * a tail off the walls of a small room sits between -12 and -27 dBFS under a
+ * voice peaking at -2. See dereverb.js for the part that does.
  */
 const NOISE_REDUCTION_DB = 16;
 const EXPANDER_CLOSE_ABOVE_NOISE_DB = 4;
 const EXPANDER_OPEN_ABOVE_NOISE_DB = 14;
 
-/** A gentle high-pass, enough to remove taps/handling rumble below speech. */
+/**
+ * A gentle high-pass, enough to remove taps/handling rumble below speech.
+ *
+ * Also not a reverb control, for the avoidance of the doubt this file has
+ * earned: a small room is audible from roughly 200 Hz to 2 kHz, an octave and
+ * a half above anything this touches.
+ */
 const HIGHPASS_HZ = 75;
 
 const dB = (amplitude) => 20 * Math.log10(Math.max(amplitude, 1e-9));
+
+/**
+ * The take with its reverberation suppressed, or null if there was none worth
+ * removing.
+ *
+ * Runs on the whole take, **before** trimming, and that ordering is not
+ * incidental: the room is measured from the decay after the word stops, and
+ * trimming is precisely the step that throws that decay away. Measure first,
+ * then cut.
+ *
+ * Every channel gets the T60 measured from the first one rather than its own.
+ * These takes are mono in practice, but a stereo take whose two channels were
+ * subtracted by different amounts would come apart in the middle.
+ */
+function removeRoom(ctx, buffer) {
+  const first = dereverb(buffer.getChannelData(0), buffer.sampleRate);
+  if (!first) return null;
+
+  const out = ctx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+  out.getChannelData(0).set(first.samples);
+  for (let c = 1; c < buffer.numberOfChannels; c++) {
+    const channel = dereverb(buffer.getChannelData(c), buffer.sampleRate, { t60: first.t60 });
+    out.getChannelData(c).set(channel ? channel.samples : buffer.getChannelData(c));
+  }
+  return { buffer: out, t60: first.t60 };
+}
 
 /** The value at a percentile of a list, which this sorts in place. */
 function percentile(values, fraction) {
@@ -366,17 +419,26 @@ function encode(ctx, buffer, mime) {
  * @param {Blob} blob the take as recorded
  * @param {string} mime the container to write back
  * @returns {Promise<{blob: Blob, removedMs: number, gain: number,
- *   noiseReductionDb: number}|null>} null when nothing could usefully be done,
- *   in which case keep the original.
+ *   noiseReductionDb: number, roomT60: number|null}|null>} null when nothing
+ *   could usefully be done, in which case keep the original. `roomT60` is the
+ *   reverberation time that was found and suppressed, or null if the take was
+ *   dry enough to leave alone.
  */
 export async function polishTake(ctx, blob, mime) {
   if (!ctx || !blob?.size) return null;
   try {
     const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
-    const bounds = findSpeech(decoded);
+
+    // The room first, while the take still has the tail the room is measured
+    // from. Declining is normal — a take made close to the mic has nothing to
+    // remove — and the rest of the tidying runs on whichever buffer resulted.
+    const room = removeRoom(ctx, decoded);
+    const source = room?.buffer ?? decoded;
+
+    const bounds = findSpeech(source);
     if (!bounds) return null;
 
-    const trimmed = trimAndLevel(ctx, decoded, bounds);
+    const trimmed = trimAndLevel(ctx, source, bounds);
     if (!trimmed) return null;
 
     const encoded = await encode(ctx, trimmed.buffer, mime);
@@ -387,6 +449,7 @@ export async function polishTake(ctx, blob, mime) {
       removedMs: Math.round((decoded.duration - trimmed.buffer.duration) * 1000),
       gain: trimmed.gain,
       noiseReductionDb: trimmed.noiseReductionDb,
+      roomT60: room?.t60 ?? null,
     };
   } catch {
     // Anything at all going wrong here means keeping the take as recorded.

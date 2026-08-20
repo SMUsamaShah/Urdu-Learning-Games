@@ -616,6 +616,7 @@ export function buildRecorderPage() {
         if (polished) {
           blob = polished.blob;
           note = `trimmed ${(polished.removedMs / 1000).toFixed(1)}s`;
+          if (polished.roomT60) note += `, ${polished.roomT60.toFixed(1)}s room reduced`;
           if (polished.noiseReductionDb) note += `, hiss −${polished.noiseReductionDb} dB`;
           if (polished.gain > 1.15) note += `, level +${polished.gain.toFixed(1)}×`;
         }
