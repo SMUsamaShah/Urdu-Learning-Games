@@ -6,7 +6,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
-import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
+import { COLORS, label, makeButton, PLAY } from '../lib/theme.js';
 
 /**
  * The shape every "which one is it?" game in this app has.
@@ -62,7 +62,7 @@ export default class QuizScene extends Phaser.Scene {
      * left of every screen and a four-wide line-up centred on the canvas would
      * put its last tile through it.
      */
-    this.stageX = DESIGN.width / 2 + 48;
+    this.stageX = PLAY.centerX;
     /** Shape of a choice: 'card', or 'star' for the games whose answers float. */
     this.tileShape = 'card';
     /** The ribbon at the top. Subclasses set these; see content/ui.json. */

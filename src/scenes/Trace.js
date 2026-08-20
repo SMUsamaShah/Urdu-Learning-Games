@@ -11,7 +11,7 @@ import { createGuide } from '../lib/guided-trace.js';
 import { hasStrokes } from '../lib/strokes.js';
 import { sayLetter } from '../lib/say.js';
 import { sparkleTrail, sparkleBurst } from '../lib/particles.js';
-import { COLORS, DESIGN, RAIL_EDGE, familyColor, label, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, familyColor, label, makeButton, PLAY } from '../lib/theme.js';
 
 /**
  * Writing the letter with a finger. Two games, depending on the letter.
@@ -153,7 +153,7 @@ export default class Trace extends Phaser.Scene {
     const tintCss = '#' + tint.toString(16).padStart(6, '0');
 
     const width = glyphWidth(glyph, GLYPH_HEIGHT);
-    const centreX = DESIGN.width / 2;
+    const centreX = PLAY.centerX;
     const centreY = 380;
     const left = centreX - width / 2;
     const top = centreY - GLYPH_HEIGHT / 2;
@@ -460,7 +460,7 @@ export default class Trace extends Phaser.Scene {
 
   drawProgress(fraction) {
     const w = 460;
-    const x = DESIGN.width / 2 - w / 2;
+    const x = PLAY.centerX - w / 2;
     const y = DESIGN.height - 58;
     this.progressBar.clear();
     this.progressBar.fillStyle(0x000000, 0.08);
@@ -490,11 +490,11 @@ export default class Trace extends Phaser.Scene {
     this.trail?.stop();
     finished();
     this.drawProgress(1);
-    confetti(this, DESIGN.width / 2, 300, { count: 30, spread: 320 });
+    confetti(this, PLAY.centerX, 300, { count: 30, spread: 320 });
     // The sparkles burst out of the letter itself rather than from the middle
     // of the screen: the shape they have just filled in is the thing that
     // should be seen to go off.
-    sparkleBurst(this, DESIGN.width / 2, 360, { count: 44, speed: 420 });
+    sparkleBurst(this, PLAY.centerX, 360, { count: 44, speed: 420 });
     // Finishing a letter is a whole activity completed, not one answer among
     // many, so it gets the full-screen version every time.
     wellDone(this, this.stage, { duration: 2400 });

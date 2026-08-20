@@ -13,7 +13,7 @@
 
 import { uiGlyph, uiGlyphs } from './content.js';
 import { addGlyph, fitEmAlone, glyphMetrics } from './glyph.js';
-import { COLORS, DESIGN, label } from './theme.js';
+import { COLORS, label, PLAY } from './theme.js';
 
 const RIBBON = 0x2f7fd6;
 const RIBBON_DARK = 0x1d5aa8;
@@ -119,7 +119,7 @@ function tail(g, side, innerX, height, middle) {
  */
 export function addBanner(scene, config) {
   const { y = 60 } = config;
-  const banner = scene.add.container(DESIGN.width / 2, y).setDepth(20);
+  const banner = scene.add.container(PLAY.centerX, y).setDepth(20);
 
   const plate = scene.add.graphics();
   banner.add(plate);

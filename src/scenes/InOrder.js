@@ -8,7 +8,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayLetters } from '../lib/say.js';
-import { COLORS, DESIGN, RAIL_EDGE, familyColor } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, familyColor, PLAY } from '../lib/theme.js';
 
 /**
  * Pop them in order.
@@ -226,7 +226,7 @@ export default class InOrder extends Phaser.Scene {
    */
   addToTrail(letterId, index) {
     const step = 104;
-    const startX = DESIGN.width / 2 + ((this.run.length - 1) * step) / 2;
+    const startX = PLAY.centerX + ((this.run.length - 1) * step) / 2;
     const chip = this.add.container(startX - index * step, TRAIL_Y);
 
     const plate = this.add.graphics();

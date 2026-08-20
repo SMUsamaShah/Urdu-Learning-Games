@@ -23,9 +23,6 @@
 
 import { fail, openApp, startScene, step } from './harness.mjs';
 
-/** Must match RAIL in src/lib/theme.js. */
-const RAIL = { width: 200, gap: 56 };
-
 /** Every game. Flashcards is deliberately bare — see its create(). */
 const GAMES = [
   'FindLetter',
@@ -54,6 +51,20 @@ const GAMES = [
 ];
 
 const { page, finish } = await openApp({ name: 'rail' });
+
+/**
+ * The rail's width, read from the app.
+ *
+ * It was a copy of `RAIL` typed in here with a comment saying it must match
+ * theme.js, and the first time the rail changed width the copy did not: every
+ * screen's prompt card was suddenly reported as reaching into a panel it was
+ * thirty pixels clear of. A check that has to be edited whenever the thing it
+ * checks moves is a check that will one day be edited wrongly.
+ */
+const RAIL = await page.evaluate(async () => {
+  const { RAIL: rail } = await import('/src/lib/theme.js');
+  return { width: rail.width, gap: rail.gap };
+});
 
 // Something to show, so an indicator is not sitting at zero where a change of
 // one step might round to no change at all.

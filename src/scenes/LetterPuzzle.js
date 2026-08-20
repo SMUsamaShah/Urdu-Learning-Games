@@ -9,7 +9,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { hop } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
-import { DESIGN, familyColor, label } from '../lib/theme.js';
+import { DESIGN, familyColor, label, PLAY } from '../lib/theme.js';
 
 /**
  * Put the letter back together.
@@ -145,7 +145,7 @@ export default class LetterPuzzle extends Phaser.Scene {
     const tintCss = '#' + tint.toString(16).padStart(6, '0');
 
     const width = glyphWidth(glyph, LETTER_HEIGHT);
-    const centreX = DESIGN.width / 2 + 40;
+    const centreX = PLAY.centerX;
     const centreY = 330;
 
     // The ghost: the whole letter in a pale shade, showing where the pieces go.
@@ -179,7 +179,7 @@ export default class LetterPuzzle extends Phaser.Scene {
       Array.from({ length: count }, (_, i) => i)
     );
     const trayStep = Math.min(210, (DESIGN.width - 380) / count);
-    const trayStart = DESIGN.width / 2 + ((count - 1) * trayStep) / 2;
+    const trayStart = PLAY.centerX + ((count - 1) * trayStep) / 2;
 
     for (let i = 0; i < count; i++) {
       const frame = `strip${i}`;

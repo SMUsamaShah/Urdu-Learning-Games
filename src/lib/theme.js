@@ -20,11 +20,40 @@ export const DESIGN = { width: 1280, height: 720 };
  *
  * `gap` is the clear space a game leaves between the rail and its own content:
  * nothing the child taps should touch the panel.
+ *
+ * It was 200 + 56, which is 256 pixels — a fifth of the screen — spent on a
+ * plant. The reference apps this is chasing have no progress furniture on their
+ * play screens at all, and 128 + 32 is the narrowest the vine still reads at
+ * with twenty flowers up it (`npm run preview-indicators`, which now measures
+ * the box rather than being told it). The home button is 96 wide and still sits
+ * inside with room either side.
  */
-export const RAIL = { width: 200, gap: 56 };
+export const RAIL = { width: 128, gap: 32 };
 
 /** The first x a game may use. */
 export const RAIL_EDGE = RAIL.width + RAIL.gap;
+
+/**
+ * The part of the screen that belongs to the game, and its middle.
+ *
+ * `DESIGN.width / 2` is the middle of the canvas, and on every screen with a
+ * rail on it that is **not** the middle of anything a child is looking at — it
+ * is a quarter of the way across the play area, with the rail's 256 pixels
+ * pulling the whole picture off centre. Games laid out around it come out
+ * hugging the panel with a void down the right.
+ *
+ * Every screen had already noticed and nobody had said so: the boards were
+ * written as `DESIGN.width / 2 + 48`, `+ 40`, `+ 30`, each a different guess at
+ * the same correction, exactly the way the left margin was 250, 268, 280, 300,
+ * 320 and 330 before RAIL existed. So it is one number here, derived rather
+ * than typed, and it moves when the rail moves.
+ */
+export const PLAY = {
+  left: RAIL_EDGE,
+  right: DESIGN.width,
+  width: DESIGN.width - RAIL_EDGE,
+  centerX: (RAIL_EDGE + DESIGN.width) / 2,
+};
 
 /**
  * A bright palette, because the audience is three.

@@ -9,7 +9,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayLetters } from '../lib/say.js';
-import { COLORS, DESIGN, RAIL_EDGE, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, makeButton, PLAY } from '../lib/theme.js';
 
 /**
  * Put the missing letters back into the caterpillar.
@@ -243,7 +243,7 @@ export default class Caterpillar extends Phaser.Scene {
 
   buildTray(ids) {
     const step = 130;
-    const startX = DESIGN.width / 2 + ((ids.length - 1) * step) / 2;
+    const startX = PLAY.centerX + ((ids.length - 1) * step) / 2;
     const em = this.letterEm(96);
 
     ids.forEach((id, index) => {

@@ -9,7 +9,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob, hop } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
-import { COLORS, DESIGN, RAIL_EDGE } from '../lib/theme.js';
+import { COLORS, DESIGN, RAIL_EDGE, PLAY } from '../lib/theme.js';
 
 /**
  * Put each letter in the basket it belongs to.
@@ -134,7 +134,7 @@ export default class Baskets extends Phaser.Scene {
   buildBaskets() {
     const { em } = fitEmAlone(allLetterGlyphs('isolated'), 96, 64);
     const step = BASKET.width + 120;
-    const startX = DESIGN.width / 2 + step / 2;
+    const startX = PLAY.centerX + step / 2;
 
     this.kinds.forEach((id, index) => {
       const x = startX - index * step;

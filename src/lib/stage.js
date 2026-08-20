@@ -38,7 +38,19 @@ import { randomPraise } from './praise.js';
 import { sayPraise } from './say.js';
 
 /** The rail, and everything the rail carries, sits above the game. */
-const RAIL_DEPTH = 3;
+/**
+ * The rail sits above the game, not beside it.
+ *
+ * It used to be depth 3, which is under everything a game draws, and the claim
+ * the rail was built on — opaque, floor to ceiling, nothing showing through —
+ * was only true because most games happen to stay out of its 200 pixels.
+ * Fishing does not: its fish are recycled off one edge and back in the other,
+ * so they swam straight across the panel.
+ *
+ * Above the games (which reach depth 30) and below the star thrown from an
+ * answer into the rail (60), because that one has to land *on* it.
+ */
+const RAIL_DEPTH = 40;
 
 /**
  * Progress has its own strip down the left of every game screen, and the way

@@ -99,16 +99,25 @@ async function sheet(file, plan) {
 }
 
 /**
- * The rail's own box, near enough: 200 wide, 570 tall.
+ * The rail's own box, read from the app rather than typed here.
  *
- * It used to be 380 tall here, which is exactly how an indicator that filled
- * two thirds of the real rail passed a look at this sheet. The sheet is the
- * only place the shape of the thing is judged, so it has to be the shape.
+ * It used to be 380 tall on this sheet, which is exactly how an indicator that
+ * filled two thirds of the real rail passed a look at it. The sheet is the only
+ * place the shape of the thing is judged, so it has to be the shape — and that
+ * means it cannot be a pair of numbers that stay behind when the rail changes
+ * width.
  */
+const RAIL_BOX = await page.evaluate(async () => {
+  const { RAIL, DESIGN } = await import('/src/lib/theme.js');
+  // Matching TOP and FOOT in src/lib/rail.js: the home button's corner, and a
+  // little air at the bottom.
+  return { width: RAIL.width, height: DESIGN.height - 132 - 18 };
+});
+
 const place = (i) => ({
-  width: 200,
-  height: 560,
-  x: 100 + i * 196,
+  width: RAIL_BOX.width,
+  height: RAIL_BOX.height,
+  x: RAIL_BOX.width / 2 + 8 + i * (RAIL_BOX.width + 12),
   y: 690,
   scale: 0.9,
 });

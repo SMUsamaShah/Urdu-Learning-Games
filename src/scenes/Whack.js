@@ -9,7 +9,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { bob, squash } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
-import { COLORS, RAIL_EDGE, familyColor, makeButton } from '../lib/theme.js';
+import { COLORS, RAIL_EDGE, familyColor, makeButton, PLAY } from '../lib/theme.js';
 
 /**
  * Tap the letter while it is up.
@@ -53,13 +53,14 @@ const MAX_UP = 3;
  * All of them on the grass. An earlier set had the back row at y=300, which is
  * sky on this backdrop — three holes hanging in the air above the field.
  */
+const SPREAD = 230;
 const HOLES = [
-  { x: 470, y: 505 },
-  { x: 700, y: 478 },
-  { x: 930, y: 505 },
-  { x: 470, y: 648 },
-  { x: 700, y: 672 },
-  { x: 930, y: 648 },
+  { x: PLAY.centerX - SPREAD, y: 505 },
+  { x: PLAY.centerX, y: 478 },
+  { x: PLAY.centerX + SPREAD, y: 505 },
+  { x: PLAY.centerX - SPREAD, y: 648 },
+  { x: PLAY.centerX, y: 672 },
+  { x: PLAY.centerX + SPREAD, y: 648 },
 ];
 const LETTER_BOX = 108;
 

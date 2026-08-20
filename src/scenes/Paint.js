@@ -8,7 +8,7 @@ import { addStage, wellDone } from '../lib/stage.js';
 import { hop, squash } from '../lib/liveliness.js';
 import { sparkleBurst, sparkleTrail } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
-import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
+import { COLORS, DESIGN, label, makeButton, PLAY } from '../lib/theme.js';
 
 /**
  * Colour the letter in, in whatever colour you like.
@@ -115,7 +115,7 @@ export default class Paint extends Phaser.Scene {
 
   buildPalette() {
     const step = 78;
-    const startX = DESIGN.width / 2 + ((PAINTS.length - 1) * step) / 2;
+    const startX = PLAY.centerX + ((PAINTS.length - 1) * step) / 2;
     this.pots = [];
 
     PAINTS.forEach((colour, index) => {
@@ -159,7 +159,7 @@ export default class Paint extends Phaser.Scene {
     const id = this.letterId;
     const glyph = letterGlyph(id, 'isolated');
     const width = glyphWidth(glyph, LETTER_HEIGHT);
-    this.centre = { x: DESIGN.width / 2 + 30, y: 350 };
+    this.centre = { x: PLAY.centerX, y: 350 };
     this.half = { w: width / 2, h: LETTER_HEIGHT / 2 };
 
     // The letter as an outline to colour inside, in the palest possible ink.
