@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { allLetterGlyphs, letterGlyph, lettersById, shapeFamilySiblings } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
+import { basket as drawBasket } from '../lib/props.js';
 import * as sfx from '../lib/sfx.js';
 import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
@@ -143,22 +144,17 @@ export default class Baskets extends Phaser.Scene {
       basket.letterId = id;
       basket.x0 = x;
 
-      const box = this.add.graphics();
-      box.fillStyle(COLORS.shadow, 0.2);
-      box.fillRoundedRect(-BASKET.width / 2, -BASKET.height / 2 + 8, BASKET.width, BASKET.height, 20);
-      box.fillStyle(colour, 1);
-      box.fillRoundedRect(-BASKET.width / 2, -BASKET.height / 2, BASKET.width, BASKET.height, 20);
-      // A pale band across the top, so it reads as a basket with an opening
-      // rather than as a coloured slab.
-      box.fillStyle(0xffffff, 0.32);
-      box.fillRoundedRect(-BASKET.width / 2 + 10, -BASKET.height / 2 + 10, BASKET.width - 20, 44, 14);
-      basket.add(box);
+      // An actual basket, woven, open at the top and standing on the ground —
+      // not a coloured slab with a pale stripe. The backdrop behind this screen
+      // is a market with real baskets painted into it, so the slab was losing a
+      // comparison the child could make without moving their eyes.
+      basket.add(drawBasket(this, { ...BASKET, color: colour }));
 
       basket.add(
         addGlyph(
           this,
           0,
-          14,
+          BASKET.height * 0.09,
           `baskets-label:em${Math.round(em)}:${id}`,
           letterGlyph(id, 'isolated'),
           { em, color: COLORS.onColor }

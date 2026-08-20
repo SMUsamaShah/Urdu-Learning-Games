@@ -1283,4 +1283,53 @@ if (!process.exitCode) {
   }
 }
 
+// --- The furniture stays on the screen ---------------------------------------
+//
+// Props are baked into a texture whose size is worked out from the drawing, and
+// getting that arithmetic wrong does not throw — it silently crops. The first
+// caterpillar lost the side of its head that way, and then, once the texture
+// was big enough, ran the head off the right of the canvas instead. Both are
+// invisible unless somebody opens that one screen.
+
+step('every prop fits on the screen');
+
+const PROP_SCREENS = ['Caterpillar', 'Baskets'];
+for (const key of PROP_SCREENS) {
+  await start(key);
+  const props = await page.evaluate((name) => {
+    const scene = window.__game.scene.getScene(name);
+    const found = [];
+    const walk = (list) => {
+      for (const item of list) {
+        if (item.name === 'prop' && item.getBounds) {
+          const box = item.getBounds();
+          found.push({
+            left: Math.round(box.left),
+            right: Math.round(box.right),
+            top: Math.round(box.top),
+            bottom: Math.round(box.bottom),
+          });
+        }
+        if (item.list) walk(item.list);
+      }
+    };
+    walk(scene.children.list);
+    return { props: found, width: window.__game.scale.width, height: window.__game.scale.height };
+  }, key);
+
+  if (!props.props.length) {
+    fail(`${key} drew no props at all`);
+    continue;
+  }
+  for (const box of props.props) {
+    if (box.left < 0 || box.right > props.width || box.top < 0 || box.bottom > props.height) {
+      fail(
+        `${key}: a prop runs off the screen — ${box.left}..${box.right} x ` +
+          `${box.top}..${box.bottom} on a ${props.width}x${props.height} stage`
+      );
+    }
+  }
+  if (!process.exitCode) step(`  ${key}: ${props.props.length} prop(s), all on screen`);
+}
+
 await finish();

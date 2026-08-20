@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { allLetterGlyphs, letterGlyph, sequenceFor } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
+import { caterpillar as drawCaterpillar } from '../lib/props.js';
 import * as sfx from '../lib/sfx.js';
 import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
@@ -59,6 +60,14 @@ export default class Caterpillar extends Phaser.Scene {
     // machinery — see NumberLine. Phaser reads the key from the Scene
     // constructor, so it cannot be set afterwards.
     super(key);
+    /**
+     * Whether the row of segments is drawn as a creature.
+     *
+     * True here and false for NumberLine, which shares all of this machinery
+     * and is a line of numbers rather than an animal. A caterpillar with
+     * numerals down its back would be a different game claiming to be this one.
+     */
+    this.showCreature = key === 'Caterpillar';
     /** @type {string[]} */
     this.sequence = [];
     this.round = 0;
@@ -163,21 +172,42 @@ export default class Caterpillar extends Phaser.Scene {
 
   buildBody() {
     const step = SEGMENT + GAP;
+    // The head sticks out past the first segment, so the row has to stop short
+    // of the edge by that much or the face is cropped off the screen.
+    const headRoom = this.showCreature ? SEGMENT * 1.6 : 0;
+    const right = BODY.right - headRoom;
     // Two rows if the run will not fit across the screen at a readable size.
-    const perRow = Math.min(this.run.length, Math.floor((BODY.right - BODY.left) / step));
+    const perRow = Math.min(this.run.length, Math.floor((right - BODY.left) / step));
     const rows = Math.ceil(this.run.length / perRow);
     const em = this.letterEm(SEGMENT - 30);
     this.segments = [];
 
-    this.run.forEach((id, index) => {
+    // Where every segment goes, worked out before anything is drawn, because
+    // the creature underneath them is one shape across the whole row and cannot
+    // be assembled a piece at a time.
+    const places = this.run.map((id, index) => {
       const row = Math.floor(index / perRow);
       const column = index % perRow;
       const inRow = Math.min(this.run.length - row * perRow, perRow);
       // Right to left: the alphabet starts at the right-hand end.
       const rowWidth = inRow * step - GAP;
-      const rightEdge = (BODY.left + BODY.right) / 2 + rowWidth / 2;
-      const x = rightEdge - column * step - SEGMENT / 2;
-      const y = BODY.top + row * (SEGMENT + 22) + SEGMENT / 2;
+      const rightEdge = (BODY.left + right) / 2 + rowWidth / 2;
+      return {
+        x: rightEdge - column * step - SEGMENT / 2,
+        y: BODY.top + row * (SEGMENT + 22) + SEGMENT / 2,
+      };
+    });
+
+    // The caterpillar this game is named after, which it did not have: the
+    // screen was a row of white circles. The segments are unchanged — they are
+    // the game and they have to stay legible — and this goes underneath them.
+    if (this.showCreature) {
+      const creature = drawCaterpillar(this, places, SEGMENT / 2);
+      if (creature) this.body.add(creature);
+    }
+
+    this.run.forEach((id, index) => {
+      const { x, y } = places[index];
 
       const isHole = this.holes.includes(index);
       const segment = this.add.container(x, y);
