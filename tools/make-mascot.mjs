@@ -75,8 +75,9 @@ const STYLE =
   'Soft-shaded cartoon illustration for a preschool app, plush toy feel, fuzzy ' +
   'fur texture, gentle rounded shapes, warm friendly lighting, a bold dark ' +
   'outline around the whole character so it reads at small size, the whole ' +
-  'character visible with clear space around it, plain solid pure white ' +
-  'background, no text, no letters, no numbers, no shadow, no ground, no scenery';
+  'character visible with clear space around it, on a fully transparent ' +
+  'background with nothing behind it, no text, no letters, no numbers, ' +
+  'no ground, no scenery';
 
 const POSES = {
   idle: 'standing still and smiling, front legs relaxed at its sides',
@@ -118,7 +119,15 @@ async function post(url, body, headers = {}) {
 const generate = (prompt) =>
   post(
     'https://api.openai.com/v1/images/generations',
-    JSON.stringify({ model: MODEL, prompt, size: `${SIZE}x${SIZE}`, quality: 'low', n: 1 }),
+    JSON.stringify({
+      model: MODEL,
+      prompt,
+      size: `${SIZE}x${SIZE}`,
+      quality: 'low',
+      background: 'transparent',
+      output_format: 'png',
+      n: 1,
+    }),
     { 'content-type': 'application/json' }
   );
 
@@ -129,6 +138,11 @@ function edit(file, prompt) {
   form.set('prompt', prompt);
   form.set('size', `${SIZE}x${SIZE}`);
   form.set('quality', 'low');
+  // Asked for on the edit as well as the generation. If the edits endpoint
+  // ignores it the picture comes back on white and cutout.mjs keys it, which
+  // is the arrangement that held for every frame drawn before this.
+  form.set('background', 'transparent');
+  form.set('output_format', 'png');
   form.set('n', '1');
   form.set('image', new Blob([fs.readFileSync(file)], { type: 'image/png' }), 'base.png');
   return post('https://api.openai.com/v1/images/edits', form);
