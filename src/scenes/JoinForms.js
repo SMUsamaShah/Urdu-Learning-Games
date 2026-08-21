@@ -16,6 +16,7 @@ import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, label } from '../lib/theme.js';
+import { pickSomeWeighted } from '../lib/mastery.js';
 
 /**
  * Join each letter to the same letter wearing a different face.
@@ -130,7 +131,7 @@ export default class JoinForms extends Phaser.Scene {
       PAIRS_BY_ROUND[Math.min(this.round, PAIRS_BY_ROUND.length - 1)],
       this.pool.length
     );
-    const letters = Phaser.Utils.Array.Shuffle([...this.pool]).slice(0, pairs);
+    const letters = pickSomeWeighted('letter', this.pool, pairs);
 
     // One em for the whole alphabet in both rows, not per board: a letter that
     // is bigger than its neighbours is a hint, and a size that changes between
@@ -277,7 +278,7 @@ export default class JoinForms extends Phaser.Scene {
   }
 
   reject(first, second) {
-    wrongAnswer();
+    wrongAnswer({ subject: { kind: 'letter', id: first.letterId } });
     this.rail?.wonder();
     // A wobble on both, then everything back as it was. No score to lose and
     // nothing removed from the board — the pair they wanted is still there.
@@ -296,7 +297,7 @@ export default class JoinForms extends Phaser.Scene {
   }
 
   join(first, second) {
-    rightAnswer();
+    rightAnswer({ kind: 'letter', id: first.letterId });
     sfx.sparkle();
     this.joined++;
 

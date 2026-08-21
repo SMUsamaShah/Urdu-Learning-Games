@@ -11,6 +11,7 @@ import { bob } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, makeButton } from '../lib/theme.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Catch the letter on the way up.
@@ -128,8 +129,7 @@ export default class Bounce extends Phaser.Scene {
     this.locked = false;
     for (const ball of [...this.balls]) this.remove(ball);
 
-    const pool = this.pool.filter((id) => id !== this.target);
-    this.target = Phaser.Utils.Array.GetRandom(pool.length ? pool : this.pool);
+    this.target = pickWeighted('letter', this.pool, { avoid: [this.target] });
 
     this.banner?.setInstruction('catch-bounce', 'Catch it bouncing');
     this.buildPrompt();
@@ -264,7 +264,7 @@ export default class Bounce extends Phaser.Scene {
     if (this.locked || !ball.active) return;
 
     if (ball.letterId !== this.target) {
-      wrongAnswer();
+      wrongAnswer({ subject: { kind: 'letter', id: this.target } });
       this.rail?.wonder();
       // It keeps bouncing. Nothing is removed, so the right one is never harder
       // to find because of a wrong guess.
@@ -282,7 +282,7 @@ export default class Bounce extends Phaser.Scene {
     }
 
     this.locked = true;
-    rightAnswer();
+    rightAnswer({ kind: 'letter', id: this.target });
     sfx.pop();
     this.streak++;
     popPuff(this, ball.x, ball.y, familyColor(lettersById.get(this.target).shapeFamily));

@@ -20,6 +20,7 @@ import { armDragging, carry, nearest, refuse, swimHome } from '../lib/dragging.j
 import { bob, hop, popIn } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, PLAY, familyColor, makeButton } from '../lib/theme.js';
+import { weightOf } from '../lib/mastery.js';
 
 /**
  * Build the word out of its letters.
@@ -119,7 +120,14 @@ export default class BuildWord extends Phaser.Scene {
     this.locked = false;
 
     const plan = spellingPlan();
-    const word = pickWord(previous);
+    // Weighed by the letters in it, like FillLetter: this screen asks him to
+    // spell, so every letter of the word is a question and the word itself is
+    // not one. The best letter rather than the average, for the reason given
+    // there.
+    const word = pickWord(previous, undefined, (candidate) => {
+      const inside = brokenWord(candidate.id) ?? [];
+      return inside.length ? Math.max(...inside.map((id) => weightOf('letter', id))) : 1;
+    });
     this.wordId = word.id;
     this.letters = brokenWord(word.id);
     this.hinting = plan.hint;
@@ -319,7 +327,7 @@ export default class BuildWord extends Phaser.Scene {
     if (!slot) return swimHome(this, tile);
 
     if (tile.letterId !== slot.letterId) {
-      wrongAnswer();
+      wrongAnswer({ subject: { kind: 'letter', id: slot.letterId } });
       this.rail?.wonder();
       refuse(this, tile, slot);
       // Nothing is taken away and nothing is marked wrong. But being stuck is
@@ -336,7 +344,7 @@ export default class BuildWord extends Phaser.Scene {
     tile.used = true;
     tile.disableInteractive();
     tile.idle?.stop();
-    rightAnswer();
+    rightAnswer({ kind: 'letter', id: tile.letterId });
     sfx.sparkle();
 
     // The last few pixels are done for them. A letter that snaps into place

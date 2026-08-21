@@ -6,6 +6,7 @@ import { addWordImage, illustratedWords, queueWordImages } from '../lib/images.j
 import { sayWord } from '../lib/say.js';
 import { COLORS, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Which picture is this word?
@@ -28,6 +29,7 @@ export default class WordPictures extends QuizScene {
     super('WordPictures');
     this.instruction = 'find-picture';
     this.instructionRoman = 'Find the picture';
+    this.subjectKind = 'word';
     // Cards here rather than a shape: the answers are pictures with their
     // backgrounds cut away, and a picture needs a plain plate behind it to read
     // against. This is the reference apps' memory game, which uses cards too.
@@ -55,8 +57,7 @@ export default class WordPictures extends QuizScene {
   }
 
   pickTarget(previous) {
-    const pool = this.pool.filter((id) => id !== previous);
-    return Phaser.Utils.Array.GetRandom(pool.length ? pool : this.pool);
+    return pickWeighted('word', this.pool, { avoid: [previous] });
   }
 
   lineUpFor(target, count) {

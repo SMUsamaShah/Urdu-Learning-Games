@@ -30,6 +30,7 @@
 import { activeWords, brokenWord, wordsById } from './content.js';
 import { isEnabled } from './enabled.js';
 import { state } from './progress.js';
+import { chooseWeighted, weightOf } from './mastery.js';
 
 /**
  * The bands, by level. Read as: at this level and above, until the next one.
@@ -109,11 +110,15 @@ export function wordsOfLength(lengths) {
  * @param {string|null} previous
  * @param {number} [level]
  */
-export function pickWord(previous, level) {
+export function pickWord(previous, level, weigh) {
   const pool = wordsOfLength(spellingPlan(level).lengths);
   const fresh = pool.filter((word) => word.id !== previous);
   const from = fresh.length ? fresh : pool;
-  return from[Math.floor(Math.random() * from.length)];
+  // By how much the word is wanted, not evenly. `weigh` is a seam for
+  // FillLetter, which is asking about a *letter* inside the word and so wants
+  // words weighed by the letters in them rather than by his record of the word
+  // as a whole. Everything else asks about the word itself.
+  return chooseWeighted(from, weigh ?? ((word) => weightOf('word', word.id)));
 }
 
 /**

@@ -1581,4 +1581,88 @@ for (const key of PROP_SCREENS) {
   if (!process.exitCode) step(`  ${key}: ${props.props.length} prop(s), all on screen`);
 }
 
+// ------------------------------------------------- the letters he gets wrong
+
+/**
+ * That a wrong answer in a real game really does change what the games deal.
+ *
+ * tests/mastery.test.mjs already proves the distribution, by calling the module
+ * directly. What it cannot prove is that the wire is connected: that a scene
+ * passes a subject when it reports an answer, and that the same scene asks
+ * mastery for its next target rather than rolling a die. Both halves are one
+ * line each, in seventeen and twenty places, and either could be left out of a
+ * scene without a single test noticing.
+ *
+ * So this plays FindLetter badly on purpose and then counts.
+ */
+step('a letter he gets wrong comes back more often');
+
+await start('FindLetter');
+
+const MISSES = 8;
+const wrongOne = await page.evaluate(async (rounds) => {
+  const mastery = await import('/src/lib/mastery.js');
+  mastery.reset();
+  const scene = window.__game.scene.getScene('FindLetter');
+
+  // Answer the same letter wrong over and over. The scene has to be told which
+  // letter that is, so if it is the target that gets blamed rather than the
+  // tile that was tapped, this is the id that ends up with the record.
+  const blamed = scene.target;
+  for (let i = 0; i < rounds; i++) {
+    const wrong = scene.choicesLayer.list.find((t) => t.choiceId !== scene.target);
+    if (!wrong) break;
+    wrong.emit('pointerup');
+    await new Promise((r) => setTimeout(r, 40));
+  }
+  return { blamed, history: mastery.historyOf('letter', blamed) };
+}, MISSES);
+
+if (!wrongOne.history.length) {
+  fail(
+    'playing a game wrong recorded nothing — the scene is not passing a subject ' +
+      'to wrongAnswer, so nothing it does will ever change what it deals'
+  );
+} else if (wrongOne.history.includes('1')) {
+  fail(`only wrong answers were given, but the record reads "${wrongOne.history}"`);
+} else {
+  step(`  ${MISSES} wrong answers on "${wrongOne.blamed}" recorded as ${wrongOne.history}`);
+}
+
+// And that the picking end reads it. Drawn through the scene's own pickTarget,
+// not through mastery directly, because the thing in doubt is the scene.
+//
+// **Against a letter he has never met, not against one he has mastered.** The
+// app's 4x is the gap between "always wrong" and "always right"; every other
+// letter here has been answered nought times and sits at the unseen weight of
+// 2, which is deliberately partway up. So the honest expectation on a fresh
+// record is about 2x, and asserting 4x here would be asserting something the
+// design does not claim. The 4x itself is proved in tests/mastery.test.mjs,
+// where the other letters can be mastered first.
+if (!process.exitCode) {
+  const share = await page.evaluate(async (id) => {
+    const scene = window.__game.scene.getScene('FindLetter');
+    const draws = 4000;
+    let hits = 0;
+    for (let i = 0; i < draws; i++) if (scene.pickTarget(null) === id) hits++;
+    return { hits, draws, pool: scene.sequence.length };
+  }, wrongOne.blamed);
+
+  const even = 1 / share.pool;
+  const got = share.hits / share.draws;
+  const lift = got / even;
+  if (lift < 1.6) {
+    fail(
+      `"${wrongOne.blamed}" was answered wrong ${MISSES} times and comes up ` +
+        `${lift.toFixed(2)}x an even deal — expected about 2x, so the scene is ` +
+        'picking its target without reading his record'
+    );
+  } else {
+    step(
+      `  and it now comes up ${lift.toFixed(1)}x as often as an even deal ` +
+        `(${(got * 100).toFixed(1)}% of ${share.draws}, against ${(even * 100).toFixed(1)}%)`
+    );
+  }
+}
+
 await finish();

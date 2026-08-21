@@ -12,6 +12,7 @@ import { clipKeys, hasClip } from '../lib/audio.js';
 import { sayLetter } from '../lib/say.js';
 import { COLORS, chunkyGlyphEm, familyColor, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Pick the letter out of a line-up.
@@ -54,9 +55,7 @@ export default class FindLetter extends QuizScene {
   }
 
   pickTarget(previous) {
-    return Phaser.Utils.Array.GetRandom(
-      this.sequence.filter((id) => id !== previous)
-    );
+    return pickWeighted('letter', this.sequence, { avoid: [previous] });
   }
 
   /**

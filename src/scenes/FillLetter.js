@@ -6,6 +6,7 @@ import { pickWord, shuffle, spellableWords } from '../lib/spelling.js';
 import { sayWord } from '../lib/say.js';
 import { COLORS, familyColor } from '../lib/theme.js';
 import { lettersById } from '../lib/content.js';
+import { chooseWeighted, weightOf } from '../lib/mastery.js';
 
 /**
  * One letter is missing. Which one?
@@ -88,7 +89,16 @@ export default class FillLetter extends QuizScene {
    * "never the same target twice running" applies to the letter.
    */
   pickTarget(previous) {
-    const word = pickWord(this.wordId);
+    // Words weighed by the letters inside them, because the question this
+    // screen asks is about a letter and the word is only where it lives. A word
+    // is worth dealing to the extent that it contains a letter he is missing,
+    // so the pull is the best letter in it rather than the average — one hard
+    // letter is a reason to show a word, three easy ones are not a reason not
+    // to.
+    const word = pickWord(this.wordId, undefined, (candidate) => {
+      const inside = (brokenWord(candidate.id) ?? []).slice(1);
+      return inside.length ? Math.max(...inside.map((id) => weightOf('letter', id))) : 1;
+    });
     this.wordId = word.id;
     const letters = brokenWord(word.id);
     // Never the first letter. That one is what StartsWith already asks about,
@@ -97,7 +107,7 @@ export default class FillLetter extends QuizScene {
     const choices = letters.map((id, index) => index).filter((index) => index > 0);
     const from = choices.filter((index) => letters[index] !== previous);
     const pool = from.length ? from : choices;
-    this.gap = pool[Math.floor(Math.random() * pool.length)];
+    this.gap = chooseWeighted(pool, (index) => weightOf('letter', letters[index]));
     return letters[this.gap];
   }
 

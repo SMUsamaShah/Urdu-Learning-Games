@@ -12,6 +12,7 @@ import { bob, hop, popIn } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayLetters } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, makeButton, PLAY } from '../lib/theme.js';
+import { chooseWeighted, weightOf } from '../lib/mastery.js';
 
 /**
  * Put the missing letters back into the caterpillar.
@@ -69,6 +70,14 @@ export default class Caterpillar extends Phaser.Scene {
      * numerals down its back would be a different game claiming to be this one.
      */
     this.showCreature = key === 'Caterpillar';
+    /**
+     * What `sequence` holds ids of, for mastery.js.
+     *
+     * Derived from the same key as `showCreature` rather than overridden in
+     * NumberLine, so the two cannot disagree: this screen is either the
+     * alphabet or the numerals, and both facts follow from that.
+     */
+    this.subjectKind = key === 'Caterpillar' ? 'letter' : 'number';
     /** @type {string[]} */
     this.sequence = [];
     this.round = 0;
@@ -143,7 +152,7 @@ export default class Caterpillar extends Phaser.Scene {
 
     const plan = this.rounds[Math.min(this.round, this.rounds.length - 1)];
     const length = Math.min(plan.run, this.sequence.length);
-    const start = Phaser.Math.Between(0, this.sequence.length - length);
+    const start = this.pickStart(length);
     this.run = this.sequence.slice(start, start + length);
 
     // Never the first or last of the run: a hole at either end can be answered
@@ -314,6 +323,28 @@ export default class Caterpillar extends Phaser.Scene {
     });
   }
 
+  /**
+   * Where the run starts, weighted by what is in it.
+   *
+   * This screen does not choose a letter, it chooses a *window* on the
+   * alphabet, so there is nothing to hand `pickWeighted`. What it weighs
+   * instead is the run as a whole: a window is worth dealing to the extent
+   * that the letters inside it are wanted, which pulls runs containing a
+   * letter he keeps missing without ever breaking the run's one rule, that it
+   * is consecutive. The order *is* the lesson here.
+   *
+   * `subjectKind` so NumberLine, which is this screen counting instead of
+   * reciting, weighs its own numbers rather than the letters.
+   */
+  pickStart(length) {
+    const starts = Array.from({ length: this.sequence.length - length + 1 }, (unused, i) => i);
+    return chooseWeighted(starts, (start) => {
+      let sum = 0;
+      for (let i = start; i < start + length; i++) sum += weightOf(this.subjectKind, this.sequence[i]);
+      return sum / length;
+    });
+  }
+
   // ------------------------------------------------------------------- play
 
   /** The hole being asked for, or null once they are all filled. */
@@ -348,7 +379,7 @@ export default class Caterpillar extends Phaser.Scene {
 
     const wanted = this.run[hole];
     if (tile.letterId !== wanted) {
-      wrongAnswer();
+      wrongAnswer({ subject: { kind: this.subjectKind, id: wanted } });
       this.rail?.wonder();
       // Refused rather than punished: the gap shakes it off, the letter goes
       // home, and it is still there to be tried again once they have looked at
@@ -360,7 +391,7 @@ export default class Caterpillar extends Phaser.Scene {
     tile.used = true;
     tile.disableInteractive();
     tile.idle?.stop();
-    rightAnswer();
+    rightAnswer({ kind: this.subjectKind, id: tile.letterId });
     sfx.sparkle();
 
     // The last few pixels are done for them, so a drag that was close enough

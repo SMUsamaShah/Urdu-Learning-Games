@@ -10,6 +10,7 @@ import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { sayLetter } from '../lib/say.js';
 import { COLORS, familyColor, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Which one does not belong?
@@ -94,7 +95,11 @@ export default class OddOne extends QuizScene {
           lettersById.get(id).shapeFamily !== family &&
           !shapeFamilySiblings(three[0]).includes(id)
       );
-    const odd = Phaser.Utils.Array.GetRandom(strangers);
+    // The odd one is the answer, so it is the one worth weighting. The family
+    // of three is left alone: they are the wallpaper this round, nobody is
+    // being asked to name them, and pulling them by his record would teach the
+    // app about letters he never actually answered.
+    const odd = pickWeighted('letter', strangers);
 
     this.lineUp = Phaser.Utils.Array.Shuffle([...three, odd]);
     return odd;

@@ -17,6 +17,7 @@ import { sway } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayWord } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, label } from '../lib/theme.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Catch the letter that starts the word.
@@ -110,8 +111,7 @@ export default class Fishing extends Phaser.Scene {
     this.locked = false;
     for (const fish of [...this.fish]) this.remove(fish);
 
-    const pool = this.pool.filter((id) => id !== this.target);
-    this.target = Phaser.Utils.Array.GetRandom(pool.length ? pool : this.pool);
+    this.target = pickWeighted('letter', this.pool, { avoid: [this.target] });
 
     this.banner?.setInstruction('catch-letter', 'Catch the letter');
     this.buildPrompt();
@@ -246,7 +246,7 @@ export default class Fishing extends Phaser.Scene {
     if (this.locked || !fish.active) return;
 
     if (fish.letterId !== this.target) {
-      wrongAnswer();
+      wrongAnswer({ subject: { kind: 'letter', id: this.target } });
       this.rail?.wonder();
       // It wriggles and swims on. Nothing is lost — the streak is only broken
       // by giving up, and there is no way to give up here.
@@ -264,7 +264,7 @@ export default class Fishing extends Phaser.Scene {
     }
 
     this.locked = true;
-    rightAnswer();
+    rightAnswer({ kind: 'letter', id: this.target });
     sfx.pop();
     this.streak++;
     popPuff(this, fish.x, fish.y, familyColor(lettersById.get(fish.letterId).shapeFamily));

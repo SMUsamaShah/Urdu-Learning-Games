@@ -16,6 +16,7 @@ import { sayLetter } from '../lib/say.js';
 import { sway } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, RAIL_EDGE, chunkyGlyphEm, familyColor, label, makeButton } from '../lib/theme.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * The same question as FindLetter, but the answers float past.
@@ -102,8 +103,7 @@ export default class Balloons extends Phaser.Scene {
     // the screen was unusable.
     for (const balloon of [...this.balloons]) this.remove(balloon);
 
-    const pool = this.sequence.filter((id) => id !== this.target);
-    this.target = Phaser.Utils.Array.GetRandom(pool);
+    this.target = pickWeighted('letter', this.sequence, { avoid: [this.target] });
 
     // Back to the question, in case the last round ended on "well done".
     this.banner?.setInstruction('pop-balloon', 'Pop the balloon');
@@ -341,7 +341,7 @@ export default class Balloons extends Phaser.Scene {
       // the balloon still pops — popping is the whole pleasure of this screen
       // and taking it away for a wrong guess would make the game worse.
       sfx.pop();
-      wrongAnswer({ sound: false });
+      wrongAnswer({ sound: false, subject: { kind: 'letter', id: this.target } });
       this.streak = 0;
       this.updateStreak();
       this.rail?.wonder();
@@ -356,7 +356,7 @@ export default class Balloons extends Phaser.Scene {
 
     this.locked = true;
     sfx.pop();
-    rightAnswer();
+    rightAnswer({ kind: 'letter', id: this.target });
     sfx.sparkle();
     this.streak++;
     this.updateStreak();

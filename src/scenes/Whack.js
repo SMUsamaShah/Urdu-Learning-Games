@@ -11,6 +11,7 @@ import { bob, squash } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
 import { COLORS, RAIL_EDGE, familyColor, makeButton, PLAY } from '../lib/theme.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Tap the letter while it is up.
@@ -206,8 +207,7 @@ export default class Whack extends Phaser.Scene {
   // ----------------------------------------------------------------- rounds
 
   newTarget() {
-    const pool = this.pool.filter((id) => id !== this.target);
-    this.target = Phaser.Utils.Array.GetRandom(pool.length ? pool : this.pool);
+    this.target = pickWeighted('letter', this.pool, { avoid: [this.target] });
     this.buildPrompt();
     this.updateStreak();
     sayLetter(this.target, { word: false });
@@ -359,7 +359,7 @@ export default class Whack extends Phaser.Scene {
     squash(this, hole.tile);
 
     if (hole.letterId !== this.target) {
-      wrongAnswer();
+      wrongAnswer({ subject: { kind: 'letter', id: this.target } });
       this.rail?.wonder();
       this.streak = 0;
       // More time, not less. The one thing that must not happen here is a
@@ -370,7 +370,7 @@ export default class Whack extends Phaser.Scene {
       return;
     }
 
-    rightAnswer();
+    rightAnswer({ kind: 'letter', id: this.target });
     sfx.pop();
     this.streak++;
     this.mercy = Math.max(0, this.mercy - MERCY_MS);

@@ -10,6 +10,7 @@ import { hop } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
 import { DESIGN, familyColor, label, PLAY } from '../lib/theme.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Put the letter back together.
@@ -82,9 +83,10 @@ const SUPER = 3;
 export default class LetterPuzzle extends Phaser.Scene {
   constructor() {
     super('LetterPuzzle');
-    /** @type {string[]} */
+    /** @type {string[]} every letter this screen may deal */
     this.sequence = [];
-    this.index = 0;
+    /** @type {string|null} the one being built */
+    this.letterId = null;
     this.round = 0;
     /** @type {Phaser.GameObjects.Image[]} */
     this.pieces = [];
@@ -97,10 +99,13 @@ export default class LetterPuzzle extends Phaser.Scene {
   }
 
   create() {
-    this.sequence = Phaser.Utils.Array.Shuffle(
-      sequenceFor('alphabetical').filter((id) => letterGlyph(id))
-    );
-    this.index = 0;
+    this.sequence = sequenceFor('alphabetical').filter((id) => letterGlyph(id));
+    // Drawn one at a time rather than shuffled once, so a letter he is getting
+    // wrong elsewhere comes round here sooner. This screen contributes nothing
+    // *to* the record — see the note by rightAnswer below, a misdropped piece
+    // is a small hand missing a target — but it can still act on it, and
+    // building a letter out of its parts is a good way to look hard at a shape.
+    this.letterId = pickWeighted('letter', this.sequence);
     this.round = 0;
 
     this.stage = addStage(this, {
@@ -135,10 +140,6 @@ export default class LetterPuzzle extends Phaser.Scene {
       });
     });
     this.input.on('dragend', (pointer, piece) => this.drop(piece));
-  }
-
-  get letterId() {
-    return this.sequence[this.index];
   }
 
   // ----------------------------------------------------------------- build
@@ -268,6 +269,10 @@ export default class LetterPuzzle extends Phaser.Scene {
     piece.disableInteractive();
     piece.setDepth(1);
     this.placed++;
+    // Nothing recorded, here or in the miss above, for the reason in Memory:
+    // a piece dropped away from its home is a small hand missing a target, not
+    // a child failing to know a letter, and the two must not end up in the same
+    // record.
     rightAnswer();
     sfx.sparkle();
 
@@ -299,7 +304,7 @@ export default class LetterPuzzle extends Phaser.Scene {
     this.time.delayedCall(700, () => {
       wellDone(this, this.stage, { duration: 2400 });
       this.round++;
-      this.index = (this.index + 1) % this.sequence.length;
+      this.letterId = pickWeighted('letter', this.sequence, { avoid: [this.letterId] });
       this.time.delayedCall(2200, () => this.buildLetter());
     });
   }

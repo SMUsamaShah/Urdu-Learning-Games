@@ -17,6 +17,7 @@ import { hop, popIn } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
 import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
+import { pickSomeWeighted } from '../lib/mastery.js';
 
 /**
  * Draw a line from each letter to its picture.
@@ -119,7 +120,7 @@ export default class ConnectPairs extends Phaser.Scene {
       PAIRS_BY_ROUND[Math.min(this.round, PAIRS_BY_ROUND.length - 1)],
       this.pool.length
     );
-    const ids = Phaser.Utils.Array.Shuffle([...this.pool]).slice(0, count);
+    const ids = pickSomeWeighted('letter', this.pool, count);
     const em = fitEmAlone(allLetterGlyphs('isolated'), CARD - 40, CARD - 44).em;
 
     const spread = (n, i) =>
@@ -244,7 +245,7 @@ export default class ConnectPairs extends Phaser.Scene {
     if (!onto) return;
 
     if (onto.letterId !== from.letterId) {
-      wrongAnswer();
+      wrongAnswer({ subject: { kind: 'letter', id: from.letterId } });
       this.rail?.wonder();
       for (const card of [from, onto]) {
         this.tweens.add({
@@ -268,7 +269,7 @@ export default class ConnectPairs extends Phaser.Scene {
     from.disableInteractive();
     onto.disableInteractive();
     this.joined++;
-    rightAnswer();
+    rightAnswer({ kind: 'letter', id: from.letterId });
     sfx.sparkle();
 
     // The thread stays. By the end the board is a picture of every pairing at

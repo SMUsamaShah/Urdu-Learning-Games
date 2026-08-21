@@ -5,6 +5,7 @@ import { bob, breathe } from '../lib/liveliness.js';
 import { sayLetter, sayLetters } from '../lib/say.js';
 import { COLORS, chunkyGlyphEm, familyColor, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
+import { chooseWeighted, weightOf } from '../lib/mastery.js';
 
 /**
  * What comes next in the alphabet?
@@ -68,7 +69,11 @@ export default class Sequence extends QuizScene {
     // window when the gap is not at the end.
     const lowest = WINDOW - 1;
     const highest = this.sequence.length - 1 - (WINDOW - 1 - this.gapSlot);
-    let index = Phaser.Math.Between(lowest, highest);
+    // Weighted by the letter that would land in the gap, which is the one being
+    // asked for. The rest of the window is context and is not weighed, unlike
+    // Caterpillar where every hole in the run is a question.
+    const places = Array.from({ length: highest - lowest + 1 }, (unused, i) => lowest + i);
+    let index = chooseWeighted(places, (at) => weightOf('letter', this.sequence[at]));
     if (this.sequence[index] === previous && highest > lowest) {
       index = index === highest ? index - 1 : index + 1;
     }

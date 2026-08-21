@@ -9,6 +9,7 @@ import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayLetters } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, PLAY } from '../lib/theme.js';
+import { chooseWeighted, weightOf } from '../lib/mastery.js';
 
 /**
  * Pop them in order.
@@ -92,7 +93,14 @@ export default class InOrder extends Phaser.Scene {
       RUN_BY_ROUND[Math.min(this.round, RUN_BY_ROUND.length - 1)],
       this.sequence.length
     );
-    const start = Phaser.Math.Between(0, this.sequence.length - length);
+    // Weighted by what is inside the window rather than by a single letter —
+    // see Caterpillar.pickStart, which does the same thing for the same reason.
+    const starts = Array.from({ length: this.sequence.length - length + 1 }, (unused, i) => i);
+    const start = chooseWeighted(starts, (from) => {
+      let sum = 0;
+      for (let i = from; i < from + length; i++) sum += weightOf('letter', this.sequence[i]);
+      return sum / length;
+    });
     this.run = this.sequence.slice(start, start + length);
 
     // Scattered on a coarse grid rather than at random points: truly random
@@ -171,7 +179,7 @@ export default class InOrder extends Phaser.Scene {
     if (this.locked || bubble.popped) return;
 
     if (bubble.letterId !== this.run[this.next]) {
-      wrongAnswer();
+      wrongAnswer({ subject: { kind: 'letter', id: this.run[this.next] } });
       this.rail?.wonder();
       // It stays. Working through the bubbles until one gives is how a child
       // finds out what "next" means, and it must not cost them the board.
@@ -189,7 +197,7 @@ export default class InOrder extends Phaser.Scene {
     bubble.popped = true;
     bubble.disableInteractive();
     bubble.idle?.stop();
-    rightAnswer();
+    rightAnswer({ kind: 'letter', id: bubble.letterId });
     sfx.pop();
     popPuff(this, bubble.x, bubble.y, familyColor(lettersById.get(bubble.letterId).shapeFamily));
     sparkleBurst(this, bubble.x, bubble.y, { count: 20 });

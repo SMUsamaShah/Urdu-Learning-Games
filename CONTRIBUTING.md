@@ -507,6 +507,46 @@ scene drawing what it drew before. None of the ellipses have been deleted, and
 to `PROP_SCREENS` there when it gains a prop, since the first generated prop
 went in with that list still naming two other games.
 
+## Which letters come up
+
+`src/lib/mastery.js` keeps the last ten answers per letter, number and word, and
+every game deals by them. A letter answered wrong every time comes up about four
+times as often as one answered right every time; a letter never answered sits
+between the two, so meeting the alphabet does not depend on chance.
+
+Two rules make the rest of it follow.
+
+**Recording goes through `rightAnswer` and `wrongAnswer` in `flourish.js`,**
+never through a separate call in a scene. Those two are already what a scene
+calls when an outcome is known, they already move the progress total, and a
+scene passes `{ kind, id }` to say what was answered. Two calls in seventeen
+scenes that must fire together would not stay together.
+
+A wrong answer is recorded against the **target**, not the tile that was tapped.
+Reaching for ت when the question was ٹ is evidence about ٹ.
+
+**Record only where being wrong is possible and means something.** Memory and
+LetterPuzzle pass no subject, and both say why in place: turning up a matching
+pair is recall rather than reading, and a jigsaw piece dropped off its home is a
+small hand missing a target. A screen that reported only its successes would
+quietly talk down the weight of a letter he cannot read at all.
+
+Two selection helpers replace what the scenes used to do for themselves:
+`pickWeighted` for `GetRandom(pool)` and `pickSomeWeighted` for
+`Shuffle(pool).slice(0, n)`. `chooseWeighted` is the generic one underneath, for
+the screens that choose a *window* rather than a letter — Caterpillar, InOrder
+and Sequence deal a run of the alphabet and weigh the run by what is inside it.
+
+Distractors are not weighted. `shapeFamilySiblings()` picks them by
+confusability, which is a different question and already has a good answer.
+
+Flashcards is the one screen deliberately left alone; the reason is in its
+docstring.
+
+`Settings → How he's doing` shows the record, and `npm run verify:games` checks
+both ends of the wire: that playing a game badly records something, and that the
+scene's own `pickTarget` then deals that letter more often.
+
 ## How it looks
 
 Five modules, all drawing procedurally rather than loading art — the app has to

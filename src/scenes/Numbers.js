@@ -15,6 +15,7 @@ import { addWordImage, illustratedWords, queueWordImages } from '../lib/images.j
 import { sayNumber } from '../lib/say.js';
 import { COLORS, chunkyGlyphEm, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * The most things a round will ever lay out to be counted.
@@ -47,6 +48,7 @@ export default class Numbers extends QuizScene {
     super('Numbers');
     this.instruction = 'how-many';
     this.instructionRoman = 'How many?';
+    this.subjectKind = 'number';
     // Stars here and nowhere else: an Urdu numeral is compact enough to sit
     // comfortably in the thin middle of one, which is exactly what a letter is
     // not.
@@ -86,9 +88,7 @@ export default class Numbers extends QuizScene {
   }
 
   pickTarget(previous) {
-    return Phaser.Utils.Array.GetRandom(
-      this.countable.filter((id) => id !== previous)
-    );
+    return pickWeighted('number', this.countable, { avoid: [previous] });
   }
 
   lineUpFor(target, count) {

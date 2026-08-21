@@ -13,6 +13,7 @@ import { sayLetter } from '../lib/say.js';
 import * as sfx from '../lib/sfx.js';
 import { COLORS, familyColor, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Knock on the right door.
@@ -126,8 +127,7 @@ export default class Doors extends QuizScene {
   }
 
   pickTarget(previous) {
-    const pool = this.pool.filter((id) => id !== previous);
-    return Phaser.Utils.Array.GetRandom(pool.length ? pool : this.pool);
+    return pickWeighted('letter', this.pool, { avoid: [previous] });
   }
 
   lineUpFor(target, count) {

@@ -51,6 +51,7 @@ export default class JoinWord extends QuizScene {
     super('JoinWord');
     this.instruction = 'join-word';
     this.instructionRoman = 'Which word do these make?';
+    this.subjectKind = 'word';
     this.choicesY = 522;
     this.tileSize = 236;
     this.tileHeight = 156;

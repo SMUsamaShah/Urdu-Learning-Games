@@ -12,6 +12,7 @@ import { addWordImage, hasWordImage, queueWordImages } from '../lib/images.js';
 import { sayLetter } from '../lib/say.js';
 import { COLORS, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Which of these starts with this letter?
@@ -94,8 +95,7 @@ export default class StartsWith extends QuizScene {
   }
 
   pickTarget(previous) {
-    const pool = this.pool.filter((id) => id !== previous);
-    return Phaser.Utils.Array.GetRandom(pool.length ? pool : this.pool);
+    return pickWeighted('letter', this.pool, { avoid: [previous] });
   }
 
   lineUpFor(target, count) {

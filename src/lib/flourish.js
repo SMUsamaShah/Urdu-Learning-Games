@@ -39,9 +39,24 @@
  * All of this needs Tone and a network fetch of five short samples. Until that
  * resolves — and for ever, if it fails — the caller gets the old synthesised
  * chime instead. Nothing here is allowed to make a right answer silent.
+ *
+ * ## Not only the sound
+ *
+ * These two are named for the event rather than for the noise, and they have
+ * not been only a noise for a while: `rightAnswer` pours the water and
+ * `wrongAnswer` takes some back. They now also tell mastery.js which letter it
+ * was, so the games can deal the hard ones more often.
+ *
+ * That goes here rather than in a second call next to each of these, in
+ * seventeen scenes. Two things that must happen on exactly the same event, at
+ * exactly the same moment, written as two calls in seventeen places, come apart
+ * the first time somebody copies a scene — and the failure is silent, because a
+ * game that reports its outcome and forgets to record it looks completely
+ * normal and simply never learns anything.
  */
 
 import { masterOut } from './volume.js';
+import * as mastery from './mastery.js';
 
 import { loadTone, renderedChannels } from './tone-setup.js';
 import * as progress from './progress.js';
@@ -205,10 +220,17 @@ const FLOURISHES = {
   ],
 };
 
-/** One right answer. */
-export function rightAnswer() {
+/**
+ * One right answer.
+ *
+ * @param {{kind: string, id: string}} [subject] what was answered, so that
+ *   mastery.js can stop dealing it so often. Left out by the games where a
+ *   right answer is not about one particular letter.
+ */
+export function rightAnswer(subject) {
   play(FLOURISHES.rightAnswer(), () => sfx.correct());
   progress.award(1);
+  if (subject) mastery.record(subject.kind, subject.id, true);
 }
 
 /**
@@ -231,6 +253,11 @@ export function wrongAnswer(options = {}) {
   // two sounds for one tap.
   if (options.sound !== false) sfx.nudge();
   progress.setback();
+  // The letter that was *asked for*, never the one that was tapped. Reaching
+  // for ت when the question was ٹ is evidence about ٹ; it says nothing about
+  // whether he knows ت, and charging ت for it would slowly make every
+  // convincing distractor look like a letter he cannot do.
+  if (options.subject) mastery.record(options.subject.kind, options.subject.id, false);
 }
 
 /** A run of five. */

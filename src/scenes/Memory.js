@@ -17,6 +17,7 @@ import { hop, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter, sayWord } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, label } from '../lib/theme.js';
+import { pickSomeWeighted } from '../lib/mastery.js';
 
 /**
  * Find the letter and the picture that go together.
@@ -108,7 +109,7 @@ export default class Memory extends Phaser.Scene {
       PAIRS_BY_ROUND[Math.min(this.round, PAIRS_BY_ROUND.length - 1)],
       this.pool.length
     );
-    const letters = Phaser.Utils.Array.Shuffle([...this.pool]).slice(0, pairs);
+    const letters = pickSomeWeighted('letter', this.pool, pairs);
 
     // Two cards per letter: the letter itself and its word's picture. They are
     // tagged with the same pairId, which is the whole of the matching rule.
@@ -305,6 +306,12 @@ export default class Memory extends Phaser.Scene {
   }
 
   pairFound(first, second) {
+    // No subject, so nothing is recorded against the letter. Turning up two
+    // cards that match is a feat of *memory* — he is recalling where a shape
+    // was, not deciding what it is — and a screen that only ever reports
+    // successes would quietly talk down the weight of a letter he cannot read
+    // at all. The rule for the whole app: record where being wrong is possible
+    // and means something, and nowhere else. See src/lib/mastery.js.
     rightAnswer();
     sfx.sparkle();
     this.matched++;

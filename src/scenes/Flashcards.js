@@ -38,6 +38,19 @@ import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
  *      row is the point of the screen, not decoration.
  *   2. Not every letter has four forms. Non-joiners have two and hamza has one,
  *      so the row is built from what the data actually contains.
+ *
+ * ## The only screen that is not dealt by his record
+ *
+ * Every game deals the letters he keeps missing more often (src/lib/mastery.js).
+ * This one deliberately does not, because it is not dealing anything: it is a
+ * strip of the whole alphabet in alphabet order, with a next and a previous,
+ * and a child works along it. Reordering that by who is struggling would mean
+ * the strip ran differently every time it was opened, and the one screen where
+ * a letter can always be found in the same place is worth more than the
+ * weighting it gives up.
+ *
+ * Nothing here records an answer either. There is no question on this screen,
+ * so there is nothing to be right or wrong about.
  */
 
 /** How far a finger may move and still count as a tap rather than a drag. */

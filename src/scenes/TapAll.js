@@ -11,6 +11,7 @@ import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, makeButton } from '../lib/theme.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Find every one of them, not just one.
@@ -109,8 +110,7 @@ export default class TapAll extends Phaser.Scene {
     this.banner.setInstruction('tap-all', 'Tap every one');
 
     const plan = ROUNDS[Math.min(this.round, ROUNDS.length - 1)];
-    const pool = this.pool.filter((id) => id !== this.target);
-    this.target = Phaser.Utils.Array.GetRandom(pool.length ? pool : this.pool);
+    this.target = pickWeighted('letter', this.pool, { avoid: [this.target] });
     this.wanted = plan.wanted;
 
     // Its own family first: those differ from the target by a dot or two, which
@@ -230,7 +230,7 @@ export default class TapAll extends Phaser.Scene {
     if (this.locked || tile.done) return;
 
     if (tile.letterId !== this.target) {
-      wrongAnswer();
+      wrongAnswer({ subject: { kind: 'letter', id: this.target } });
       this.rail?.wonder();
       // Dimmed and set aside rather than removed. Removing it would shrink the
       // board towards the answer, which turns "find them all" into "keep
@@ -250,7 +250,7 @@ export default class TapAll extends Phaser.Scene {
     tile.done = true;
     tile.disableInteractive();
     this.found++;
-    rightAnswer();
+    rightAnswer({ kind: 'letter', id: this.target });
     sfx.sparkle();
     sparkleBurst(this, tile.x, tile.y, { count: 18, tint: [COLORS.correct, 0xffffff] });
     hop(this, tile, { height: 14 });

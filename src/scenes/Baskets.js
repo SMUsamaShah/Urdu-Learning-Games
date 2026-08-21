@@ -12,6 +12,7 @@ import { bob, hop } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, PLAY } from '../lib/theme.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Put each letter in the basket it belongs to.
@@ -110,10 +111,16 @@ export default class Baskets extends Phaser.Scene {
     const withSiblings = [...lettersById.keys()].filter(
       (id) => letterGlyph(id) && shapeFamilySiblings(id).some((s) => letterGlyph(s))
     );
-    const first = Phaser.Utils.Array.GetRandom(
+    // Both ends weighted. Which pair to practise is the only choice this screen
+    // makes, so it is the only place his record can change what he is asked —
+    // and telling ٹ from ت is worth doing precisely when one of the two is the
+    // letter he keeps getting wrong.
+    const first = pickWeighted(
+      'letter',
       withSiblings.length ? withSiblings : [...lettersById.keys()]
     );
-    const second = Phaser.Utils.Array.GetRandom(
+    const second = pickWeighted(
+      'letter',
       shapeFamilySiblings(first).filter((id) => letterGlyph(id))
     );
     this.kinds = [first, second];
@@ -221,7 +228,7 @@ export default class Baskets extends Phaser.Scene {
     }
 
     if (basket.letterId !== tile.letterId) {
-      wrongAnswer();
+      wrongAnswer({ subject: { kind: 'letter', id: tile.letterId } });
       this.rail?.wonder();
       // The basket shakes it off. Refused rather than punished: the letter goes
       // home and can be tried again, and nothing is counted against anybody.
@@ -233,7 +240,7 @@ export default class Baskets extends Phaser.Scene {
     tile.sorted = true;
     tile.disableInteractive();
     this.sorted++;
-    rightAnswer();
+    rightAnswer({ kind: 'letter', id: tile.letterId });
     sfx.sparkle();
     sparkleBurst(this, tile.x, tile.y, { count: 16, tint: [COLORS.correct, 0xffffff] });
     hop(this, basket, { height: 12 });

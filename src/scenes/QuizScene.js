@@ -81,6 +81,16 @@ export default class QuizScene extends Phaser.Scene {
     /** The ribbon at the top. Subclasses set these; see content/ui.json. */
     this.instruction = null;
     this.instructionRoman = null;
+    /**
+     * What `target` is an id of: 'letter', 'number' or 'word'.
+     *
+     * Only so that an answer can be recorded against the right thing in
+     * mastery.js, which keeps a separate record per kind because a game that
+     * deals numbers must not have its odds bent by how he is doing at letters.
+     * Nearly every screen here asks about a letter, including StartsWith, whose
+     * pool reads like words and is keyed by the letter each one begins with.
+     */
+    this.subjectKind = 'letter';
 
     this.streak = 0;
     /** @type {*} */
@@ -297,7 +307,8 @@ export default class QuizScene extends Phaser.Scene {
     if (this.locked) return;
 
     if (id !== this.target) {
-      wrongAnswer();
+      // Against the target, not against `id`. See the note in wrongAnswer.
+      wrongAnswer({ subject: { kind: this.subjectKind, id: this.target } });
       this.streak = 0;
       // A wobble, never a frown. There is no fail state here and the rail must
       // not look like there is one: whatever is standing in it asks to be filled
@@ -325,7 +336,7 @@ export default class QuizScene extends Phaser.Scene {
     // oscillator beeps. This is the most-heard sound in the app — a child
     // answers a hundred questions in a session — and it has to still be worth
     // hearing the hundredth time. See src/lib/flourish.js.
-    rightAnswer();
+    rightAnswer({ kind: this.subjectKind, id: this.target });
     sfx.sparkle();
     this.streak++;
     this.onCorrect(id);

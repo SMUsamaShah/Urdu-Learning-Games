@@ -437,3 +437,90 @@
   outline: 2px solid #e98a1f;
   outline-offset: 4px;
 }
+
+/* ---------------------------------------------------------- how he's doing
+ *
+ * A wall of letters, grouped by how they are going. Chips rather than the
+ * switch rows the other content pages use, because this page is read at a
+ * glance and nothing on it is a control: forty rows of "ٹ ————— missing it"
+ * is a spreadsheet, and the shape a parent wants is "which pile is big".
+ */
+
+.set-card-band {
+  padding: 14px 16px 16px;
+}
+
+.set-band-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--set-muted, #6b7280);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.set-band-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.set-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.set-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px 6px 8px;
+  border-radius: 12px;
+  /* A tint rather than a fill: the glyph inside is the thing being read, and a
+   * saturated chip behind a black letterform wins the fight for the eye. */
+  background: var(--chip-bg, rgba(0, 0, 0, 0.05));
+  border: 1px solid var(--chip-edge, rgba(0, 0, 0, 0.08));
+}
+
+.set-chip-glyph {
+  width: 30px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.set-chip-glyph svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.set-chip-name {
+  font-size: 13px;
+  color: var(--set-muted, #6b7280);
+}
+
+/* Warm for the ones wanting work, cool for the ones that are done, and nothing
+ * at all for the ones he has not met — an unmet letter is not a problem and
+ * must not be coloured like one. */
+.set-chip-missing {
+  --chip-bg: rgba(220, 78, 60, 0.13);
+  --chip-edge: rgba(220, 78, 60, 0.3);
+}
+
+.set-chip-getting-there {
+  --chip-bg: rgba(226, 152, 42, 0.14);
+  --chip-edge: rgba(226, 152, 42, 0.32);
+}
+
+.set-chip-solid {
+  --chip-bg: rgba(58, 150, 92, 0.13);
+  --chip-edge: rgba(58, 150, 92, 0.28);
+}
+
+.set-chip-new {
+  opacity: 0.6;
+}

@@ -41,6 +41,7 @@ import * as sfx from '../lib/sfx.js';
 import { summaries } from '../lib/clip-store.js';
 import { expectedClips } from '../lib/clip-list.js';
 import { glyphForClip, letters, numbers, words } from '../lib/content.js';
+import { bandOf, historyOf, reset as resetMastery } from '../lib/mastery.js';
 import { glyphSvg } from './glyph-svg.js';
 import {
   disabledCount,
@@ -173,6 +174,7 @@ export function openSettings({ onClose } = {}) {
           pageRow('pick-number', 'Numbers', switchedSummary('number', numbers.length)),
         ])}
         ${group('Progress', [
+          pageRow('doing', "How he's doing", doingSummary()),
           pageRow('indicator', 'Shown as', indicatorName(currentIndicator())),
           actionRow('progress', 'How far', progressSummary()),
           actionRow('reset-progress', 'Start again from nothing'),
@@ -229,6 +231,24 @@ export function openSettings({ onClose } = {}) {
     if (row) row.textContent = progressSummary();
   }
 
+  /**
+   * Forget the record, without touching the running total.
+   *
+   * Two separate things and two separate resets on purpose. "He has watered the
+   * plant this far" and "these are the letters he finds hard" are not the same
+   * fact, and a second child on the same tablet usually wants the second one
+   * gone and not necessarily the first.
+   */
+  function resetDoing() {
+    if (!window.confirm('Forget what he has answered? The games go back to dealing every letter evenly.')) {
+      return;
+    }
+    resetMastery();
+    clearBody();
+    bodyEl.append(doingPage());
+    sfx.correct();
+  }
+
   async function countRecordings() {
     const row = bodyEl.querySelector('[data-page="recordings"] .set-row-value');
     if (!row) return;
@@ -247,6 +267,7 @@ export function openSettings({ onClose } = {}) {
     tune: 'Tune',
     indicator: 'Shown as',
     numbers: 'Numbers up to',
+    doing: "How he's doing",
     'pick-letter': 'Letters',
     'pick-word': 'Words',
     'pick-number': 'Numbers',
@@ -267,6 +288,7 @@ export function openSettings({ onClose } = {}) {
     if (id === 'tune') return void bodyEl.append(tunePage());
     if (id === 'indicator') return void bodyEl.append(indicatorPage());
     if (id === 'numbers') return void bodyEl.append(numbersPage());
+    if (id === 'doing') return void bodyEl.append(doingPage());
     if (id.startsWith('pick-')) return void bodyEl.append(pickPage(id.slice(5)));
     if (id === 'check') return void openSoundCheck();
 
@@ -371,6 +393,83 @@ export function openSettings({ onClose } = {}) {
    * letters for the week is looking for ب, and `letterGlyph` draws exactly what
    * the games draw, so there is no chance of the list and the game disagreeing.
    */
+  /**
+   * The four things a letter can be, in the order a person cares about them.
+   *
+   * Deliberately about the letters and not about him. "ٹ, missing it" is a note
+   * on a letter; "he is bad at ٹ" is a report card on a three-year-old, and
+   * nobody needs one of those written about them at three.
+   */
+  const BANDS_DOING = [
+    { id: 'missing', label: 'Missing it' },
+    { id: 'getting-there', label: 'Getting there' },
+    { id: 'solid', label: 'Solid' },
+    { id: 'new', label: 'Not met yet' },
+  ];
+
+  /** `12 solid` for the menu row, or nothing at all before he has played. */
+  function doingSummary() {
+    const solid = letters.filter((item) => bandOf('letter', item.id) === 'solid').length;
+    const met = letters.filter((item) => bandOf('letter', item.id) !== 'new').length;
+    return met ? `${solid} of ${met} solid` : 'Nothing yet';
+  }
+
+  /**
+   * What the app has worked out about each letter, and what it does with it.
+   *
+   * The weighting is otherwise invisible: games quietly deal a struggling
+   * letter about four times as often as a mastered one and nothing on any
+   * screen says so. This is the page that makes it legible, and it is the page
+   * that answers the only question a parent actually has, which is what to
+   * practise away from the tablet.
+   *
+   * Letters only. Numbers and words are weighted the same way and are recorded
+   * the same way, but a wall of a hundred numerals is not something anybody
+   * reads, and the alphabet is what this app is for.
+   */
+  function doingPage() {
+    const grouped = BANDS_DOING.map((band) => {
+      const items = letters.filter((item) => bandOf('letter', item.id) === band.id);
+      if (!items.length) return '';
+      const chips = items
+        .map((item) => {
+          const glyph = glyphForClip({ kind: 'letter', id: item.id, form: 'isolated' });
+          const history = historyOf('letter', item.id);
+          // The record itself, in words, as the chip's title: five of the last
+          // six. It is the one number that explains the shading, and burying it
+          // in a tooltip keeps the page a picture rather than a spreadsheet.
+          const right = [...history].filter((mark) => mark === '1').length;
+          const detail = history.length
+            ? `${item.roman}: ${right} of the last ${history.length} right`
+            : `${item.roman}: not answered yet`;
+          return `<span class="set-chip set-chip-${band.id}" title="${escapeHtml(detail)}">
+            <span class="set-chip-glyph" aria-hidden="true">${glyph ? glyphSvg(glyph) : ''}</span>
+            <span class="set-chip-name">${escapeHtml(item.roman)}</span>
+          </span>`;
+        })
+        .join('');
+      return `<div class="set-card set-card-band">
+        <h3 class="set-band-title">${escapeHtml(band.label)} <span class="set-band-count">${items.length}</span></h3>
+        <div class="set-chips">${chips}</div>
+      </div>`;
+    }).join('');
+
+    return el(`
+      <div class="set-list">
+        ${grouped}
+        <div class="set-card">
+          ${actionRow('reset-doing', 'Forget what he has answered')}
+        </div>
+        <p class="set-note">
+          Every game deals the letters in "missing it" about four times as often
+          as the ones in "solid", so the practice goes where it is needed without
+          anything being taken away — every letter still comes round. Only the
+          last ten answers per letter count, so a letter he has since got the
+          hang of drops back on its own.
+        </p>
+      </div>`);
+  }
+
   function pickPage(kind) {
     const spec = PICK[kind];
     const rows = spec
@@ -578,6 +677,7 @@ export function openSettings({ onClose } = {}) {
     if (act === 'back') return goBack();
     if (act === 'update') return checkUpdate();
     if (act === 'reset-progress') return resetProgress();
+    if (act === 'reset-doing') return resetDoing();
     if (act?.startsWith('all-')) {
       enableAll(act.slice(4));
       // Redrawn rather than each box ticked by hand: the page is a list of up

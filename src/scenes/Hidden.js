@@ -10,6 +10,7 @@ import { bob, hop } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { sayLetter } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, makeButton } from '../lib/theme.js';
+import { pickWeighted } from '../lib/mastery.js';
 
 /**
  * Find the letters hiding in the garden.
@@ -101,8 +102,7 @@ export default class Hidden extends Phaser.Scene {
     this.banner.setInstruction('find-hidden', 'Find them hiding');
 
     const plan = ROUNDS[Math.min(this.round, ROUNDS.length - 1)];
-    const pool = this.pool.filter((id) => id !== this.target);
-    this.target = Phaser.Utils.Array.GetRandom(pool.length ? pool : this.pool);
+    this.target = pickWeighted('letter', this.pool, { avoid: [this.target] });
     this.wanted = plan.wanted;
 
     // Decoys from the target's own family first, so a letter is not found by
@@ -249,7 +249,7 @@ export default class Hidden extends Phaser.Scene {
     if (this.locked || letter.found) return;
 
     if (letter.letterId !== this.target) {
-      wrongAnswer();
+      wrongAnswer({ subject: { kind: 'letter', id: this.target } });
       this.rail?.wonder();
       this.tweens.add({
         targets: letter,
@@ -265,7 +265,7 @@ export default class Hidden extends Phaser.Scene {
     letter.found = true;
     letter.disableInteractive();
     this.found++;
-    rightAnswer();
+    rightAnswer({ kind: 'letter', id: this.target });
     sfx.sparkle();
     sparkleBurst(this, letter.x, letter.y, { count: 20, tint: [COLORS.correct, 0xffffff] });
 
