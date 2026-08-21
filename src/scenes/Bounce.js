@@ -5,6 +5,7 @@ import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
+import { addProp, propSize, queueProps } from '../lib/prop-art.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { bob } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
@@ -34,10 +35,30 @@ import { COLORS, DESIGN, RAIL_EDGE, familyColor, makeButton } from '../lib/theme
 const BOUNCE_MS = [2600, 2400, 2200, 2000];
 const HOW_MANY = 5;
 const BALL = 116;
-/** Where the balls live: the floor they land on, and how high they go. */
-const FLOOR = DESIGN.height - 118;
+/**
+ * Where the balls live: the floor they land on, and how high they go.
+ *
+ * The floor used to be 118 from the bottom and was a number and nothing else —
+ * the balls came to rest in mid-air over the grass. There is a trampoline under
+ * each of them now, and a trampoline has to fit below the ball rather than
+ * behind it, which is what moved this up.
+ */
+const FLOOR = DESIGN.height - 175;
 const RISE = { min: 210, max: 330 };
 const LANE = { left: RAIL_EDGE + 64, right: DESIGN.width - 110 };
+/**
+ * `mat` is how far down the picture the bouncing surface is, as a fraction of
+ * its height. It is what lines the ball's underside up with the thing it is
+ * supposed to be landing on; without it the ball rests on the trampoline's legs
+ * or floats above its rim.
+ */
+const TRAMPOLINE = { width: 170, mat: 0.25 };
+
+/** Where the balls go across the lane, and so where the trampolines go. */
+function lanePlaces(count) {
+  const span = (LANE.right - LANE.left) / count;
+  return Array.from({ length: count }, (unused, i) => LANE.left + span * (i + 0.5));
+}
 
 export default class Bounce extends Phaser.Scene {
   constructor() {
@@ -54,6 +75,7 @@ export default class Bounce extends Phaser.Scene {
 
   preload() {
     queueBackdrop(this);
+    queueProps(this, ['bounce-trampoline']);
   }
 
   create() {
@@ -73,8 +95,31 @@ export default class Bounce extends Phaser.Scene {
     this.fit = fitEmAlone(allLetterGlyphs('isolated'), BALL - 40, BALL - 46);
     this.promptLayer = this.add.container(RAIL_EDGE + 96, 212);
 
+    this.buildFloor();
     this.newRound();
     this.events.once('shutdown', () => this.time.removeAllEvents());
+  }
+
+  /**
+   * A trampoline under every place a ball can land.
+   *
+   * Built once in `create` rather than per round: the places do not move, and
+   * five pictures re-added every round is five textures re-uploaded for a thing
+   * that never changes. Drawn before any ball, so the balls bounce in front of
+   * them.
+   *
+   * Nothing if the picture is missing — the balls go back to landing on the
+   * grass, which is what they did until now.
+   */
+  buildFloor() {
+    const size = propSize('bounce-trampoline', TRAMPOLINE.width);
+    if (!size) return;
+    // The mat, not the middle: the ball's underside has to meet the surface it
+    // is bouncing on.
+    const centerY = FLOOR + BALL / 2 - size.height * TRAMPOLINE.mat + size.height / 2;
+    for (const x of lanePlaces(HOW_MANY)) {
+      addProp(this, x, centerY, 'bounce-trampoline', { width: TRAMPOLINE.width });
+    }
   }
 
   // ------------------------------------------------------------------ round
@@ -102,10 +147,8 @@ export default class Bounce extends Phaser.Scene {
     const others = [...siblings, ...rest].slice(0, HOW_MANY - 1);
     const order = Phaser.Utils.Array.Shuffle([this.target, ...others]);
 
-    const span = (LANE.right - LANE.left) / order.length;
-    order.forEach((id, i) => {
-      this.launch(id, LANE.left + span * (i + 0.5), i);
-    });
+    const places = lanePlaces(order.length);
+    order.forEach((id, i) => this.launch(id, places[i], i));
   }
 
   buildPrompt() {

@@ -5,6 +5,7 @@ import { clipKeys, hasClip } from '../lib/audio.js';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { queueBackdrop } from '../lib/backdrops.js';
+import { addProp, queueProps } from '../lib/prop-art.js';
 import { addStage, wellDone } from '../lib/stage.js';
 import { bob, squash } from '../lib/liveliness.js';
 import { popPuff, sparkleBurst } from '../lib/particles.js';
@@ -52,17 +53,66 @@ const MAX_UP = 3;
  *
  * All of them on the grass. An earlier set had the back row at y=300, which is
  * sky on this backdrop — three holes hanging in the air above the field.
+ *
+ * The front row used to be at 648/672 and had to come up. A hole is a picture
+ * of a mound now rather than a flat ellipse, and a mound has height: 136 design
+ * pixels against the ellipse's 54. At 672 its base landed at 772 on a 720-tall
+ * screen. The rows overlap a little at these numbers, which is what two rows of
+ * anything with height do when one is behind the other.
  */
 const SPREAD = 230;
 const HOLES = [
   { x: PLAY.centerX - SPREAD, y: 505 },
   { x: PLAY.centerX, y: 478 },
   { x: PLAY.centerX + SPREAD, y: 505 },
-  { x: PLAY.centerX - SPREAD, y: 648 },
-  { x: PLAY.centerX, y: 672 },
-  { x: PLAY.centerX + SPREAD, y: 648 },
+  { x: PLAY.centerX - SPREAD, y: 586 },
+  { x: PLAY.centerX, y: 610 },
+  { x: PLAY.centerX + SPREAD, y: 586 },
 ];
 const LETTER_BOX = 108;
+
+/** The pictures this screen loads, and how big the mound is drawn. */
+const PROPS = ['whack-mound', 'whack-mound-front'];
+/**
+ * Wider than the ellipses it replaces (172) but well inside `SPREAD`, so six
+ * mounds on the grass stay six mounds rather than one long ridge. `y` sits it
+ * low in the hole's box: the picture is a mound with the opening near its top,
+ * and the opening is what the hole's position means.
+ */
+const MOUND = { width: 220, y: 34 };
+/**
+ * Where the letter sits, down inside the mound and up out of its hole.
+ *
+ * Both measured off the picture rather than guessed: the mound is 136 deep at
+ * this width, its opening sits about a fifth of the way down, and the front
+ * piece starts just below that opening. `up` puts the letter's bottom edge
+ * inside the front piece so it is standing *in* the hole; `down` puts the whole
+ * letter behind it.
+ */
+const LETTER_Y = { up: -42, down: 54 };
+
+/**
+ * What a hole looks like with no picture: the two flat ellipses this screen had
+ * for as long as it existed.
+ *
+ * Kept, and kept working, because a prop that failed to load must leave a game
+ * that still reads. See src/lib/prop-art.js.
+ */
+function drawnMound(scene, holeColor) {
+  const mound = scene.add.graphics();
+  mound.fillStyle(0x8a6a44, 1);
+  mound.fillEllipse(0, 34, 172, 54);
+  mound.fillStyle(holeColor, 1);
+  mound.fillEllipse(0, 28, 138, 40);
+  return mound;
+}
+
+function drawnLip(scene) {
+  const lip = scene.add.graphics();
+  lip.fillStyle(0x8a6a44, 1);
+  lip.fillEllipse(0, 40, 172, 44);
+  return lip;
+}
 
 export default class Whack extends Phaser.Scene {
   constructor() {
@@ -80,6 +130,7 @@ export default class Whack extends Phaser.Scene {
 
   preload() {
     queueBackdrop(this);
+    queueProps(this, PROPS);
   }
 
   create() {
@@ -114,13 +165,16 @@ export default class Whack extends Phaser.Scene {
   buildHoles() {
     for (const spot of HOLES) {
       const hole = this.add.container(spot.x, spot.y);
-      // The mound the letter comes out of. Drawn once and left alone; only the
+      // The mound the letter comes out of, in two pieces: this one behind the
+      // letter, and the lip below over it. Drawn once and left alone; only the
       // letter moves.
-      const mound = this.add.graphics();
-      mound.fillStyle(0x8a6a44, 1);
-      mound.fillEllipse(0, 34, 172, 54);
-      mound.fillStyle(0x4a3520, 1);
-      mound.fillEllipse(0, 28, 138, 40);
+      //
+      // Both pieces are the same picture at the same size and the same origin —
+      // see tools/make-props.mjs — so there is one y to get right rather than
+      // two to keep agreeing with each other.
+      const mound =
+        addProp(this, 0, MOUND.y, 'whack-mound', { width: MOUND.width }) ??
+        drawnMound(this, 0x4a3520);
       hole.add(mound);
 
       // The letter, hidden below the rim until it pops. Its own container so
@@ -137,9 +191,9 @@ export default class Whack extends Phaser.Scene {
       hole.add(tile);
       // The mound again, over the letter, so it rises out of the hole rather
       // than appearing in front of it.
-      const lip = this.add.graphics();
-      lip.fillStyle(0x8a6a44, 1);
-      lip.fillEllipse(0, 40, 172, 44);
+      const lip =
+        addProp(this, 0, MOUND.y, 'whack-mound-front', { width: MOUND.width }) ??
+        drawnLip(this);
       hole.add(lip);
 
       hole.tile = tile;
@@ -263,13 +317,13 @@ export default class Whack extends Phaser.Scene {
       { em: this.fit.em, color: COLORS.ink }
     );
     tile.add(tile.glyph);
-    tile.setVisible(true).setY(46).setAlpha(1);
+    tile.setVisible(true).setY(LETTER_Y.down).setAlpha(1);
     tile.setScale(1);
 
     sfx.boing();
     this.tweens.add({
       targets: tile,
-      y: -54,
+      y: LETTER_Y.up,
       duration: 260,
       ease: 'Back.easeOut',
     });
@@ -289,7 +343,7 @@ export default class Whack extends Phaser.Scene {
     }
     this.tweens.add({
       targets: hole.tile,
-      y: 46,
+      y: LETTER_Y.down,
       duration: 220,
       ease: 'Quad.easeIn',
       // Nothing else happens. A target that went down untouched is not a

@@ -33,6 +33,7 @@
     "lint": "eslint .",
     "backgrounds": "node tools/make-backgrounds.mjs",
     "tiles": "node tools/make-tile-art.mjs",
+    "props": "node tools/make-props.mjs",
     "forms": "node tools/preview-forms.mjs",
     "verify:trace-studio": "node tools/verify-trace-studio.mjs",
     "verify:traces": "node tools/verify-traces.mjs",
@@ -44,7 +45,8 @@
     "verify:chalo": "node tools/verify-chalo.mjs",
     "verify:content": "node tools/verify-content-toggles.mjs",
     "preview-indicators": "node tools/preview-indicators.mjs",
-    "preview-tiles": "node tools/preview-tiles.mjs"
+    "preview-tiles": "node tools/preview-tiles.mjs",
+    "preview-props": "node tools/preview-props.mjs"
   },
   "dependencies": {
     "@fontsource/noto-nastaliq-urdu": "^5.3.0",

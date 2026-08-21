@@ -77,24 +77,42 @@ a tall narrow box, and every screen lays out from `RAIL_EDGE`. What the bar
 should *show* is the more interesting half and worth deciding first: level,
 streak, how far through a run, something to tap.
 
-### The other twenty-two games still want a prop
+### The rest of the games still want a prop
 
-`src/lib/props.js` has two: a woven basket and a caterpillar. Both were chosen
-because the picture was saying nothing — two rounded rectangles for "sort into
-baskets", a row of white circles for a game named after an animal.
+`src/lib/props.js` has two drawn ones, a woven basket and a caterpillar, and
+`tools/make-props.mjs` now has two generated ones: Whack's mound and Bounce's
+trampoline. That leaves most of them.
 
-The rest have not been looked at with the same eye. Worth a pass, in rough order
-of how little the current picture says:
+There are two ways to make a prop now and the choice is not free. A prop may be
+generated when it is furniture — one fixed picture, no colour the game assigns,
+no geometry worked out per round. Everything else stays drawn, which is why the
+basket and the caterpillar are still drawn and always will be.
 
-- **Whack** — flat brown ellipses on grass. Mounds with a rim, and something
-  actually popping out of them.
-- **TapAll**, **Hidden**, **Bounce** — plates and balls on a meadow.
+Still wanting one:
+
+- **TapAll** — plates on a meadow.
 - **Fishing** — the fish are an ellipse and a triangle. They are not bad, but
-  they are the whole screen.
+  they are the whole screen. They also take the letter's family colour, so they
+  are the drawn kind.
+- **Hidden** — see below.
 
-Not a rewrite each: the point of `draw-kit.js` is that one prop is an afternoon.
-And not all of them need one — Doors already has a house, Memory's cards *are*
-the game, FindLetter's stars are right as they are.
+Not all of them need one: Doors already has a house, Memory's cards *are* the
+game, FindLetter's stars are right as they are.
+
+### Hidden wants a backdrop, not a prop
+
+A bush was generated for it and thrown away. Hidden scatters small tinted
+letters and asks a child to find them, and its own note says the tints stay
+clear of the backdrop's greens because "this is a hunt, not camouflage". A
+saturated cartoon bush is the strongest green on the screen by a distance and
+the letters vanished into it — a game made unplayable by its own scenery.
+
+The real problem is upstream. Every backdrop is painted with "a large clear calm
+space through the centre" so that whatever a game puts there can be read, and
+Hidden is the one screen that wants the opposite: somewhere for things to be
+lost. That is a second backdrop for this one scene, not a prop standing on the
+existing one. The raw picture is still in `.image-cache/prop/` if it is ever
+wanted.
 
 ## The tracing editor
 

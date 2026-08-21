@@ -1533,7 +1533,16 @@ else {
 
 step('every prop fits on the screen');
 
-const PROP_SCREENS = ['Caterpillar', 'Baskets'];
+// Hand-written, and it has to stay that way — a prop is found by walking a
+// live scene, so there is no list to read this off. It was two names for as
+// long as props.js had two props, and the first generated prop went in without
+// being added here: Whack's mounds are twice as tall as the ellipses they
+// replaced, the bottom row of them hung off the bottom of the screen, and this
+// check passed while looking at two other screens.
+//
+// So: **a scene that gains a prop gains a name here.** Both kinds count, drawn
+// and generated.
+const PROP_SCREENS = ['Caterpillar', 'Baskets', 'Whack', 'Bounce'];
 for (const key of PROP_SCREENS) {
   await start(key);
   const props = await page.evaluate((name) => {
