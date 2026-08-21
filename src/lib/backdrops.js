@@ -61,5 +61,18 @@ export function queueBackdrop(scene) {
 export function addBackdrop(scene, width, height) {
   const key = backdropKey(scene.scene.key);
   if (!scene.textures.exists(key)) return null;
-  return scene.add.image(0, 0, key).setOrigin(0, 0).setDisplaySize(width, height);
+
+  // Cover, not stretch. These are painted 16:9 and the canvas is now cut to the
+  // screen's own shape, so on a 20:9 phone `setDisplaySize` would pull a
+  // painting a quarter wider than it was drawn — every tree an oval, every
+  // wheel an egg. Scaling to cover and letting the overflow fall off the top
+  // and bottom keeps the drawing honest, and it is what these were painted for:
+  // the style asks for "a large clear calm space through the centre", so the
+  // edges are the part that can be spared.
+  const source = scene.textures.get(key).getSourceImage();
+  const scale = Math.max(width / source.width, height / source.height);
+  return scene.add
+    .image(width / 2, height / 2, key)
+    .setOrigin(0.5, 0.5)
+    .setDisplaySize(source.width * scale, source.height * scale);
 }

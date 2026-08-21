@@ -53,9 +53,49 @@
         user-select: none;
         -webkit-tap-highlight-color: transparent;
       }
+      /*
+       * Everything the app draws, so that it can be turned as one piece.
+       *
+       * The app is landscape always. Where the phone refuses to turn — a tab
+       * that is not fullscreen, or rotation switched off in system settings —
+       * src/lib/turn.js rotates this instead, and the phone is what gets held
+       * sideways. The canvas and the HTML screens are both inside it, because
+       * a transform here makes this the containing block for their
+       * `position: fixed`, so they come along and the browser hit-tests them
+       * correctly with no help from us.
+       *
+       * The size is set in pixels from JS rather than in vh/vw: on a phone
+       * those units mean the viewport with the URL bar hidden whether it
+       * currently is or not, and the app would hang off the bottom by the
+       * height of the bar.
+       */
+      #stage {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        transform-origin: 0 0;
+      }
+
+      #stage[data-turn='90'] {
+        transform: rotate(90deg) translateY(-100%);
+      }
+
+      #stage[data-turn='270'] {
+        transform: rotate(-90deg) translateX(-100%);
+      }
+
+      /*
+       * Flex, because this is what centres the canvas now rather than Phaser's
+       * own `autoCenter` — see the note beside the scale config in src/app.js.
+       */
       #game {
         width: 100%;
         height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       #game canvas {
         display: block;
@@ -199,7 +239,12 @@
     </style>
   </head>
   <body>
-    <div id="game"></div>
+    <div id="stage"><div id="game"></div></div>
+    <!--
+      Outside the stage on purpose. This is the page that says the app did not
+      start, so it must not depend on any of the app's own machinery having run
+      — including the thing that would have turned it.
+    -->
     <div id="boot-error">
       <p>کھیل لوڈ نہیں ہو سکا</p>
       <p>The game could not load.</p>

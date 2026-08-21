@@ -15,6 +15,8 @@
  * three-year-old does not need a number in the corner.
  */
 
+import { stageElement } from './turn.js';
+
 const KEY = 'urdu:show-fps';
 
 export function showFps() {
@@ -51,7 +53,7 @@ export function mountFpsMeter(game) {
   el = document.createElement('div');
   el.className = 'fps-meter';
   el.hidden = !showFps();
-  document.body.appendChild(el);
+  stageElement().appendChild(el);
 
   let last = 0;
   const tick = (now) => {

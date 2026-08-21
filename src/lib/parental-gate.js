@@ -20,17 +20,19 @@
 
 import './parental-gate.css';
 import { goBack, pushScreen } from './history.js';
+import { stageElement } from './turn.js';
 
 const HOLD_MS = 900;
 
 /**
  * Asks the arithmetic question.
  *
- * @param {HTMLElement} [parent=document.body]
+ * @param {HTMLElement} [parent] defaults to the stage, so the gate turns with
+ *   the app — see src/lib/turn.js
  * @returns {Promise<boolean>} whether the answer was right. A wrong answer just
  *   closes: no retry loop to bang on, and no feedback to learn from.
  */
-export function askParentalQuestion(parent = document.body) {
+export function askParentalQuestion(parent = stageElement()) {
   // Small enough to be instant for an adult, beyond a preschooler either way.
   const a = 3 + Math.floor(Math.random() * 6); // 3..8
   const b = 3 + Math.floor(Math.random() * 6);

@@ -17,7 +17,13 @@ const OUT = process.argv[2] || 'screenshots';
 const BASE = process.argv[3] || 'http://localhost:5173';
 
 const VIEWPORTS = {
-  phone: { width: 844, height: 390 },   // iPhone-ish, landscape
+  phone: { width: 844, height: 390 },   // 19.5:9, landscape
+  // 20:9, which is most Android phones and the shape the empty bands down the
+  // sides used to show up at. Kept alongside `phone` rather than replacing it,
+  // because the design width is now measured from the screen and the two are no
+  // longer the same picture scaled: this one has more room either side of the
+  // rail, and a layout can be right at one and wrong at the other.
+  wide: { width: 888, height: 400 },
   tablet: { width: 1180, height: 820 },
 };
 

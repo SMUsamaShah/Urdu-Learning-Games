@@ -26,6 +26,8 @@
  * it has to keep working while the game loop is asleep.
  */
 
+import { stageElement } from './turn.js';
+
 const CHECK_EVERY_MS = 30 * 60 * 1000;
 
 /** @type {HTMLElement|null} */
@@ -128,7 +130,7 @@ export function mountUpdateIndicator() {
   el.className = 'update-badge';
   el.hidden = true;
   el.innerHTML = '<span class="update-spinner"></span><span class="update-label"></span>';
-  document.body.appendChild(el);
+  stageElement().appendChild(el);
 
   if (!('serviceWorker' in navigator)) return;
 

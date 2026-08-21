@@ -117,10 +117,18 @@ const blockedBy = (page) =>
     return covers ? `${at.tagName}.${at.className}` : null;
   });
 
-// --- 1. Upright and refused: the app is still there -------------------------
+// --- 1. Upright and refused: the app turns itself ---------------------------
 //
-// The reported bug, and the first thing checked. Rotation switched off, or a
-// browser that will not fullscreen, must still leave a usable app.
+// Rotation switched off, or a browser that will not fullscreen. The app used to
+// sit in a letterboxed band across the middle of the screen here, which is the
+// thing that was wrong with it: unplayably small for a three-year-old aiming at
+// balloons. It turns itself sideways now and fills the screen, and the phone is
+// what gets held that way.
+//
+// Two claims, and the second is the one worth having. Filling the screen is
+// visible in a screenshot; taps landing where they were aimed is not, and a
+// rotated canvas is exactly where that silently stops being true. See the note
+// about Phaser's two DOM questions in src/lib/turn.js.
 
 step('upright, with nothing granted at all');
 const { context: deniedCtx, page: denied } = await pageWith({ lock: false, fullscreen: false });
@@ -129,32 +137,102 @@ const covering = await blockedBy(denied);
 if (covering) fail(`the app is covered by ${covering} instead of being shown`);
 else step('  nothing is covering the app');
 
-const canvas = await denied.evaluate(() => {
+const shown = await denied.evaluate(() => {
   const el = document.querySelector('canvas');
   const box = el?.getBoundingClientRect();
-  return box ? { w: Math.round(box.width), h: Math.round(box.height) } : null;
+  const stage = document.getElementById('stage');
+  return box
+    ? {
+        w: Math.round(box.width),
+        h: Math.round(box.height),
+        left: Math.round(box.left),
+        top: Math.round(box.top),
+        turn: Number(stage?.dataset.turn ?? 0),
+        view: { w: window.innerWidth, h: window.innerHeight },
+      }
+    : null;
 });
-if (!canvas || canvas.w < 200 || canvas.h < 100) {
-  fail(`the game canvas is ${JSON.stringify(canvas)} — too small to be usable`);
+
+if (!shown) {
+  fail('there is no canvas at all');
+} else if (!shown.turn) {
+  fail('the window is upright and the app did not turn itself sideways');
 } else {
-  step(`  the game is drawn at ${canvas.w}x${canvas.h}, letterboxed into the window`);
+  // Within a pixel of the whole window, on all four edges. This is the actual
+  // complaint — "I dont want empty space on sides" — and it is the assertion
+  // that would have caught it.
+  const slack = 2;
+  const fills =
+    Math.abs(shown.left) <= slack &&
+    Math.abs(shown.top) <= slack &&
+    Math.abs(shown.w - shown.view.w) <= slack &&
+    Math.abs(shown.h - shown.view.h) <= slack;
+  if (!fills) {
+    fail(
+      `the app leaves empty space: ${shown.w}x${shown.h} at ${shown.left},${shown.top} ` +
+        `in a ${shown.view.w}x${shown.view.h} window`
+    );
+  } else {
+    step(`  turned ${shown.turn}° and filling the window, ${shown.w}x${shown.h}`);
+  }
 }
 
 // Visible is not the same as working, and the difference is a tap.
-step('  tapping a game tile');
+//
+// **A real one, through the mouse.** This used to `emit('pointerdown')` on the
+// tile, which proves the handler is wired and proves nothing about where a
+// finger has to land to reach it — and where a finger lands is the entire
+// question on a rotated canvas. Phaser reads a tap's page coordinates through
+// its scale manager, whose idea of the canvas comes from a bounding rect that
+// is the *rotated* box, so an un-patched app maps every tap to the wrong place
+// while looking perfect in a screenshot. See src/lib/turn.js.
+//
+// The page point is worked out here from the stage's own geometry rather than
+// asked of the app, so this is not the code under test agreeing with itself.
+step('  tapping a game tile, with the mouse, where it appears on screen');
 await denied.evaluate(() => {
   window.__game.scene.getScene('Home').input.enabled = true;
 });
-const opened = await denied
-  .evaluate(async () => {
-    const home = window.__game.scene.getScene('Home');
-    const tile = home.children.list.find((c) => c.name?.startsWith?.('tile:'));
-    if (tile) tile.emit('pointerdown');
-    else window.__game.scene.start('Flashcards');
-    await new Promise((r) => setTimeout(r, 1200));
-    return window.__game.scene.getScenes(true).map((s) => s.scene.key);
-  })
-  .catch(() => []);
+
+const aim = await denied.evaluate(() => {
+  const game = window.__game;
+  const tile = game.scene.getScene('Home').children.list.find((c) => c.name === 'tile');
+  if (!tile) return null;
+  const stage = document.getElementById('stage');
+  const rect = stage.getBoundingClientRect();
+  const canvas = game.canvas;
+  const box = { w: parseFloat(stage.style.width), h: parseFloat(stage.style.height) };
+  const local = {
+    x: (box.w - canvas.offsetWidth) / 2 + (tile.x * canvas.offsetWidth) / game.scale.width,
+    y: (box.h - canvas.offsetHeight) / 2 + (tile.y * canvas.offsetHeight) / game.scale.height,
+  };
+  const turn = Number(stage.dataset.turn);
+  const on =
+    turn === 90
+      ? { x: rect.width - local.y, y: local.x }
+      : turn === 270
+        ? { x: local.y, y: rect.height - local.x }
+        : local;
+  return { x: rect.left + on.x, y: rect.top + on.y };
+});
+
+let opened = [];
+if (!aim) {
+  fail('there is no tile on the menu to tap');
+} else {
+  // Moved, pressed, released, with a beat between each: a click delivered
+  // inside one frame can be over before Phaser has processed the press, which
+  // fails for reasons that have nothing to do with where it landed.
+  await denied.mouse.move(aim.x, aim.y);
+  await denied.waitForTimeout(140);
+  await denied.mouse.down();
+  await denied.waitForTimeout(140);
+  await denied.mouse.up();
+  await denied.waitForTimeout(1400);
+  opened = await denied.evaluate(() =>
+    window.__game.scene.getScenes(true).map((s) => s.scene.key)
+  );
+}
 if (!opened.some((key) => key !== 'Home')) {
   fail(`tapping did not open a game (running: ${opened.join() || 'nothing'})`);
 } else {
@@ -182,7 +260,7 @@ if (asked.filter((c) => c === 'lock:landscape').length < 2) {
 if (await blockedBy(tab)) fail('the app is covered even after the lock succeeded');
 await tabCtx.close();
 
-// --- 3. Settings lets go, and takes it back --------------------------------
+// --- 3. Settings stays landscape too ---------------------------------------
 
 step('an installed app, where the lock is granted outright');
 const { context: appCtx, page: app } = await pageWith({ lock: true });
@@ -205,22 +283,36 @@ await app.fill('.gate-input', String(Number(a) * Number(b)));
 await app.click('.gate-ok');
 await app.waitForSelector('.set-root', { timeout: 10000 });
 
+// The reverse of what this used to assert. Settings released the lock so the
+// phone could be turned upright to trace a letter; the app is landscape on
+// every screen now, and an `unlock` anywhere in here means one screen has gone
+// back to behaving differently from the rest of the app.
 const afterOpen = await calls(app);
-if (afterOpen[afterOpen.length - 1] !== 'unlock') {
-  fail(`settings did not release the orientation (${afterOpen.join()})`);
+if (afterOpen.includes('unlock')) {
+  fail(`settings released the orientation (${afterOpen.join()})`);
 } else {
-  step('  released, so the phone can be turned upright to trace');
+  step('  and the lock is kept: the grown-ups screens are landscape too');
 }
 
 step('closing them again');
 await app.click('.set-close');
 await app.waitForFunction(() => !document.querySelector('.set-root'), null, { timeout: 10000 });
 const afterClose = await calls(app);
-if (afterClose[afterClose.length - 1] !== 'lock:landscape') {
-  fail(`the lock was not taken back on close (${afterClose.join()})`);
+if (afterClose.includes('unlock')) {
+  fail(`the orientation was released somewhere in settings (${afterClose.join()})`);
 } else {
-  step('  and taken back on the way out');
+  step('  with nothing released on the way in or out');
 }
+
+// Settings is inside the stage, not the body. Outside it, the app can be lying
+// on its side while Settings stands upright over the top of it — which is the
+// state a grown-up opens Settings *from* on a phone that will not turn.
+const mounted = await app.evaluate(() => {
+  const root = document.querySelector('.set-root');
+  return root ? Boolean(root.closest('#stage')) : null;
+});
+if (mounted === false) fail('settings is mounted outside #stage, so it will not turn with the app');
+else if (mounted) step('  mounted inside the stage, so it turns with the app');
 await appCtx.close();
 
 // --- 4. Never fullscreen a desktop -----------------------------------------

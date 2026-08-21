@@ -6,8 +6,53 @@
  * reading Latin text to navigate.
  */
 
-/** Design resolution. Everything is laid out against this and scaled to fit. */
+/**
+ * Design resolution. Everything is laid out against this and scaled to fit.
+ *
+ * The height is fixed. The **width is decided at startup** from the shape of
+ * the screen, because a phone in landscape is 19.5:9 or 20:9 and a 16:9 canvas
+ * fitted into one leaves a band of empty page down each side with a smaller
+ * game in the middle. So a 20:9 phone gets a 1600x720 canvas that fills it.
+ *
+ * `setDesignSize` mutates this object rather than replacing it, and runs before
+ * a single scene module is imported. That ordering is the whole trick: two
+ * dozen layout constants across the scenes are written as
+ * `const LANE = { right: DESIGN.width - 150 }` and evaluated once, when their
+ * module loads. Decide the width first and every one of them comes out right
+ * with nothing to change; decide it afterwards and they are all frozen at 1280.
+ * See src/main.js.
+ */
 export const DESIGN = { width: 1280, height: 720 };
+
+/**
+ * How wide the canvas may get, in design pixels at 720 tall.
+ *
+ * 1280 is 16:9 and the floor: a window narrower than that keeps the old size
+ * and letterboxes top and bottom, which only a desktop can produce. 1728 is
+ * 2.4:1, past every phone in circulation, and it is a ceiling rather than a
+ * prediction — an ultrawide desktop window would otherwise stretch the app into
+ * a letterbox with a tiny rail down one end of it.
+ */
+const WIDTH_RANGE = { min: 1280, max: 1728 };
+
+/**
+ * Fits the design surface to a screen of this shape. Call once, at startup,
+ * before importing anything that lays a screen out.
+ *
+ * @param {{width: number, height: number}} viewport in CSS pixels, landscape —
+ *   the caller swaps them if the app is being turned sideways itself
+ */
+export function setDesignSize(viewport) {
+  const aspect = viewport.width / viewport.height;
+  const wanted = Math.round(DESIGN.height * aspect);
+  DESIGN.width = Math.min(WIDTH_RANGE.max, Math.max(WIDTH_RANGE.min, wanted));
+  // PLAY is derived from it and was computed at import, so it has to be brought
+  // along by hand. Mutated in place for the same reason DESIGN is.
+  PLAY.right = DESIGN.width;
+  PLAY.width = DESIGN.width - RAIL_EDGE;
+  PLAY.centerX = (RAIL_EDGE + DESIGN.width) / 2;
+  return DESIGN;
+}
 
 /**
  * The strip down the left of every game screen, which belongs to progress.

@@ -43,6 +43,7 @@ import { expectedClips } from '../lib/clip-list.js';
 import { glyphForClip, letters, numbers, words } from '../lib/content.js';
 import { bandOf, historyOf, reset as resetMastery } from '../lib/mastery.js';
 import { glyphSvg } from './glyph-svg.js';
+import { stageElement } from '../lib/turn.js';
 import {
   disabledCount,
   enableAll,
@@ -744,7 +745,9 @@ export function openSettings({ onClose } = {}) {
   }
 
   document.addEventListener('keydown', onKey);
-  document.body.appendChild(root);
+  // Into the stage, not the body, so Settings turns with the app. See
+  // src/lib/turn.js.
+  stageElement().appendChild(root);
   showList();
 
   return close;

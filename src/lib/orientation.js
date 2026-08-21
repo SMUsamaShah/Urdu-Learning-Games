@@ -1,18 +1,23 @@
 /**
- * Which way up the app is held.
+ * Asking the phone to be held sideways.
  *
- * The games are drawn at 1280×720, so held upright they letterbox into a band
- * across the middle of the phone — too small for a three-year-old aiming at
- * balloons. So the app asks to be held sideways, the way a mobile web game
- * does: opening it turns the screen, and you hold the phone that way.
+ * The app is landscape, always, the way a video game is. Opening it shows a
+ * landscape picture and the *phone* is what turns; either way round is fine,
+ * and turning it over rotates the picture with it.
+ *
+ * ## `'landscape'`, not `'landscape-primary'`
+ *
+ * That one word is what makes both sides work. Locking to the primary side
+ * would pin the app to one edge of the phone and leave it upside down held the
+ * other way; locking to `'landscape'` lets the OS flip 180 degrees between the
+ * two and it does that on its own, with nothing here to help it.
  *
  * ## Why this is not a line in the manifest
  *
- * It was: `orientation: 'landscape'`. That works and it is absolute — an
- * installed app locked that way can never turn, including on the grown-ups
- * screens, and the tracing editor wants a tall window and a finger. So the
- * manifest asks for nothing, the lock is applied here, and it is *released*
- * while Settings is open.
+ * It was: `orientation: 'landscape'`. The manifest asks for nothing now and the
+ * lock is applied here, which is the arrangement that survived the reason it
+ * was set up for going away. Settings used to release it, so the phone could be
+ * turned upright to trace a letter. It does not any more.
  *
  * ## Fullscreen is what makes it work in a tab
  *
@@ -21,17 +26,18 @@
  * the pair every mobile web game uses: `requestFullscreen()`, then the lock,
  * both from the tap that starts the app.
  *
- * ## And where none of that is allowed, nothing happens
+ * ## Where the ask is refused, the app turns itself
  *
- * No card, no overlay, no "please rotate". Somebody holding the phone upright,
- * or with rotation switched off in the system settings, still gets the app —
- * letterboxed and small, but there. Blocking the view to enforce a preference
- * is worse than the preference going unmet, and there used to be a card here
- * doing exactly that.
+ * A tab that never went fullscreen, or a phone with rotation switched off in
+ * system settings. There used to be nothing to do about those and the app sat
+ * in a letterboxed band across the middle of the screen, which was the wrong
+ * answer: it is unplayably small for a three-year-old aiming at balloons.
+ *
+ * So src/lib/turn.js rotates the app across the screen instead, filling it, and
+ * the phone gets held sideways to read it. Still no card and still no overlay —
+ * nothing is ever blocked to enforce a preference. The app simply arrives the
+ * right way up for a phone held the way it is asking to be held.
  */
-
-/** True while a grown-up has the settings screen open. */
-let released = false;
 
 const coarse = () =>
   typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
@@ -63,7 +69,6 @@ async function lockDirect() {
  * @returns {Promise<boolean>} whether the app is now held in landscape
  */
 export async function lockLandscape() {
-  released = false;
   if (await lockDirect()) return true;
   if (!coarse()) return false;
 
@@ -80,26 +85,6 @@ export async function lockLandscape() {
 }
 
 /**
- * Lets the phone turn again, for as long as the grown-ups screens are open.
- *
- * Fullscreen is *not* left: dropping out of it would resize everything under a
- * screen somebody is reading, and the point here is only that the phone may be
- * turned.
- */
-export function releaseOrientation() {
-  released = true;
-  try {
-    screen.orientation?.unlock?.();
-  } catch {
-    // Unlocking something that was never locked throws in some builds, and
-    // there is nothing to do about it.
-  }
-}
-
-/** Whether the lock is currently released for the grown-ups screens. */
-export const isReleased = () => released;
-
-/**
  * Starts asking. Called once at startup.
  *
  * Twice, because the two paths want different moments: an installed app grants
@@ -109,11 +94,5 @@ export const isReleased = () => released;
 export function watchOrientation() {
   if (typeof window === 'undefined') return;
   lockLandscape();
-  window.addEventListener(
-    'pointerdown',
-    () => {
-      if (!released) lockLandscape();
-    },
-    { once: true }
-  );
+  window.addEventListener('pointerdown', () => lockLandscape(), { once: true });
 }

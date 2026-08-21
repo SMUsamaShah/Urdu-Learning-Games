@@ -5,7 +5,7 @@ import { canInstall, onInstallAvailability, promptInstall } from '../lib/install
 import { addMascot } from '../lib/mascot.js';
 import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { canFullscreen, isFullscreen, onFullscreenChange, toggleFullscreen } from '../lib/fullscreen.js';
-import { lockLandscape, releaseOrientation } from '../lib/orientation.js';
+
 import { dropScreen, pushScreen, replaceScreen } from '../lib/history.js';
 import { addScenery } from '../lib/scenery.js';
 import { gridPlaces, tileMaker } from '../lib/game-tile.js';
@@ -523,10 +523,12 @@ export default class Home extends Phaser.Scene {
     // bar meant for settings must not also poke the game.
     this.input.enabled = false;
     this.input.keyboard.enabled = false;
-    // The games are held sideways; these screens are not. The tracing editor in
-    // particular wants a tall window and a finger, and a phone that cannot be
-    // turned is a phone where ھ cannot be fixed.
-    releaseOrientation();
+    // The lock is *not* released. Settings used to let the phone turn upright,
+    // because the tracing editor wants a tall window and a finger. The app is
+    // landscape everywhere now, on every screen, the way a video game is — so
+    // the editor gets a short wide window, and if that turns out to be awkward
+    // it is a layout problem in src/ui/stroke-editor.css rather than a reason
+    // to let one screen behave differently from the rest of the app.
     const close = openSettings({
       onClose: () => {
         // Whatever closed it — the ×, the arrow, or the phone's back button —
@@ -534,7 +536,6 @@ export default class Home extends Phaser.Scene {
         // screen that is not there. Dropping rather than navigating, because by
         // the time onClose runs the history has already moved.
         dropScreen('settings');
-        lockLandscape();
         this.input.enabled = true;
         this.input.keyboard.enabled = true;
         this.settingsOpening = false;

@@ -26,11 +26,24 @@ it.
 
 ## Which way up
 
-The games are drawn at 1280×720 and are held in landscape — the app asks for it
-the way a mobile web game does. **The grown-ups screens are the exception**: the
-orientation lock is released while Settings is open, because tracing a letter
-wants a tall window and a finger.
+**Landscape, always, on every screen — Settings included.** The app behaves like
+a video game: it opens sideways and stays sideways, and the phone is what turns.
+Either way round works, and turning the phone over rotates the picture with it.
 
-Never block the view to enforce this. A person holding the phone upright, or
-with rotation switched off, must still see the app — letterboxed and small is
-fine, a card telling them to rotate is not.
+Three things follow, and none of them is negotiable:
+
+- **No portrait mode.** Settings used to release the lock so the tracing editor
+  could have a tall window. It does not any more. If the editor is awkward in a
+  short wide window that is a layout problem to solve in landscape.
+- **No letterboxing.** The canvas is cut to the screen's own shape rather than
+  to a fixed 16:9, so there are no bands down the sides of a 20:9 phone. The
+  design height is fixed at 720 and the width is measured at startup, before any
+  scene is imported — see `src/main.js`, which explains why the ordering is the
+  whole trick.
+- **No card telling anybody to rotate.** That part of the old rule survives.
+  Where the phone refuses to turn, `src/lib/turn.js` rotates the app across the
+  screen instead and it is held sideways to read. Nothing is ever blocked to
+  enforce a preference; the app just arrives the right way up.
+
+What was here before said "letterboxed and small is fine". It is not, and that
+is why all of the above exists.
