@@ -24,7 +24,11 @@
 
   position: fixed;
   inset: 0;
-  z-index: 60;
+  /* Above everything, including the "that's enough for today" screen below —
+     which is the one place the gate is opened from *on top of* another overlay.
+     At 60 it opened behind it and the Continue button could not be pressed, so
+     the only way back in was unreachable. Found by tools/verify-limit.mjs. */
+  z-index: 80;
   font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--ink);
   background: rgba(58, 46, 30, 0.45);
@@ -83,4 +87,87 @@
   border-color: var(--accent);
   color: #ffffff;
   font-weight: 600;
+}
+
+/* ------------------------------------------------------- that's enough today
+ *
+ * Lives beside the gate because it is the same kind of thing: a full-screen
+ * backdrop over everything the app is doing, mounted into the stage so it turns
+ * with it. The difference is that this one has no way out that a child can
+ * find, which is the whole point of it.
+ */
+
+.timeup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  /* Warmer and heavier than the gate's. The gate interrupts an adult for two
+     seconds; this ends the session, and it should feel like the lights going
+     down rather than like an error. */
+  background: rgba(28, 34, 52, 0.86);
+  animation: timeup-in 380ms ease-out;
+}
+
+@keyframes timeup-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.timeup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: min(560px, 88vw);
+  padding: 22px 30px 26px;
+  border-radius: 22px;
+  background: #fdf6e6;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
+  text-align: center;
+}
+
+.timeup-mascot {
+  width: clamp(90px, 22vh, 150px);
+  height: auto;
+}
+
+/* The baked Nastaliq, sized by height rather than by font-size: these are
+   paths, not text, and Nastaliq's vertical range is enormous. */
+.timeup-title svg {
+  height: clamp(40px, 10vh, 68px);
+  width: auto;
+}
+
+/* Two thirds of the title rather than a third of it. The first pass sized this
+   at 5.5vh and the English underneath at a fixed 15px, which on a 400px-tall
+   phone made the English the largest writing on a screen addressed to a child
+   who cannot read either — and this one is the sentence that matters. */
+.timeup-sub svg {
+  height: clamp(30px, 7vh, 46px);
+  width: auto;
+  opacity: 0.82;
+}
+
+/* For whoever picks the phone up, not for him. Smallest thing here. */
+.timeup-roman {
+  margin: 2px 0 0;
+  font: clamp(11px, 3vh, 14px)/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color: #8d8571;
+}
+
+/* Small, quiet, and at the bottom. It is the only control here and it is not
+   for the person the screen is addressed to. */
+.timeup-grown {
+  margin-top: 6px;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(43, 48, 71, 0.08);
+  color: #6a6f8c;
+  font: 500 14px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  cursor: pointer;
 }

@@ -380,6 +380,16 @@
       "id": "joined",
       "text": "جوڑ کر",
       "roman": "jor kar"
+    },
+    {
+      "id": "time-up",
+      "text": "آج کے لیے بس",
+      "roman": "That's enough for today"
+    },
+    {
+      "id": "come-back",
+      "text": "کل پھر کھیلیں گے",
+      "roman": "We'll play again tomorrow"
     }
   ]
 }

@@ -31,6 +31,7 @@ import { paperFall } from './celebrate.js';
 import { jig } from './liveliness.js';
 import { starShower } from './particles.js';
 import { armBrowseTimer, noteFinished } from './chalo.js';
+import { noteActivityEnded } from './time-up.js';
 import { addRail } from './rail.js';
 import { addScenery } from './scenery.js';
 import { COLORS, RAIL, makeButton } from './theme.js';
@@ -135,11 +136,15 @@ export function addStage(scene, options = {}) {
  * @param {number} [options.duration] how long the stars keep falling
  */
 export function wellDone(scene, { banner, rail }, options = {}) {
+  // The one moment every game agrees is an ending, which is why a time limit
+  // that ran out mid-round waits for it rather than cutting the round off. See
+  // src/lib/time-up.js.
+  noteActivityEnded();
   paperFall(scene);
   starShower(scene, options.duration ? { duration: options.duration } : {});
   rail?.cheer();
-  // The one moment every game agrees is "an activity finished", which is what a
-  // چلو run waits for. Nothing in the scenes changes for it.
+  // The same moment, for the same reason, is what a چلو run waits on before it
+  // moves to the next game. Nothing in the scenes changes for it.
   noteFinished(scene);
   // One of eight phrases rather than شاباش every time. Twenty times a session,
   // the same word stops being praise and becomes a noise the screen makes —

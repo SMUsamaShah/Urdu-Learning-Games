@@ -20,6 +20,7 @@ import { running as chaloRunning, startRun, stopRun } from '../lib/chalo.js';
 import { GAMES } from '../lib/games.js';
 import { PER_PAGE, menuGames, pagesOf } from '../lib/menu.js';
 import { watchSwipe } from '../lib/swipe.js';
+import { watchMenu } from '../lib/time-up.js';
 import { queueTileArt } from '../lib/tiles.js';
 
 /**
@@ -192,6 +193,10 @@ export default class Home extends Phaser.Scene {
 
     this.buildPager(places, tileH);
     this.buildChalo();
+    // If the day has run out — or runs out while he is sitting here — this is
+    // where it lands: the menu is the one screen with nothing to interrupt, so
+    // it does not wait out the grace period. See src/lib/time-up.js.
+    watchMenu(this);
 
     // The grid assembles itself instead of being there already. Reading order,
     // so it builds right to left the way the script does, and quickly — this is

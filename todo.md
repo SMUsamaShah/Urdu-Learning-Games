@@ -127,6 +127,12 @@ narrow screens.
 Only worth doing if the tracing is actually being done on the tablet rather than
 at a computer.
 
+`npm run verify:traces` fails on this today — *"the page scrolled 271px during
+the drag"*. The editor now gets a short wide window rather than a tall one, so
+the board and the panel no longer both fit and dragging a point scrolls the page
+under the finger. Same cause, and the check is already asking the right
+question, so whatever fix this gets can be trusted when that check goes green.
+
 ## Language
 
 ### The ninety number names want reading

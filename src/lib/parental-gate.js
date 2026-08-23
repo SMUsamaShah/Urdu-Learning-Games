@@ -21,6 +21,7 @@
 import './parental-gate.css';
 import { goBack, pushScreen } from './history.js';
 import { stageElement } from './turn.js';
+import { holdGameInput } from './game-input.js';
 
 const HOLD_MS = 900;
 
@@ -69,9 +70,14 @@ export function askParentalQuestion(parent = stageElement()) {
      * variable.
      */
     let answer = false;
+    // The question covers the canvas, which does not stop Phaser hearing a tap
+    // on it: see src/lib/game-input.js. Without this, answering the question
+    // opened whichever tile "Continue" was sitting on.
+    const release = holdGameInput();
     const settle = (result) => {
       document.removeEventListener('keydown', onKey);
       backdrop.remove();
+      release();
       resolve(result);
     };
     pushScreen('gate', () => settle(answer));

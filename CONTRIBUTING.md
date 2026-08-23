@@ -240,6 +240,13 @@ app actually starts. That is what it takes to catch the ordering faults: a clip
 that lost a race arriving late and speaking over its replacement, and a
 name-then-word sequence finishing on top of whatever was tapped during the gap.
 
+If you touched the daily time limit — the allowance store, the time-up screen,
+or any overlay that covers the canvas:
+
+```sh
+npm run dev & npm run verify:limit
+```
+
 If you touched either guessing game:
 
 ```sh
@@ -592,6 +599,40 @@ docstring.
 `Settings → How he's doing` shows the record, and `npm run verify:games` checks
 both ends of the wire: that playing a game badly records something, and that the
 scene's own `pickTarget` then deals that letter more often.
+
+## How long he gets each day
+
+Off unless a parent switches it on, in `Settings → Time → Time each day`. The
+store is `src/lib/allowance.js` and the screen is `src/lib/time-up.js`.
+
+**Why the app counts its own minutes.** Android's App Timer cannot. Installed
+from Chrome this is a WebAPK: its own icon, its own row in Digital Wellbeing,
+and rendered in Chrome's process. Foreground time is measured per process, so it
+all lands on Chrome — the timer set on اردو کھیل never counts down, and setting
+one on Chrome instead spends the same budget on everything else the phone
+browses. Counting here also works however the app was opened, which the OS timer
+never would.
+
+Three rules the rest of it hangs off, all checked by `npm run verify:limit`:
+
+- **A limit never takes a round away.** The clock stops the instant the minutes
+  go; the screen waits for `wellDone` in stage.js, which is the one moment every
+  game agrees is an ending. Screens with no ending of their own — Flashcards,
+  Trace — get ninety seconds instead, and the menu gets nothing because there is
+  nothing there to interrupt. Cutting a screen off mid-round turns a limit into
+  a punishment for whatever he happened to be playing.
+- **The day rolls over on a read, not on a timer.** The stored day is a local
+  date string checked every time anybody asks. Nothing of ours runs while the
+  app is closed, which is most of the time, so a phone off for a week has to
+  come back to a full allowance without a `setTimeout` having survived.
+- **A tick that spans too long is not use.** Some Androids never fire
+  `visibilitychange` for a screen that switched off under a covered sensor, so a
+  gap over `MAX_TICK` counts as nothing. Charging a whole nap against a
+  three-year-old is the one failure a parent could not argue with.
+
+`accrual()`, `rollover()` and `ranOutNow()` are pure and exported for
+`tests/allowance.test.mjs`; everything else about the feature needs a browser
+and lives in the verifier.
 
 ## How it looks
 
@@ -965,7 +1006,7 @@ opens the mic for a take and hands it back a couple of seconds later.
 a fake capture device will not reproduce the stutter itself — the assertions
 check the conditions that cause it, not the symptom.
 
-## Two Phaser 4 traps
+## Three Phaser 4 traps
 
 Glyphs must never be sized by height alone: Urdu has letters several times wider
 than they are tall (ے, ک), so a size chosen to fit the box vertically silently
@@ -990,6 +1031,23 @@ everything else measured here, and has never been checked on a GPU. It may be a
 software-renderer problem rather than a Phaser one. The canvas route works
 everywhere and is what the app relies on, so nothing depends on the answer — but
 do not quote it as a fact about Phaser.
+
+**Covering the canvas does not stop Phaser hearing a tap.** It listens for
+`pointerup` on the *window* rather than on the canvas, so that a drag released
+off the edge still ends. Every DOM overlay in this app therefore sits on top of
+a game that is still listening: pressing a button on one is also a tap in the
+game at those coordinates, and the menu's tiles open on `pointerup`.
+
+Pressing "Grown-ups" on the time-up screen opened whichever game the button
+happened to be over, behind the overlay, while the overlay stayed up.
+`elementFromPoint` said the overlay had the tap — it did — and Phaser had it
+too. Neither `pointer-events: none` nor `stopPropagation` helps: the events
+never go near the canvas, and window is the top of the propagation path rather
+than something below it.
+
+So anything covering the canvas takes a hold from `src/lib/game-input.js`
+(Settings, the parental gate and the time-up screen all do) and releases it when
+it closes. Holds are counted, because these overlays stack.
 
 ## Colour
 

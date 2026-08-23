@@ -39,6 +39,9 @@ import * as strokes from './lib/strokes.js';
 import * as fullscreen from './lib/fullscreen.js';
 import * as orientation from './lib/orientation.js';
 import * as turn from './lib/turn.js';
+import * as allowance from './lib/allowance.js';
+import { useGameInput } from './lib/game-input.js';
+import { watchTimeUp } from './lib/time-up.js';
 import * as backHistory from './lib/history.js';
 import * as chalo from './lib/chalo.js';
 import * as stage from './lib/stage.js';
@@ -145,6 +148,11 @@ const game = new Phaser.Game({
 // different contexts are connected, and the music simply never plays.
 useAudioContext(game.sound?.context ?? audioContext);
 
+// Every DOM screen that covers the canvas — Settings, the grown-ups question,
+// the time-up screen — asks this to stop Phaser hearing pointers while it is
+// up. Covering the canvas does not do it on its own; see the note there.
+useGameInput(game);
+
 window.__game = game;
 window.__music = music;
 // Which pen paths the app believes in, and where each came from. Held at module
@@ -175,6 +183,13 @@ window.__stage = stage;
 orientation.watchOrientation();
 turn.watchTurn(game);
 window.__turn = turn;
+
+// How long he gets today. Off unless a grown-up switched it on, and counted
+// here rather than by Android's App Timer, which cannot see this app at all —
+// see the note at the top of src/lib/allowance.js.
+allowance.watchAllowance();
+watchTimeUp();
+window.__allowance = allowance;
 
 // What the phone's back button means. Started before anything can open a screen,
 // because the entry it replaces is the one the app sits on at the menu — see

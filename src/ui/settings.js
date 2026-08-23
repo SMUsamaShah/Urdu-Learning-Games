@@ -43,8 +43,18 @@ import { expectedClips } from '../lib/clip-list.js';
 import { glyphForClip, letters, numbers, words } from '../lib/content.js';
 import { bandOf, historyOf, reset as resetMastery } from '../lib/mastery.js';
 import { PER_PAGE, move as moveGame, orderedGames, resetMenu } from '../lib/menu.js';
+import {
+  LIMITS,
+  forgetToday,
+  limitMinutes,
+  pauseAllowance,
+  resumeAllowance,
+  setLimitMinutes,
+  spentMs,
+} from '../lib/allowance.js';
 import { glyphSvg } from './glyph-svg.js';
 import { stageElement } from '../lib/turn.js';
+import { holdGameInput } from '../lib/game-input.js';
 import {
   disabledCount,
   enableAll,
@@ -182,6 +192,13 @@ export function openSettings({ onClose } = {}) {
           actionRow('progress', 'How far', progressSummary()),
           actionRow('reset-progress', 'Start again from nothing'),
         ])}
+        ${group('Time', [
+          pageRow('limit', 'Time each day', limitSummary()),
+          // Only when there is a limit to spend. With no limit nothing is
+          // counted at all, so the row would read "Nothing yet" for ever and
+          // tapping it would undo nothing.
+          ...(limitMinutes() ? [actionRow('forget-today', 'Today so far', spentSummary())] : []),
+        ])}
         ${group('App', [
           actionRow('update', 'Check for update'),
           switchRow('fps', 'Show frame rate', showFps()),
@@ -263,6 +280,16 @@ export function openSettings({ onClose } = {}) {
     sfx.correct();
   }
 
+  /** Puts today's used minutes back to nothing. */
+  function forgetSoFar() {
+    if (!limitMinutes()) return;
+    if (!window.confirm("Forget the time he has used today?")) return;
+    forgetToday();
+    const row = bodyEl.querySelector('[data-role="forget-today-value"]');
+    if (row) row.textContent = spentSummary();
+    sfx.correct();
+  }
+
   async function countRecordings() {
     const row = bodyEl.querySelector('[data-page="recordings"] .set-row-value');
     if (!row) return;
@@ -283,6 +310,7 @@ export function openSettings({ onClose } = {}) {
     numbers: 'Numbers up to',
     doing: "How he's doing",
     games: 'Games',
+    limit: 'Time each day',
     'pick-letter': 'Letters',
     'pick-word': 'Words',
     'pick-number': 'Numbers',
@@ -305,6 +333,7 @@ export function openSettings({ onClose } = {}) {
     if (id === 'numbers') return void bodyEl.append(numbersPage());
     if (id === 'doing') return void bodyEl.append(doingPage());
     if (id === 'games') return void bodyEl.append(gamesPage());
+    if (id === 'limit') return void bodyEl.append(limitPage());
     if (id.startsWith('pick-')) return void bodyEl.append(pickPage(id.slice(5)));
     if (id === 'check') return void openSoundCheck();
 
@@ -482,6 +511,54 @@ export function openSettings({ onClose } = {}) {
           anything being taken away — every letter still comes round. Only the
           last ten answers per letter count, so a letter he has since got the
           hang of drops back on its own.
+        </p>
+      </div>`);
+  }
+
+  const minutes = (ms) => Math.floor(ms / 60000);
+
+  const limitSummary = () => (limitMinutes() ? `${limitMinutes()} minutes` : 'No limit');
+
+  /** `12 of 20 min`, so the row says what is left as well as what is gone. */
+  function spentSummary() {
+    const used = minutes(spentMs());
+    const limit = limitMinutes();
+    if (!limit) return used ? `${used} min` : 'Nothing yet';
+    return `${used} of ${limit} min`;
+  }
+
+  /**
+   * How long he gets in a day.
+   *
+   * Here rather than in Android's App Timer because that cannot see this app:
+   * installed from Chrome it is a WebAPK, which renders inside Chrome's own
+   * process, so Digital Wellbeing charges the time to Chrome and the timer set
+   * on this app never counts down. The full story is at the top of
+   * src/lib/allowance.js.
+   */
+  function limitPage() {
+    return el(`
+      <div class="set-list">
+        <div class="set-card">
+          ${LIMITS.map(
+            (value) => `<button type="button" class="set-row" data-limit="${value}"
+              aria-checked="${value === limitMinutes()}" role="radio">
+              <span class="set-row-label">${value ? `${value} minutes` : 'No limit'}</span>
+              <span class="set-row-tick" aria-hidden="true">✓</span>
+            </button>`
+          ).join('')}
+        </div>
+        <p class="set-note">
+          Counted while he is actually in the app, and not while you are in
+          here. When it runs out he is let to the end of whatever he is playing
+          rather than cut off mid-round, and then the app says goodnight until
+          tomorrow. You can hand back ten minutes from that screen without
+          coming back to Settings.
+        </p>
+        <p class="set-note">
+          Android's own App Timer cannot do this one. An installed web app draws
+          through Chrome, so the phone counts the time against Chrome and a
+          timer set on اردو کھیل never runs down.
         </p>
       </div>`);
   }
@@ -818,6 +895,15 @@ export function openSettings({ onClose } = {}) {
       return;
     }
 
+    const limit = event.target.closest('[data-limit]');
+    if (limit) {
+      setLimitMinutes(Number(limit.dataset.limit));
+      clearBody();
+      bodyEl.append(limitPage());
+      sfx.tap();
+      return;
+    }
+
     const page = event.target.closest('[data-page]');
     if (page) return void openPage(page.dataset.page);
 
@@ -834,6 +920,7 @@ export function openSettings({ onClose } = {}) {
     if (act === 'reset-progress') return resetProgress();
     if (act === 'reset-doing') return resetDoing();
     if (act === 'reset-games') return resetGames();
+    if (act === 'forget-today') return forgetSoFar();
     if (act?.startsWith('all-')) {
       enableAll(act.slice(4));
       // Redrawn rather than each box ticked by hand: the page is a list of up
@@ -903,10 +990,19 @@ export function openSettings({ onClose } = {}) {
     clearBody();
     stopAll();
     root.remove();
+    releaseInput();
+    // His clock starts again on the way out. See the note in allowance.js:
+    // twenty minutes spent fixing a stroke path is not twenty minutes of his.
+    resumeAllowance();
     onClose?.();
   }
 
   document.addEventListener('keydown', onKey);
+  // Nothing in here is his time, and none of these taps is a tap on the game
+  // underneath — which needs saying out loud, because Phaser hears `pointerup`
+  // on the window whatever is covering the canvas. See src/lib/game-input.js.
+  pauseAllowance();
+  const releaseInput = holdGameInput();
   // Into the stage, not the body, so Settings turns with the app. See
   // src/lib/turn.js.
   stageElement().appendChild(root);

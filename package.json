@@ -29,6 +29,7 @@
     "verify:sizing": "node tools/verify-glyph-sizing.mjs",
     "verify:fun": "node tools/verify-fun.mjs",
     "verify:trace": "node tools/verify-trace.mjs",
+    "verify:limit": "node tools/verify-limit.mjs",
     "test": "eslint . && node --test \"tests/**/*.test.mjs\"",
     "lint": "eslint .",
     "backgrounds": "node tools/make-backgrounds.mjs",
