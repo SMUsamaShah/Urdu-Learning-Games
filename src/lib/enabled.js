@@ -16,6 +16,13 @@
  * appear nowhere — not as an answer, not as a wrong answer, and not inside a
  * sequence a game generates, which is the part that is easy to miss.
  *
+ * **Games are a fourth kind**, and it is the same question asked one level up:
+ * several of the twenty-seven do nearly the same job as each other, and a
+ * switched-off game must appear nowhere either — not on the menu, and not in a
+ * چلو run, which is the part that is easy to miss there. It is a curation tool
+ * and a list of candidates for deletion. Where the surviving games *go* is a
+ * separate matter and lives in src/lib/menu.js.
+ *
  * ## Off, not on
  *
  * The set stored is the *disabled* ids, not the enabled ones. Everything is on
@@ -31,8 +38,8 @@
 const BAND_KEY = 'urdu-games:numbers-band';
 const OFF_KEY = 'urdu-games:disabled';
 
-/** The three things that can be switched off, and nothing else. */
-export const KINDS = ['letter', 'word', 'number'];
+/** The four things that can be switched off, and nothing else. */
+export const KINDS = ['letter', 'word', 'number', 'game'];
 
 /** The bands offered, in the order Settings lists them. */
 export const BANDS = [10, 20, 100];
@@ -100,8 +107,8 @@ function save() {
 }
 
 /**
- * @param {'letter'|'word'|'number'} kind
- * @param {string} id
+ * @param {'letter'|'word'|'number'|'game'} kind
+ * @param {string} id a content id, or a scene key for a game
  */
 export function isEnabled(kind, id) {
   return !off[kind]?.has(id);

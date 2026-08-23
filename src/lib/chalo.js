@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAMES } from './games.js';
+import { menuGames } from './menu.js';
 
 /**
  * چلو — "let's go". One tap, and the app plays itself.
@@ -41,8 +41,19 @@ import { GAMES } from './games.js';
 /** How long a browsing screen gets before the run moves on. */
 const BROWSE_MS = 45000;
 
-/** Games a run can choose. Everything with a scene — the panel tile has none. */
-const PLAYABLE = GAMES.filter((game) => game.scene).map((game) => game.scene);
+/**
+ * Games a run can choose: whatever is switched on, asked fresh every time.
+ *
+ * This was a `const` computed at import, which was fine while nothing could
+ * change it. Games can be switched off in Settings now, and a list built once
+ * at startup would go on offering a switched-off game for the rest of the
+ * session — the run being the one place a child meets a game without choosing
+ * it from the menu, so nobody would even see where it came from.
+ *
+ * Same shape of mistake as the design width being read before the scenes
+ * loaded. A constant is only safe while the thing behind it cannot move.
+ */
+const playable = () => menuGames().map((game) => game.scene);
 
 /** Screens with no finish of their own, and how long they get instead. */
 const BROWSING = new Set(['Flashcards']);
@@ -59,12 +70,20 @@ export function currentGame() {
   return run?.last ?? null;
 }
 
-/** Draws the next game, never the one just played. */
+/**
+ * Draws the next game, never the one just played.
+ *
+ * Unless there is only one left switched on, in which case it is that one
+ * again. "Never twice running" used to be free — there were twenty-seven and
+ * excluding one always left something — and it stops being free the moment a
+ * parent can switch games off. An empty bag here would `pop()` undefined and
+ * the run would try to start a scene called nothing.
+ */
 function nextGame() {
   if (!run.bag.length) {
-    run.bag = Phaser.Utils.Array.Shuffle(
-      PLAYABLE.filter((key) => key !== run.last)
-    );
+    const pool = playable();
+    const fresh = pool.filter((key) => key !== run.last);
+    run.bag = Phaser.Utils.Array.Shuffle(fresh.length ? fresh : pool);
   }
   return run.bag.pop();
 }

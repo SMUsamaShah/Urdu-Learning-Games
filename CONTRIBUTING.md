@@ -507,6 +507,52 @@ scene drawing what it drew before. None of the ellipses have been deleted, and
 to `PROP_SCREENS` there when it gains a prop, since the first generated prop
 went in with that list still naming two other games.
 
+## Which games the menu shows
+
+`src/lib/games.js` is plain data: what exists, nothing about where it goes.
+There used to be three castes in it — `featured`, a `spelling` group, and
+everything else behind a "more games" tile — and none of it meant anything to a
+child.
+
+Two preferences arrange that list, and they are deliberately separate stores:
+
+- **On and off** is the `'game'` kind in `src/lib/enabled.js`, which already
+  keeps the *disabled* set so a game added next month is on for everybody.
+- **The order** is `src/lib/menu.js`, a list of scene keys reconciled against
+  `GAMES` on every read. Keys rather than indexes, and reconciled on read rather
+  than migrated on write, so a saved order survives a game being added or
+  removed.
+
+`menuGames()` is what everything deals from, and it falls back to the whole list
+when nothing is left switched on — the same `orAll` discipline as
+`activeLetters()`. A menu you cannot get back to Settings from is not an option.
+
+**Anything that lists games must ask at call time.** `chalo.js` read its
+playable list once at import and went on offering a switched-off game for the
+rest of the session; a run is the one place a child meets a game without picking
+it, so nobody would have seen where it came from.
+
+## Swiping, and telling a drag from a tap
+
+The menu shows `PER_PAGE` tiles and swipes sideways. `src/lib/swipe.js` decides
+whether a gesture was a drag or a tap, and both the menu and the Flashcards
+letter strip use it — a tile's `onTap` asks `swipe.moved()` before doing
+anything.
+
+That threshold is the whole risk of a draggable list, and the deleted
+`games-panel.js` refused to have one for exactly that reason: *"a child pressing
+a tile and moving their finger a few pixels would scroll instead of choosing."*
+`verify:games` checks both directions, because they fail apart — a slop of zero
+swallows every tap and a slop of infinity opens a game on every swipe.
+
+**Paging is not navigation** and pushes no history entry, or the back button
+would walk back through pages a child swiped past instead of leaving the app.
+
+One trap worth knowing: the menu's tiles live inside the container the pager
+slides, so a check that filters `scene.children.list` for `name === 'tile'`
+finds none of them. Walk the tree. Three checks already did; two did not, and
+one of those had been quietly testing nothing.
+
 ## Which letters come up
 
 `src/lib/mastery.js` keeps the last ten answers per letter, number and word, and

@@ -1,11 +1,17 @@
 import { letterGlyph } from './content.js';
 
 /**
- * Which games exist, and which of them the menu shows first.
+ * Which games exist. Nothing about where they go.
  *
- * Data, in its own file, because three places read it: the menu, the panel of
- * extra games behind it, and the verifier that checks every one of them starts
- * a scene that exists. It was inline in Home.js until the menu split in two.
+ * Plain data, and *only* data. There used to be three castes in here — eight
+ * `featured` on the front page, three in a `spelling` group behind their own
+ * tile, and everything else behind a "more games" tile — and the distinction
+ * was invisible to a child and had stopped meaning much to anybody. It is one
+ * flat list now, and which games appear and in what order is a preference:
+ * src/lib/menu.js owns the order, src/lib/enabled.js owns the on and off.
+ *
+ * The order below is still the order a fresh device gets, so it is worth
+ * keeping as a sensible learning path rather than shuffling it about.
  */
 
 /** Games ready to play. Unfinished games are simply absent rather than greyed
@@ -16,7 +22,6 @@ export const GAMES = [
     ui: 'letters',
     roman: 'Letters',
     color: 0x3f7fd4,
-    featured: true,
     // Tiles are illustrated with a real Urdu letter rather than an emoji. The
     // obvious pick, 🔤, is a picture of the Latin alphabet.
     icon: { letter: 'be', form: 'isolated' },
@@ -26,7 +31,6 @@ export const GAMES = [
     ui: 'trace',
     roman: 'Write',
     color: 0xd4762f,
-    featured: true,
     icon: { letter: 'alif', form: 'isolated' },
   },
   {
@@ -34,7 +38,6 @@ export const GAMES = [
     ui: 'find-letter',
     roman: 'Find the letter',
     color: 0x5f9e5a,
-    featured: true,
     icon: { letter: 'sin', form: 'isolated' },
   },
   {
@@ -42,7 +45,6 @@ export const GAMES = [
     ui: 'words',
     roman: 'Words',
     color: 0x7a5bbd,
-    featured: true,
     icon: { letter: 'alif', form: 'isolated' },
   },
   {
@@ -50,7 +52,6 @@ export const GAMES = [
     ui: 'first-letter',
     roman: 'Starts with',
     color: 0xc9713f,
-    featured: true,
     icon: { letter: 'pe', form: 'isolated' },
   },
   {
@@ -58,7 +59,6 @@ export const GAMES = [
     ui: 'numbers',
     roman: 'Numbers',
     color: 0x2f8f8a,
-    featured: true,
     number: 'n3',
   },
   {
@@ -73,7 +73,6 @@ export const GAMES = [
     ui: 'memory',
     roman: 'Pairs',
     color: 0xc2557f,
-    featured: true,
     icon: { letter: 'jim', form: 'isolated' },
   },
   {
@@ -81,7 +80,6 @@ export const GAMES = [
     ui: 'forms',
     roman: 'Shapes',
     color: 0x8a6ad0,
-    featured: true,
     // The initial form, because the tile is advertising the thing the game is
     // about: a letter wearing a face the flashcards never showed.
     icon: { letter: 'be', form: 'initial' },
@@ -191,15 +189,16 @@ export const GAMES = [
     color: 0xd4913f,
     icon: { letter: 'lam', form: 'isolated' },
   },
-  // --- Spelling. Behind their own tile rather than out here with the rest: a
-  // child arrives at these after the alphabet, and mixing them into a menu of
-  // twenty-four letter games would bury them.
+  // --- Spelling: the first games here that are about *words* rather than
+  // letters. See src/lib/spelling.js for why spelling is a different job in
+  // Urdu than it is in English. They sat behind a tile of their own until the
+  // menu became one ordered list; where they come is a matter for
+  // Settings -> Games now, like every other game.
   {
     scene: 'FillLetter',
     ui: 'missing',
     roman: 'Missing letter',
     color: 0x2f8f8a,
-    group: 'spelling',
     icon: { letter: 'kaf', form: 'isolated' },
   },
   {
@@ -207,7 +206,6 @@ export const GAMES = [
     ui: 'spell',
     roman: 'Build the word',
     color: 0x3f7fd4,
-    group: 'spelling',
     icon: { letter: 'be', form: 'isolated' },
   },
   {
@@ -215,7 +213,6 @@ export const GAMES = [
     ui: 'joined',
     roman: 'Joined up',
     color: 0x8a6ad0,
-    group: 'spelling',
     icon: { letter: 'jim', form: 'isolated' },
   },
 ];
@@ -223,58 +220,16 @@ export const GAMES = [
 /**
  * What a game's drawing is filed under in tile-faces.js.
  *
- * The scene key, except for the tile that opens the panel of extra games —
- * that one starts no scene, so it carries an explicit `art` instead.
+ * The scene key. `art` survives as an override because a tile's picture and its
+ * scene are not the same fact, and one of them may want renaming without the
+ * other.
  */
 export function artName(game) {
   return game.art ?? game.scene;
 }
 
-export const FEATURED = GAMES.filter((game) => game.featured);
-
-/**
- * Spelling: its own group behind its own tile.
- *
- * The first games in this app that are about *words* rather than letters, and
- * they want to be found together. See src/lib/spelling.js for what makes
- * spelling a different job in Urdu than it is in English.
- */
-export const SPELLING = GAMES.filter((game) => game.group === 'spelling');
-
-/** Everything not on the front page and not in a group of its own. */
-export const MORE = GAMES.filter((game) => !game.featured && !game.group);
-
-/**
- * The ninth tile: the one that opens the spelling games.
- *
- * Shaped like a game so the grid stays one grid. It costs a place on the front
- * page and Balloons is the one that gave it up — the most arcade and the least
- * teaching of the nine that were there, and it has only moved one tap away.
- */
-export const SPELLING_TILE = {
-  art: 'Spelling',
-  ui: 'spelling',
-  roman: `Spelling (${SPELLING.length})`,
-  color: 0xc9713f,
-  icon: { letter: 'be', form: 'initial' },
-};
-
-/**
- * The tenth tile: the one that opens the rest.
- *
- * Shaped exactly like a game so the grid stays one grid — same size, same three
- * lines, same Urdu name over a roman gloss. It is only told apart by its colour
- * and by the pile of letters on it, which is the honest thing to draw for
- * "there are more of these".
- */
-export const MORE_TILE = {
-  art: 'More',
-  ui: 'more-games',
-  roman: `More games (${MORE.length})`,
-  color: 0x6a6f8c,
-  icon: { letter: 'kaf', form: 'initial' },
-};
-
+/** A game by its scene key, or undefined. */
+export const gameFor = (scene) => GAMES.find((game) => game.scene === scene);
 
 /**
  * Every letter a tile asks for, resolved.
@@ -285,9 +240,7 @@ export const MORE_TILE = {
  * runtime; this is the same question asked from a test.
  */
 export function missingIcons() {
-  // The More tile too: it is not a game, and it is still a tile with a letter
-  // on it when its picture is missing.
-  return [...GAMES, SPELLING_TILE, MORE_TILE]
-    .filter((game) => game.icon && !letterGlyph(game.icon.letter, game.icon.form))
-    .map((game) => `${game.ui}: ${game.icon.letter} ${game.icon.form}`);
+  return GAMES.filter((game) => game.icon && !letterGlyph(game.icon.letter, game.icon.form)).map(
+    (game) => `${game.ui}: ${game.icon.letter} ${game.icon.form}`
+  );
 }

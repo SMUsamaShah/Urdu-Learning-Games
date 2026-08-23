@@ -339,13 +339,6 @@ const TILES = {
       'with a dashed arc showing where it has bounced.',
     object: false,
   },
-  Spelling: {
-    letter: 'be',
-    scene:
-      'Three white puzzle-piece tiles in a row spelling a word, two of them ' +
-      'carrying Urdu letters and the third empty with a dashed outline. Above them ' +
-      'sits a friendly cartoon OBJECT. One of the filled tiles carries LETTER.',
-  },
   BuildWord: {
     letter: 'be',
     scene:
@@ -367,14 +360,6 @@ const TILES = {
       'Three small white cards in a row at the top, one of them carrying LETTER, ' +
       'a downward arrow beneath them, and a wide white plaque at the bottom with a ' +
       'short handwritten Urdu word on it.',
-    object: false,
-  },
-  More: {
-    letter: 'kaf',
-    scene:
-      'A neat three-by-two grid of small brightly coloured rounded app tiles, each ' +
-      'a different colour. One of them carries LETTER and one shows a white plus ' +
-      'sign.',
     object: false,
   },
 };

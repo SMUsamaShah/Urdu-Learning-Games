@@ -38,7 +38,7 @@ const drew = await page.evaluate(
   async ([tile, columns]) => {
     const content = await import('/src/lib/content.js');
     await content.loadGlyphs();
-    const { GAMES, MORE_TILE, SPELLING_TILE, artName } = await import('/src/lib/games.js');
+    const { GAMES, artName } = await import('/src/lib/games.js');
     // Through the app's own painter, not a copy of it. See tilePanel().
     const { paintTilePanel, tilePanel } = await import('/src/lib/game-tile.js');
     const manifest = (await import('/content/tiles.json')).default;
@@ -60,12 +60,9 @@ const drew = await page.evaluate(
       })
     );
 
-    // The two tiles that are not games — the spelling group and the rest —
-    // are on the menu and so they are on the sheet. Left out, this sheet showed
-    // twenty-eight of the twenty-nine pictures and the missing one was the
-    // Spelling tile, which is exactly the sort of thing a preview exists to
-    // catch rather than to hide.
-    const shown = [...GAMES, SPELLING_TILE, MORE_TILE];
+    // Every game, and that is now every tile: the spelling group and the "more
+    // games" door are both gone, so there are no tiles left that are not games.
+    const shown = GAMES;
     const rows = Math.ceil(shown.length / columns);
     const gap = 18;
     const pad = 24;

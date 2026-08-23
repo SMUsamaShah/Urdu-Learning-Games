@@ -706,51 +706,6 @@ const FACES = {
     d.word('bakri', 0, h * 0.32, h * 0.16, { fill: p.dark, maxWidth: w * 0.6 });
   },
 
-  // The door to the spelling games.
-  Spelling(d) {
-    const { w, h, p } = d;
-    // A word half built, big, because this tile stands for all three.
-    const cell = w * 0.26;
-    [['be', p.base], ['kaf', p.warm], [null, null]].forEach(([id, tone], i) => {
-      const x = w * 0.29 - i * (cell + w * 0.02);
-      if (!id) {
-        d.rrect(x, -h * 0.06, cell, cell, cell * 0.18, {
-          fill: PAPER, stroke: p.base, lw: 4.5, dash: [8, 7],
-        });
-        return;
-      }
-      d.rrect(x, -h * 0.06, cell, cell, cell * 0.18, {
-        fill: tone, stroke: mix(tone, '#101423', 0.3), lw: 3.5,
-      });
-      d.letter(id, 'isolated', x, -h * 0.06, h * 0.16, { fill: PAPER, maxWidth: cell * 0.72 });
-    });
-    d.rrect(0, h * 0.34, w * 0.66, h * 0.22, w * 0.06, { fill: p.pale, stroke: p.light, lw: 3 });
-    d.word('bakri', 0, h * 0.34, h * 0.13, { fill: p.dark, maxWidth: w * 0.54 });
-  },
-
-  // The door to the rest of them.
-  More(d) {
-    const { w, h, p } = d;
-    const tones = ['#3f7fd4', '#5f9e5a', '#c2557f', '#d4913f', '#7a5bbd', p.base];
-    tones.forEach((tone, i) => {
-      const x = (i % 3) * w * 0.29 - w * 0.29;
-      const y = Math.floor(i / 3) * h * 0.3 - h * 0.15;
-      const last = i === tones.length - 1;
-      d.rrect(-x, y, w * 0.24, h * 0.24, w * 0.06, {
-        fill: last ? p.base : mix(tone, PAPER, 0.18),
-        stroke: last ? p.dark : mix(tone, '#101423', 0.25),
-        lw: 3,
-      });
-      if (last) {
-        d.rrect(-x, y, w * 0.13, h * 0.035, h * 0.017, { fill: PAPER });
-        d.rrect(-x, y, w * 0.035, h * 0.13, h * 0.017, { fill: PAPER });
-      } else {
-        d.letter(['alif', 'be', 'jim', 'dal', 'sin'][i], 'isolated', -x, y, h * 0.11, {
-          fill: PAPER, maxWidth: w * 0.15,
-        });
-      }
-    });
-  },
 };
 
 /** Whether a tile has a drawing of its own. */

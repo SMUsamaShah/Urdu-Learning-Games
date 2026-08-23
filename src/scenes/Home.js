@@ -9,7 +9,6 @@ import { canFullscreen, isFullscreen, onFullscreenChange, toggleFullscreen } fro
 import { dropScreen, pushScreen, replaceScreen } from '../lib/history.js';
 import { addScenery } from '../lib/scenery.js';
 import { gridPlaces, tileMaker } from '../lib/game-tile.js';
-import { openGamesPanel } from '../lib/games-panel.js';
 import { breathe, popIn, squash } from '../lib/liveliness.js';
 import { musicOn, setMusicOn, startMusic } from '../lib/music.js';
 import { prepareFlourishes } from '../lib/flourish.js';
@@ -18,7 +17,9 @@ import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 import { queueBackdrop } from '../lib/backdrops.js';
 import { running as chaloRunning, startRun, stopRun } from '../lib/chalo.js';
-import { FEATURED, GAMES, MORE, MORE_TILE, SPELLING, SPELLING_TILE } from '../lib/games.js';
+import { GAMES } from '../lib/games.js';
+import { PER_PAGE, menuGames, pagesOf } from '../lib/menu.js';
+import { watchSwipe } from '../lib/swipe.js';
 import { queueTileArt } from '../lib/tiles.js';
 
 /**
@@ -28,14 +29,30 @@ import { queueTileArt } from '../lib/tiles.js';
  * being taught. Each tile carries its Urdu name as a baked glyph plus a small
  * roman gloss for the parent.
  *
- * ## Nine here, the rest one tap away
+ * ## Ten at a time, and it swipes
  *
- * `featured` picks the nine that live on this screen; everything else is behind
- * the tenth tile, in `games-panel.js`, which is where the reasoning for the
- * split is written down. The nine are the learning path — meet the letters,
- * write one, find one, meet a word, hear what it starts with, then the counting
- * and the three games that drill what has been met. The other fifteen are
- * variations on those, so any of them is a fine thing to not find first.
+ * There used to be nine `featured` games here and two doors: one to a panel of
+ * the other fifteen, one to the three spelling games. Neither distinction meant
+ * anything to a child, and several of the twenty-seven do nearly the same job
+ * as each other. So there is one ordered list now — src/lib/menu.js — and this
+ * screen shows ten of it at a time, swiping sideways for the rest.
+ *
+ * Which ten is a preference rather than a fact about the app: Settings → Games
+ * switches any of them off and drags them into order, and the front page is
+ * simply the first ten that survive that.
+ *
+ * ## A swipe must not open the tile it started on
+ *
+ * The one hazard, and the deleted panel named it: *"a dragged list steals the
+ * drag from the tiles underneath it — a child pressing a tile and moving their
+ * finger a few pixels would scroll instead of choosing."* Answered by measuring
+ * the travel, in src/lib/swipe.js, which is the same mechanism the strip of
+ * letters on Flashcards uses for the same reason.
+ *
+ * The dots under the grid are tappable as well as decorative. A child who has
+ * not worked out swiping still has to be able to reach page two, or seventeen
+ * games are unreachable — and unlike the panel's arrows, dots cost no room
+ * inside the grid.
  */
 
 /**
@@ -63,6 +80,27 @@ const CHALO = { y: 252, width: 340, height: 84 };
  */
 const GRID = { top: 318, bottom: DESIGN.height - 56 };
 
+/**
+ * How far a finger must travel across the grid to turn the page.
+ *
+ * Well past `SLOP` in swipe.js, which is only the line between a tap and a
+ * drag. This is the line between a drag and a *decision*, and it wants to be
+ * generous: a page that turns under a hesitant finger is worse than one that
+ * needs asking twice, because the child who lost their page cannot say so.
+ */
+const SWIPE_PAGE = 70;
+
+/**
+ * The row of page dots: how tall a strip it needs, and how big each one is.
+ *
+ * `room` is taken off the grid's height before the tiles are sized, so a second
+ * page costs every tile a few pixels rather than costing the footer its line.
+ * `size` is well under a fingertip on its own and that is deliberate — these
+ * are readable at a glance and tappable at a push, and a row of finger-sized
+ * buttons under the grid would compete with the games for attention.
+ */
+const DOTS = { room: 44, size: 30 };
+
 export default class Home extends Phaser.Scene {
   constructor() {
     super('Home');
@@ -70,11 +108,10 @@ export default class Home extends Phaser.Scene {
 
   preload() {
     queueBackdrop(this);
-    // Every tile's picture, the panels' included: they are all on screen at
-    // once and a menu that fills in tile by tile while a child is already
-    // reaching for one is worse than a menu that takes another moment. About
-    // 10 KB each.
-    queueTileArt(this, [...GAMES, SPELLING_TILE, MORE_TILE]);
+    // Every game's picture, not just this page's: a swipe to page two must
+    // arrive drawn rather than filling in tile by tile under a finger that is
+    // already reaching. About 10 KB each.
+    queueTileArt(this, GAMES);
   }
 
   create() {
@@ -92,15 +129,25 @@ export default class Home extends Phaser.Scene {
     }
     label(this, STAGE_X, 190, 'Urdu Learning Games', { size: 20 });
 
-    // Ten tiles: the nine on the learning path and the door to the other
-    // fifteen. Five across and two down, sized to fill the stage rather than to
-    // a number typed here, so the one number that decides the whole grid is
-    // COLUMNS.
+    // Five across and two down, sized to fill the stage rather than to a number
+    // typed here, so the one number that decides the whole grid is COLUMNS —
+    // and PER_PAGE, in menu.js, is the ten those two make.
     const COLUMNS = 5;
     const gap = 26;
     const rowGap = 24;
-    const shown = [...FEATURED, SPELLING_TILE, MORE_TILE];
-    const rows = Math.ceil(shown.length / COLUMNS);
+    this.pages = pagesOf(menuGames());
+    this.page = Math.min(this.page ?? 0, this.pages.length - 1);
+    // Measured across a full page rather than across this one, so the last page
+    // with three games on it draws its tiles the same size as the first with
+    // ten. Tiles that changed size when the page turned would read as a
+    // different screen rather than as more of the same one.
+    const rows = Math.ceil(PER_PAGE / COLUMNS);
+    // The strip the dots stand in, taken off the grid before the tiles are
+    // sized rather than found afterwards. Drawn at the old GRID.bottom they
+    // landed on top of the footer line, which is the same mistake چلو made from
+    // the other end — see below. Nothing on this screen may size itself and
+    // then discover where it went.
+    const dotsRoom = this.pages.length > 1 ? DOTS.room : 0;
     // Two limits, and the tighter one wins. Width alone used to decide this,
     // which was true right up until چلو pushed the grid's top down by ninety
     // pixels and the second row started printing through the footer. Sizing
@@ -109,13 +156,13 @@ export default class Home extends Phaser.Scene {
     const tileW = Math.min(
       252,
       (STAGE.right - STAGE.left - gap * (COLUMNS - 1)) / COLUMNS,
-      (GRID.bottom - GRID.top - rowGap * (rows - 1)) / rows / 1.04
+      (GRID.bottom - dotsRoom - GRID.top - rowGap * (rows - 1)) / rows / 1.04
     );
     const tileH = Math.round(tileW * 1.04);
     // Measured from the top of the grid rather than its centre, so a second row
     // grows downwards into the space above the footer instead of pushing the
     // last row through it.
-    const places = gridPlaces(shown.length, {
+    const places = gridPlaces(PER_PAGE, {
       columns: COLUMNS,
       gap,
       rowGap,
@@ -125,16 +172,25 @@ export default class Home extends Phaser.Scene {
       top: GRID.top,
     });
 
-    const makeTile = tileMaker(this, shown, { width: tileW, height: tileH });
-    const tiles = shown.map((game, index) =>
+    // One maker for every game in the app, not for this page: the size a
+    // fallback letter is drawn at is settled across the whole set it is asked
+    // about, so a maker built per page would draw the same letter at two sizes
+    // on two pages. See tileMaker.
+    const makeTile = tileMaker(this, menuGames(), { width: tileW, height: tileH });
+    this.board = this.add.container(0, 0);
+    const tiles = this.pages[this.page].map((game, index) =>
       makeTile(game, places[index].x, places[index].y, () => {
+        // A swipe that happened to end on a tile is not a choice. This is the
+        // whole of the hazard the deleted panel refused to take on; see the
+        // note at the top and src/lib/swipe.js.
+        if (this.swipe?.moved()) return;
         sfx.whoosh();
-        this.leave(() =>
-          game.scene ? this.openGame(game.scene) : this.openPanel(game)
-        );
+        this.leave(() => this.openGame(game.scene));
       })
     );
+    for (const tile of tiles) this.board.add(tile);
 
+    this.buildPager(places, tileH);
     this.buildChalo();
 
     // The grid assembles itself instead of being there already. Reading order,
@@ -328,34 +384,71 @@ export default class Home extends Phaser.Scene {
   }
 
   /**
-   * A group of games, over the menu.
+   * Swipe for the next ten, and dots that say how many there are.
    *
-   * Two tiles open one of these now — spelling and the rest — so which set and
-   * which heading come from the tile that was tapped rather than from here.
+   * The board slides and is rebuilt rather than animated between two live
+   * grids: a page is ten baked tile textures, and holding two pages of them so
+   * one can slide over the other costs twice the memory for a transition that
+   * lasts 240ms. `scene.restart()` is what redraws it, which also picks up an
+   * order changed in Settings without this screen having to know that happened.
+   *
+   * @param {{x: number, y: number}[]} places the grid, so the dots can sit
+   *   under the last row rather than at a number typed here
    */
-  openPanel(tile) {
-    const spelling = tile.art === 'Spelling';
-    this.openMore(spelling ? SPELLING : MORE, spelling ? 'spelling' : 'more-games');
+  buildPager(places, tileH) {
+    const pages = this.pages.length;
+    // In the strip the grid gave up for them, measured off the last row rather
+    // than off the canvas so they follow the tiles when those resize.
+    const dotsY = places[places.length - 1].y + tileH / 2 + DOTS.room / 2;
+
+    this.swipe = watchSwipe(this, {
+      // Not on the چلو button, the settings hatch or the corner buttons: a
+      // finger that starts on a control is using the control.
+      from: (pointer) => pointer.y > GRID.top - 40,
+      onMove: (delta) => {
+        if (pages < 2) return;
+        // The board follows the finger, damped. 1:1 would let a page be dragged
+        // most of the way off screen and then snap back, which reads as the app
+        // fighting the hand; a third of the way is enough to say "there is
+        // something over there" and short enough that the snap is not a jump.
+        this.board.x = Phaser.Math.Clamp(this.board.x + delta * 0.34, -140, 140);
+      },
+      onEnd: ({ travel, flick }) => {
+        this.tweens.add({ targets: this.board, x: 0, duration: 180, ease: 'Quad.easeOut' });
+        if (pages < 2 || travel <= SWIPE_PAGE) return;
+        // Right to left is forward, like the script. A finger moving left —
+        // negative — is pulling the next page in from the right.
+        this.turnPage(flick < 0 ? 1 : -1);
+      },
+    });
+
+    if (pages < 2) return;
+    this.dots = [];
+    for (let index = 0; index < pages; index++) {
+      // Right to left, like the tiles: the first page is the rightmost dot.
+      const dot = makeButton(this, {
+        x: STAGE_X + ((pages - 1) / 2 - index) * (DOTS.size + 8),
+        y: dotsY,
+        width: DOTS.size,
+        height: DOTS.size,
+        shape: 'circle',
+        color: index === this.page ? COLORS.accent : COLORS.panel,
+        rim: false,
+        // Tappable, and that is the point of them. A three-year-old who has not
+        // worked out swiping must still be able to reach page two, or every
+        // game past the tenth may as well not exist. See the note at the top.
+        onTap: () => this.turnPage(index - this.page),
+      });
+      this.dots.push(dot);
+    }
   }
 
-  /** The other fifteen, over the menu. */
-  openMore(games = MORE, title = 'more-games') {
-    if (this.morePanel?.active) return;
-    // Picking a game from the panel *replaces* it: the panel is on its way out
-    // in the same gesture, and leaving it in the history would make back from
-    // the game reopen the panel rather than land on the menu.
-    this.morePanel = openGamesPanel(
-      this,
-      games,
-      (game) => this.openGame(game.scene, replaceScreen),
-      { title }
-    );
-    // Opening the panel is not leaving the menu — the menu is still there
-    // behind it and is not rebuilt when the panel closes, so the latch has to
-    // be opened by hand or the next tap on anything would do nothing.
-    this.morePanel.once('destroy', () => {
-      this.leaving = false;
-    });
+  /** `step` pages on, wrapping, and redraws. */
+  turnPage(step) {
+    if (!step || this.pages.length < 2 || this.leaving) return;
+    this.page = (this.page + step + this.pages.length) % this.pages.length;
+    sfx.swoosh();
+    this.scene.restart();
   }
 
   /**

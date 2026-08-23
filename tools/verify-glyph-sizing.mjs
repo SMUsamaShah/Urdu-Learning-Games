@@ -264,22 +264,29 @@ async function checkWriting(where, sceneKey) {
   );
 }
 
-// The other fifteen games, on both pages of the panel that holds them.
+// Every page of the menu. A tile's fallback letter is sized across the whole
+// set it is measured against, so two pages drawing the same letter at two sizes
+// is exactly the failure this file exists for — and it is invisible unless both
+// pages are looked at.
 await startScene(page, 'Home');
-await page.evaluate(() => window.__game.scene.getScene('Home').openMore());
 await page.waitForTimeout(600);
-await checkWriting('Home + more games', 'Home');
-const turned = await page.evaluate(() => {
-  const panel = window.__game.scene.getScene('Home').morePanel;
-  const was = panel.page;
-  // The forward arrow: the leftmost button on the panel.
-  const buttons = panel.list.filter((c) => c.input && c.type === 'Container');
-  buttons.sort((a, b) => a.x - b.x)[0].emit('pointerup');
-  return { was, now: panel.page };
-});
-// Without this the check below would happily measure page one twice and pass.
-if (turned.now === turned.was) fail('the panel\'s forward arrow did not turn the page');
-await page.waitForTimeout(600);
-await checkWriting(`more games, page ${turned.now + 1}`, 'Home');
+const pageCount = await page.evaluate(
+  () => window.__game.scene.getScene('Home').pages?.length ?? 0
+);
+if (pageCount < 2) fail(`the menu has ${pageCount} page(s), so its pages cannot be compared`);
+for (let index = 0; index < pageCount; index++) {
+  if (index) {
+    const turned = await page.evaluate(() => {
+      const home = window.__game.scene.getScene('Home');
+      const was = home.page;
+      home.turnPage(1);
+      return { was, now: home.page };
+    });
+    // Without this the check below would happily measure page one twice.
+    if (turned.now === turned.was) fail('turnPage did not turn the page');
+    await page.waitForTimeout(700);
+  }
+  await checkWriting(`the menu, page ${index + 1}`, 'Home');
+}
 
 await finish();

@@ -23,6 +23,7 @@ import { addStage } from '../lib/stage.js';
 import { breathe, hop, jig, popIn, squash } from '../lib/liveliness.js';
 import { ringBurst, sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
+import { watchSwipe } from '../lib/swipe.js';
 
 /**
  * Free exploration of the alphabet, and the backbone the other games hang off.
@@ -52,9 +53,6 @@ import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
  * Nothing here records an answer either. There is no question on this screen,
  * so there is nothing to be right or wrong about.
  */
-
-/** How far a finger may move and still count as a tap rather than a drag. */
-const TAP_SLOP = 8;
 
 /** How fast a flick slows down. Per frame, so ~0.92 stops in about half a second. */
 const FLICK_DECAY = 0.92;
@@ -253,7 +251,7 @@ export default class Flashcards extends Phaser.Scene {
       // moves, and landing on a letter you were only scrolling past is the most
       // annoying thing a strip like this can do.
       cell.on('pointerup', () => {
-        if (this.dragMoved > TAP_SLOP) return;
+        if (this.swipe.moved()) return;
         squash(this, cell);
         this.select(index);
       });
@@ -283,45 +281,33 @@ export default class Flashcards extends Phaser.Scene {
   /**
    * Drag to scroll, with the pointer moving the strip 1:1, plus a flick.
    *
-   * The delta is measured against this handler's own last position rather than
-   * `pointer.prevPosition`. That property is the pointer's position at the
-   * *previous frame*, not at the previous event, so a pointermove that fires
-   * twice in one frame applies the same delta twice and one that does not fire
-   * applies nothing — which is exactly what a jerky scroll is made of.
+   * The gesture itself — is this a drag or a tap, and how fast was it going
+   * when the finger left — is `watchSwipe` in src/lib/swipe.js, shared with the
+   * menu's pager. The note there about measuring each delta against the
+   * previous *event* rather than the previous frame is the reason it is shared
+   * rather than written twice.
    */
   attachStripDrag(stripY) {
     this.dragging = false;
-    this.dragMoved = 0;
-    this.dragLastX = 0;
     this.flick = 0;
 
-    const inStrip = (pointer) => pointer.y > stripY - 70;
-
-    this.input.on('pointerdown', (pointer) => {
-      if (!inStrip(pointer)) return;
-      this.dragging = true;
-      this.dragMoved = 0;
-      this.dragLastX = pointer.x;
-      this.flick = 0;
-      // A finger on the strip beats an in-flight centring tween, or the strip
-      // fights the hand holding it.
-      this.tweens.killTweensOf(this.strip);
+    this.swipe = watchSwipe(this, {
+      from: (pointer) => {
+        if (pointer.y <= stripY - 70) return false;
+        this.dragging = true;
+        // A finger on the strip beats an in-flight centring tween, or the strip
+        // fights the hand holding it.
+        this.tweens.killTweensOf(this.strip);
+        return true;
+      },
+      onMove: (delta) => {
+        this.flick = delta;
+        this.strip.x = Phaser.Math.Clamp(this.strip.x + delta, this.stripMin, this.stripMax);
+      },
+      onEnd: () => {
+        this.dragging = false;
+      },
     });
-
-    this.input.on('pointermove', (pointer) => {
-      if (!this.dragging || !pointer.isDown) return;
-      const delta = pointer.x - this.dragLastX;
-      this.dragLastX = pointer.x;
-      this.dragMoved += Math.abs(delta);
-      this.flick = delta;
-      this.strip.x = Phaser.Math.Clamp(this.strip.x + delta, this.stripMin, this.stripMax);
-    });
-
-    const release = () => {
-      this.dragging = false;
-    };
-    this.input.on('pointerup', release);
-    this.input.on('pointerupoutside', release);
   }
 
   update() {

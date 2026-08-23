@@ -42,6 +42,7 @@ import { summaries } from '../lib/clip-store.js';
 import { expectedClips } from '../lib/clip-list.js';
 import { glyphForClip, letters, numbers, words } from '../lib/content.js';
 import { bandOf, historyOf, reset as resetMastery } from '../lib/mastery.js';
+import { PER_PAGE, move as moveGame, orderedGames, resetMenu } from '../lib/menu.js';
 import { glyphSvg } from './glyph-svg.js';
 import { stageElement } from '../lib/turn.js';
 import {
@@ -169,6 +170,7 @@ export function openSettings({ onClose } = {}) {
         ${group('Voice', [pageRow('recordings', 'Your recordings', '…')])}
         ${group('Writing', [pageRow('traces', 'Letter traces', traceSummary())])}
         ${group('Content', [
+          pageRow('games', 'Games', gamesSummary()),
           pageRow('numbers', 'Numbers up to', String(numberBand())),
           pageRow('pick-letter', 'Letters', switchedSummary('letter', letters.length)),
           pageRow('pick-word', 'Words', switchedSummary('word', words.length)),
@@ -250,6 +252,17 @@ export function openSettings({ onClose } = {}) {
     sfx.correct();
   }
 
+  /** Back to the authored order, with every game switched on. */
+  function resetGames() {
+    if (!window.confirm('Put the games back in the order they came in, and switch them all on?')) {
+      return;
+    }
+    resetMenu();
+    clearBody();
+    bodyEl.append(gamesPage());
+    sfx.correct();
+  }
+
   async function countRecordings() {
     const row = bodyEl.querySelector('[data-page="recordings"] .set-row-value');
     if (!row) return;
@@ -269,6 +282,7 @@ export function openSettings({ onClose } = {}) {
     indicator: 'Shown as',
     numbers: 'Numbers up to',
     doing: "How he's doing",
+    games: 'Games',
     'pick-letter': 'Letters',
     'pick-word': 'Words',
     'pick-number': 'Numbers',
@@ -290,6 +304,7 @@ export function openSettings({ onClose } = {}) {
     if (id === 'indicator') return void bodyEl.append(indicatorPage());
     if (id === 'numbers') return void bodyEl.append(numbersPage());
     if (id === 'doing') return void bodyEl.append(doingPage());
+    if (id === 'games') return void bodyEl.append(gamesPage());
     if (id.startsWith('pick-')) return void bodyEl.append(pickPage(id.slice(5)));
     if (id === 'check') return void openSoundCheck();
 
@@ -469,6 +484,145 @@ export function openSettings({ onClose } = {}) {
           hang of drops back on its own.
         </p>
       </div>`);
+  }
+
+  /** `19 of 27 · 2 pages` for the menu row. */
+  function gamesSummary() {
+    const all = orderedGames();
+    const on = all.filter((game) => isEnabled('game', game.scene)).length;
+    const pages = Math.max(1, Math.ceil(on / PER_PAGE));
+    return `${on} of ${all.length} · ${pages} page${pages === 1 ? '' : 's'}`;
+  }
+
+  /**
+   * Which games the menu shows, in what order.
+   *
+   * The two halves of one question, so they are one list rather than two pages:
+   * a switch decides whether a game exists at all, and where it sits in the
+   * list decides which page of the menu it lands on. Splitting them would mean
+   * ordering a list without being able to see what was switched off in it.
+   *
+   * Re-rendered wholesale after any change. The page marks depend on how many
+   * *enabled* rows precede them, so flipping one switch a third of the way down
+   * moves every mark below it — patching that by hand would be more code than
+   * drawing the list again, and this list is twenty-seven rows.
+   */
+  function gamesPage() {
+    const all = orderedGames();
+    let onSoFar = 0;
+    const rows = all
+      .map((game, index) => {
+        const on = isEnabled('game', game.scene);
+        // The mark goes *before* the row that opens a page, and is counted off
+        // the enabled rows only: a switched-off game takes up no room on the
+        // menu, so it must take up none in this counting either.
+        const mark =
+          on && onSoFar > 0 && onSoFar % PER_PAGE === 0
+            ? `<div class="set-page-mark" data-mark>Page ${onSoFar / PER_PAGE + 1}</div>`
+            : '';
+        if (on) onSoFar++;
+        // A game carries either a letter or a numeral, the way the menu tiles
+        // do — Numbers is the one with a numeral, and without this branch its
+        // row is the only one in the list with a hole where its mark should be.
+        const glyph = game.number
+          ? glyphForClip({ kind: 'number', id: game.number })
+          : game.icon
+            ? glyphForClip({ kind: 'letter', id: game.icon.letter, form: game.icon.form })
+            : null;
+        return `${mark}<div class="set-row set-row-game${on ? '' : ' is-off'}"
+            data-scene="${escapeHtml(game.scene)}" data-index="${index}">
+          <span class="set-grip" data-grip aria-hidden="true" title="Drag to reorder">⠿</span>
+          <span class="set-row-glyph" aria-hidden="true">${glyph ? glyphSvg(glyph) : ''}</span>
+          <span class="set-row-label">${escapeHtml(game.roman)}</span>
+          <input type="checkbox" class="set-switch" data-pick="game:${escapeHtml(game.scene)}"
+            ${on ? 'checked' : ''} aria-label="${escapeHtml(game.roman)}" />
+        </div>`;
+      })
+      .join('');
+
+    const list = el(`
+      <div class="set-list">
+        <div class="set-card set-card-games">${rows}</div>
+        <div class="set-card">
+          ${actionRow('reset-games', 'Back to the order they came in')}
+        </div>
+        <p class="set-note">
+          The menu shows ${PER_PAGE} at a time and swipes sideways for the rest,
+          so the first ${PER_PAGE} here are what he sees when he opens the app.
+          Drag by the handle to move one. A game switched off appears nowhere —
+          not on the menu, and not in a چلو run.
+        </p>
+      </div>`);
+
+    attachReorder(list.querySelector('.set-card-games'));
+    return list;
+  }
+
+  /**
+   * Drag a row by its handle to move it.
+   *
+   * Pointer events rather than HTML5 drag-and-drop, which does not fire on
+   * touch at all — this page is read on a phone more often than anywhere else.
+   *
+   * The rows slide out of the way live so the gap under the finger is where the
+   * row will land. The page marks are hidden for the duration instead: they
+   * belong to positions rather than to rows, so a mark that stayed put while
+   * rows moved through it would be pointing at the wrong place, and one that
+   * moved with a row would be lying about which page that row is on. They are
+   * drawn again, correctly, when the list re-renders on drop.
+   */
+  function attachReorder(card) {
+    card.addEventListener('pointerdown', (event) => {
+      const grip = event.target.closest('[data-grip]');
+      if (!grip) return;
+      const row = grip.closest('[data-scene]');
+      if (!row) return;
+
+      const rows = [...card.querySelectorAll('[data-scene]')];
+      const marks = [...card.querySelectorAll('[data-mark]')];
+      const from = rows.indexOf(row);
+      const step = row.offsetHeight;
+      const startY = event.clientY;
+      let to = from;
+
+      event.preventDefault();
+      grip.setPointerCapture(event.pointerId);
+      row.classList.add('is-dragging');
+      for (const mark of marks) mark.style.visibility = 'hidden';
+
+      const onMove = (move) => {
+        const dy = move.clientY - startY;
+        row.style.transform = `translateY(${dy}px)`;
+        to = Math.max(0, Math.min(rows.length - 1, from + Math.round(dy / step)));
+        rows.forEach((other, index) => {
+          if (other === row) return;
+          // Everything between the row's old place and its new one shuffles by
+          // exactly one slot, in whichever direction closes the gap.
+          const shift =
+            index > from && index <= to ? -step : index < from && index >= to ? step : 0;
+          other.style.transform = shift ? `translateY(${shift}px)` : '';
+        });
+      };
+
+      const onUp = () => {
+        grip.releasePointerCapture(event.pointerId);
+        card.removeEventListener('pointermove', onMove);
+        card.removeEventListener('pointerup', onUp);
+        card.removeEventListener('pointercancel', onUp);
+        for (const each of rows) each.style.transform = '';
+        row.classList.remove('is-dragging');
+        for (const mark of marks) mark.style.visibility = '';
+        if (to === from) return;
+        moveGame(row.dataset.scene, to);
+        sfx.tap();
+        clearBody();
+        bodyEl.append(gamesPage());
+      };
+
+      card.addEventListener('pointermove', onMove);
+      card.addEventListener('pointerup', onUp);
+      card.addEventListener('pointercancel', onUp);
+    });
   }
 
   function pickPage(kind) {
@@ -679,6 +833,7 @@ export function openSettings({ onClose } = {}) {
     if (act === 'update') return checkUpdate();
     if (act === 'reset-progress') return resetProgress();
     if (act === 'reset-doing') return resetDoing();
+    if (act === 'reset-games') return resetGames();
     if (act?.startsWith('all-')) {
       enableAll(act.slice(4));
       // Redrawn rather than each box ticked by hand: the page is a list of up
@@ -696,6 +851,13 @@ export function openSettings({ onClose } = {}) {
       const [kind, id] = pick.split(':');
       setEnabled(kind, id, event.target.checked);
       sfx.tap();
+      // The games list draws page marks from how many enabled rows come before
+      // each one, so one switch moves every mark below it. Cheaper to draw the
+      // twenty-seven rows again than to work out which marks moved.
+      if (kind === 'game') {
+        clearBody();
+        bodyEl.append(gamesPage());
+      }
       return;
     }
 

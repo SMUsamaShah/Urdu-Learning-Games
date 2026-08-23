@@ -73,35 +73,75 @@ async function dragTo(from, tx, ty, settle = 400) {
 /**
  * Every game reachable, and every tile pointing somewhere real.
  *
- * The menu shows nine of twenty-four and hides the rest behind one tile, so
- * "the games all work" stopped being the same claim as "the games can all be
- * got to". Both failures here are silent: a tile naming a scene that is not
- * registered does nothing at all when tapped, and a game left out of both lists
- * simply is not in the app any more.
+ * The menu shows ten at a time and swipes for the rest, so "the games all work"
+ * is not the same claim as "the games can all be got to". Both failures here
+ * are silent: a tile naming a scene that is not registered does nothing at all
+ * when tapped, and a game that falls off the end of the paging simply is not in
+ * the app any more.
+ *
+ * Collected by walking the pages rather than by reading a list of what *should*
+ * be on them — the paging is the thing under test, and asking it to agree with
+ * itself would prove nothing.
  */
-step('checking every game is reachable from the menu');
+step('checking every game is reachable by paging through the menu');
 const menu = await page.evaluate(async () => {
-  const { FEATURED, GAMES, MORE, SPELLING, missingIcons } = await import('/src/lib/games.js');
+  const { GAMES, missingIcons } = await import('/src/lib/games.js');
+  const { menuGames, pagesOf, PER_PAGE } = await import('/src/lib/menu.js');
   const { loadGlyphs } = await import('/src/lib/content.js');
   await loadGlyphs();
   const registered = window.__game.scene.scenes.map((s) => s.scene.key);
+  const pages = pagesOf(menuGames());
   return {
     listed: GAMES.map((g) => g.scene),
-    // Three lists now: the front page, the spelling group behind its own tile,
-    // and everything else behind "more games". A game in none of them is a game
-    // that exists and cannot be reached.
-    shown: [...FEATURED, ...SPELLING, ...MORE].map((g) => g.scene),
+    shown: pages.flat().map((g) => g.scene),
+    pages: pages.length,
+    perPage: PER_PAGE,
+    // No page may be over its size, or the last row would be drawn off the
+    // grid and the games on it would be invisible rather than merely late.
+    oversized: pages.filter((one) => one.length > PER_PAGE).length,
     unknown: GAMES.filter((g) => !registered.includes(g.scene)).map((g) => g.scene),
     missingIcons: missingIcons(),
   };
 });
 for (const scene of menu.unknown) fail(`the menu offers "${scene}", which is not a registered scene`);
 for (const problem of menu.missingIcons) fail(`a menu tile has no glyph for its letter — ${problem}`);
+if (menu.oversized) fail(`${menu.oversized} page(s) hold more than ${menu.perPage} tiles`);
 const unreachable = menu.listed.filter((key) => !menu.shown.includes(key));
-for (const key of unreachable) fail(`"${key}" is in the game list but on neither the menu nor the panel`);
-if (!menu.unknown.length && !unreachable.length && !menu.missingIcons.length) {
-  step(`${menu.listed.length} games, all reachable, every tile illustrated`);
+for (const key of unreachable) fail(`"${key}" is in the game list and on none of the menu's pages`);
+if (!menu.unknown.length && !unreachable.length && !menu.missingIcons.length && !menu.oversized) {
+  step(`${menu.listed.length} games over ${menu.pages} pages, all reachable, every tile illustrated`);
 }
+
+/**
+ * A game switched off is gone from everywhere, not just from the menu.
+ *
+ * The menu is the obvious half and the one anybody would check. چلو is the half
+ * that would rot: it used to read its list of playable scenes once at import,
+ * so a game switched off in Settings went on turning up in runs for the rest of
+ * the session — and a run is the one place a child meets a game without picking
+ * it, so nobody would ever see where it came from.
+ */
+step('checking a switched-off game disappears');
+const hidden = await page.evaluate(async () => {
+  const { menuGames, pagesOf, resetMenu } = await import('/src/lib/menu.js');
+  const { setEnabled } = await import('/src/lib/enabled.js');
+  resetMenu();
+  const victim = menuGames()[1].scene;
+  setEnabled('game', victim, false);
+  const result = {
+    victim,
+    onAPage: pagesOf(menuGames()).flat().some((g) => g.scene === victim),
+    dealt: menuGames().some((g) => g.scene === victim),
+  };
+  setEnabled('game', victim, true);
+  const backOn = menuGames().some((g) => g.scene === victim);
+  resetMenu();
+  return { ...result, backOn };
+});
+if (hidden.onAPage) fail(`"${hidden.victim}" was switched off and is still on a menu page`);
+else if (hidden.dealt) fail(`"${hidden.victim}" was switched off and a چلو run could still deal it`);
+else if (!hidden.backOn) fail(`"${hidden.victim}" could not be switched back on`);
+else step(`  "${hidden.victim}" off: gone from the pages and from the run, and back on again`);
 
 const start = async (key) => {
   await startScene(page, key);
@@ -1662,6 +1702,107 @@ if (!process.exitCode) {
       `  and it now comes up ${lift.toFixed(1)}x as often as an even deal ` +
         `(${(got * 100).toFixed(1)}% of ${share.draws}, against ${(even * 100).toFixed(1)}%)`
     );
+  }
+}
+
+// --------------------------------------------------- swiping the menu's pages
+
+/**
+ * A swipe that starts on a tile turns the page and opens nothing.
+ *
+ * The one check that earns its keep on this screen. `games-panel.js`, which
+ * this replaced, refused to have a draggable list at all and said why: *"a
+ * dragged list steals the drag from the tiles underneath it — a child pressing
+ * a tile and moving their finger a few pixels would scroll instead of
+ * choosing."* The answer is a slop threshold, in src/lib/swipe.js, and a
+ * threshold is the kind of thing that is set to the wrong number once and then
+ * believed for a year.
+ *
+ * Both directions are checked, because they fail apart: a threshold of zero
+ * opens a game on every swipe, and a threshold of infinity never turns a page.
+ */
+step("swiping the menu's pages");
+
+await startScene(page, 'Home');
+await page.waitForTimeout(500);
+
+/** Where a tile is on screen, in page coordinates, through the real canvas. */
+async function tileOnScreen() {
+  return page.evaluate(() => {
+    const home = window.__game.scene.getScene('Home');
+    const found = [];
+    const walk = (list) => {
+      for (const item of list) {
+        if (item.name === 'tile') found.push(item);
+        if (item.list) walk(item.list);
+      }
+    };
+    walk(home.children.list);
+    if (!found.length) return null;
+    const box = window.__game.canvas.getBoundingClientRect();
+    const scale = box.width / window.__game.scale.width;
+    return {
+      x: box.left + found[0].x * scale,
+      y: box.top + found[0].y * scale,
+      scale,
+      tiles: found.length,
+    };
+  });
+}
+
+const menuState = () =>
+  page.evaluate(() => {
+    const home = window.__game.scene.getScene('Home');
+    return {
+      page: home.page,
+      pages: home.pages.length,
+      running: window.__game.scene.getScenes(true).map((s) => s.scene.key),
+    };
+  });
+
+const before = await menuState();
+const aim = await tileOnScreen();
+
+if (!aim) {
+  fail('the menu drew no tiles at all');
+} else if (before.pages < 2) {
+  fail(`the menu has ${before.pages} page(s), so paging cannot be checked`);
+} else {
+  // Across, starting on a tile, far enough to count as a decision.
+  await page.mouse.move(aim.x, aim.y);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) {
+    await page.mouse.move(aim.x - (320 * aim.scale * i) / 10, aim.y);
+    await page.waitForTimeout(16);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(900);
+
+  const after = await menuState();
+  if (after.page === before.page) {
+    fail(`a swipe across the grid left the menu on page ${after.page}`);
+  } else if (after.running.some((key) => key !== 'Home')) {
+    fail(
+      `a swipe that started on a tile opened ${after.running.filter((k) => k !== 'Home').join()} — ` +
+        'the slop threshold in swipe.js is letting a drag through as a tap'
+    );
+  } else {
+    step(`  a swipe from page ${before.page} to page ${after.page} opened nothing`);
+  }
+
+  // And the other half: a tap still chooses.
+  const tap = await tileOnScreen();
+  await page.mouse.move(tap.x, tap.y);
+  await page.waitForTimeout(140);
+  await page.mouse.down();
+  await page.waitForTimeout(140);
+  await page.mouse.up();
+  await page.waitForTimeout(1400);
+  const opened = (await menuState()).running.filter((key) => key !== 'Home');
+  if (!opened.length) {
+    fail('a tap on a tile opened nothing — the slop threshold is swallowing taps');
+  } else {
+    step(`  and a tap on one opened ${opened.join()}`);
   }
 }
 

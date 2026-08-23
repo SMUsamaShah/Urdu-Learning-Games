@@ -524,3 +524,77 @@
 .set-chip-new {
   opacity: 0.6;
 }
+
+/* -------------------------------------------------------------------- games
+ *
+ * One row per game: a handle to drag it by, its letter, its name, a switch.
+ * The order decides which page of the menu it lands on, so the list is read
+ * top to bottom as "the front page, then the second page" and the marks
+ * between say where those lines fall.
+ */
+
+.set-card-games {
+  /* The rows move under a finger, so nothing may spill out of the card while
+     one is in flight past the ends of the list. */
+  overflow: hidden;
+}
+
+.set-row-game {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Transformed rather than reordered while a drag is in progress, so a
+     transition here is what makes the others glide out of the way instead of
+     jumping a row at a time. */
+  transition: transform 140ms ease;
+  background: var(--set-card, #fff);
+  position: relative;
+}
+
+.set-grip {
+  flex: none;
+  width: 34px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--set-muted, #9aa1ad);
+  font-size: 17px;
+  cursor: grab;
+  /* Without this a drag down the list scrolls the settings body instead, and
+     the row never moves. */
+  touch-action: none;
+}
+
+.set-row-game .set-row-label {
+  flex: 1;
+}
+
+/* Lifted, and the transition off so it tracks the finger exactly rather than
+   easing along behind it. */
+.set-row-game.is-dragging {
+  transition: none;
+  z-index: 2;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(24, 30, 46, 0.18);
+  cursor: grabbing;
+}
+
+/* Switched off: still legible, and plainly not in play. Not hidden — this is
+   the page where you put one back. */
+.set-row-game.is-off .set-row-label,
+.set-row-game.is-off .set-row-glyph {
+  opacity: 0.42;
+}
+
+.set-page-mark {
+  padding: 9px 16px 7px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--set-muted, #9aa1ad);
+  background: var(--set-bg, #f2f4f8);
+  border-top: 1px solid rgba(24, 30, 46, 0.07);
+  border-bottom: 1px solid rgba(24, 30, 46, 0.07);
+}

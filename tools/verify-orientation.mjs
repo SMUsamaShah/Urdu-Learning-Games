@@ -196,7 +196,17 @@ await denied.evaluate(() => {
 
 const aim = await denied.evaluate(() => {
   const game = window.__game;
-  const tile = game.scene.getScene('Home').children.list.find((c) => c.name === 'tile');
+  // Walked, not filtered: the menu's tiles sit inside the container the pager
+  // slides, so a flat scan of `children.list` finds none of them.
+  const found = [];
+  const walk = (list) => {
+    for (const item of list) {
+      if (item.name === 'tile') found.push(item);
+      if (item.list) walk(item.list);
+    }
+  };
+  walk(game.scene.getScene('Home').children.list);
+  const tile = found[0];
   if (!tile) return null;
   const stage = document.getElementById('stage');
   const rect = stage.getBoundingClientRect();

@@ -97,73 +97,42 @@ if (viaButton.screens.length !== 0) {
   step('  the ⌂ leaves the same state the back button does');
 }
 
-// --- 3. The games panel -----------------------------------------------------
-
-step('the games panel, then back');
-await page.evaluate(() => window.__game.scene.getScene('Home').openMore());
-await settled();
-if ((await screens()).join() !== 'games-panel') {
-  fail(`opening the panel put ${(await screens()).join()} on the stack`);
-}
-
-await back();
-const panelGone = await page.evaluate(() => !window.__game.scene.getScene('Home').morePanel?.active);
-if (!panelGone) fail('back did not close the games panel');
-else if (!(await running()).includes('Home')) fail('back closed the panel and left the menu too');
-else step('  back closes the panel and stays on the menu');
-
-// --- 4. Picking a game out of the panel replaces it, not stacks on it -------
+// --- 3. Paging the menu is not navigating ----------------------------------
 //
-// Push instead of replace here and back from the game reopens the panel, which
-// is not where the child was.
+// Two sections used to sit here, both about the panel of extra games: that back
+// closed it and stayed on the menu, and that picking a game out of it replaced
+// it on the stack rather than stacking on it. The panel is gone — the menu
+// pages sideways instead — and with it both of those questions.
+//
+// What replaces them is the question paging raises in its place, and it is the
+// same worry from the other end: **a page turn must leave no trace in the
+// history.** Push one entry per page and the back button walks back through
+// pages a child swiped past instead of leaving the app, which is exactly the
+// bug the two deleted sections existed to prevent in the panel.
 
-step('a game picked from the panel, then back');
-await page.evaluate(() => window.__game.scene.getScene('Home').openMore());
-await settled();
-// Tapped, not called: the app decides for itself whether picking a game
-// replaces the panel or stacks on it, and handing that choice in from here
-// would test this file's opinion rather than the app's.
-const picked = await page.evaluate(() => {
-  const panel = window.__game.scene.getScene('Home').morePanel;
-  // The board: the one container whose children are themselves containers.
-  // Everything else at this level is the dim sheet, the card, the title, the
-  // ← button, the page dots and the page arrows.
-  const board = panel.list.find(
-    (c) => c.type === 'Container' && c.list?.length && c.list.every((k) => k.type === 'Container')
-  );
-  const tile = board?.list[0];
-  if (!tile) return null;
-  tile.emit('pointerdown');
-  tile.emit('pointerup');
-  return true;
-});
-if (!picked) fail('could not find a tile in the panel to tap');
-// Waiting on the stack rather than on a scene: the tile's tap sits behind a
-// deliberate 150ms beat on Phaser's clock, which runs at about half speed
-// headless, and a scene is briefly both starting and stopping in between.
-await page.waitForFunction(
-  () => window.__history.screens().some((name) => name.startsWith('game:')),
-  null,
-  { timeout: 15000 }
+step('paging the menu, then back');
+const beforePaging = (await screens()).join();
+const pagesAvailable = await page.evaluate(
+  () => window.__game.scene.getScene('Home').pages?.length ?? 0
 );
-await settled();
-const opened = (await screens()).join();
-if (opened.includes('games-panel')) {
-  fail(`the panel is still on the stack: ${opened}`);
+if (pagesAvailable < 2) {
+  fail(`the menu has ${pagesAvailable} page(s), so paging cannot be checked`);
 } else {
-  step(`  picking ${opened.replace('game:', '')} replaced the panel rather than stacking on it`);
+  await page.evaluate(() => window.__game.scene.getScene('Home').turnPage(1));
+  await settled();
+  const turned = await page.evaluate(() => window.__game.scene.getScene('Home').page);
+  const afterPaging = (await screens()).join();
+  if (!turned) fail('turnPage did not turn the page');
+  else if (afterPaging !== beforePaging) {
+    fail(`turning a page pushed ${afterPaging} onto the stack, was ${beforePaging}`);
+  } else {
+    step(`  page ${turned} reached, and the history is untouched`);
+  }
+  // Back from a paged menu leaves the app, exactly as it does from page one.
+  // The check for that is section 8; here it only has to not be a page turn.
+  const stillHome = await running();
+  if (!stillHome.includes('Home')) fail(`paging left ${stillHome.join()} running`);
 }
-
-await back();
-const home = await running();
-if (!home.includes('Home') || home.length !== 1) {
-  fail(`back from a panel-picked game left ${home.join()} running`);
-}
-const reopened = await page.evaluate(() =>
-  Boolean(window.__game.scene.getScene('Home').morePanel?.active)
-);
-if (reopened) fail('back from the game reopened the panel instead of landing on the menu');
-else step('  it goes to the menu, not back to the panel');
 
 // --- 5. The parental gate ---------------------------------------------------
 
@@ -254,9 +223,19 @@ else if ((await screens()).length !== 0) {
 
 step('the menu can be hammered');
 const hammered = await page.evaluate(() => {
-  const tiles = window.__game.scene
-    .getScene('Home')
-    .children.list.filter((c) => c.name === 'tile' && c.input?.enabled);
+  // Walked, not filtered. The menu's tiles live inside the container the pager
+  // slides, so a flat scan of `children.list` finds none of them — this check
+  // went from testing the hammer to testing nothing the moment that container
+  // appeared, and only failed loudly because it demands three tiles rather than
+  // shrugging at zero.
+  const tiles = [];
+  const walk = (list) => {
+    for (const item of list) {
+      if (item.name === 'tile' && item.input?.enabled) tiles.push(item);
+      if (item.list) walk(item.list);
+    }
+  };
+  walk(window.__game.scene.getScene('Home').children.list);
   if (tiles.length < 3) return null;
   tiles.slice(0, 3).forEach((tile) => tile.emit('pointerup'));
   return true;
