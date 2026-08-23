@@ -79,11 +79,12 @@ export default defineConfig({
         display: 'fullscreen',
         display_override: ['fullscreen', 'standalone'],
         id: '.',
-        // Deliberately not 'landscape'. A manifest lock is absolute — an
-        // installed app can never turn, including on the grown-ups screens,
-        // where the tracing editor wants a tall window and a finger. The app
-        // asks for landscape itself and releases it there; see
-        // src/lib/orientation.js.
+        // Deliberately not 'landscape', even though the app now is landscape
+        // everywhere. A manifest lock is absolute and cannot be released, and
+        // this app does two things a locked manifest would take away: it turns
+        // *itself* sideways where the phone refuses to (src/lib/turn.js), and
+        // it needs to know which way the window actually is to do that. Asking
+        // here would leave both of those guessing.
         orientation: 'any',
         background_color: '#8fd4f5',
         theme_color: '#8fd4f5',
