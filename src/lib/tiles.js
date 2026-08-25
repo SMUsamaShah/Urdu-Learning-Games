@@ -33,6 +33,18 @@ export function hasTileArt(game) {
 }
 
 /**
+ * Public URL for the picture a game's menu tile uses.
+ *
+ * Settings is ordinary DOM rather than a Phaser scene, so it cannot read the
+ * texture cache. Giving it the manifest URL keeps its game chooser tied to the
+ * exact same asset as the menu instead of maintaining a second picture list.
+ */
+export function tileArtUrl(game) {
+  const file = manifest.tiles?.[artName(game)];
+  return file ? BASE + file : null;
+}
+
+/**
  * Queues the pictures for a set of tiles. Call from `preload()`.
  *
  * The whole set, unlike the backdrops, which are loaded one screen at a time:

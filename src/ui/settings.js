@@ -53,6 +53,7 @@ import {
   spentMs,
 } from '../lib/allowance.js';
 import { glyphSvg } from './glyph-svg.js';
+import { tileArtUrl } from '../lib/tiles.js';
 import { stageElement } from '../lib/turn.js';
 import { holdGameInput } from '../lib/game-input.js';
 import {
@@ -598,18 +599,28 @@ export function openSettings({ onClose } = {}) {
             ? `<div class="set-page-mark" data-mark>Page ${onSoFar / PER_PAGE + 1}</div>`
             : '';
         if (on) onSoFar++;
-        // A game carries either a letter or a numeral, the way the menu tiles
-        // do — Numbers is the one with a numeral, and without this branch its
-        // row is the only one in the list with a hole where its mark should be.
-        const glyph = game.number
-          ? glyphForClip({ kind: 'number', id: game.number })
-          : game.icon
-            ? glyphForClip({ kind: 'letter', id: game.icon.letter, form: game.icon.form })
-            : null;
+        // This is the same illustration the child recognises on the menu. Keep
+        // a glyph fallback for a newly-added game whose tile art has not been
+        // generated yet, rather than leaving an unexplained blank in Settings.
+        const picture = tileArtUrl(game);
+        const glyph = picture
+          ? null
+          : game.number
+            ? glyphForClip({ kind: 'number', id: game.number })
+            : game.icon
+              ? glyphForClip({ kind: 'letter', id: game.icon.letter, form: game.icon.form })
+              : null;
         return `${mark}<div class="set-row set-row-game${on ? '' : ' is-off'}"
             data-scene="${escapeHtml(game.scene)}" data-index="${index}">
           <span class="set-grip" data-grip aria-hidden="true" title="Drag to reorder">⠿</span>
-          <span class="set-row-glyph" aria-hidden="true">${glyph ? glyphSvg(glyph) : ''}</span>
+          <span class="set-row-game-tile" aria-hidden="true"
+            style="--game-color:#${game.color.toString(16).padStart(6, '0')}">${
+            picture
+              ? `<img src="${escapeHtml(picture)}" alt="" />`
+              : glyph
+                ? glyphSvg(glyph)
+                : ''
+          }</span>
           <span class="set-row-label">${escapeHtml(game.roman)}</span>
           <input type="checkbox" class="set-switch" data-pick="game:${escapeHtml(game.scene)}"
             ${on ? 'checked' : ''} aria-label="${escapeHtml(game.roman)}" />
