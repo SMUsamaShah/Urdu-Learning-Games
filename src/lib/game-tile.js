@@ -123,6 +123,7 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
       color: game.color,
       onTap,
       paint: paintFace(game),
+      backing: false,
       rim: false,
       // The panel's height stands in for an em here.
       paintKey:

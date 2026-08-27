@@ -156,12 +156,12 @@ const CARD_SUPERSAMPLE = 2;
 /* Room around the shape for the shadow (8px down) and the outer rim stroke. */
 const CARD_PAD = 14;
 
-/** Bakes a button's card — shadow, face and rim — into one cached texture.
+/** Bakes a button's card into one cached texture.
  * @returns {string} texture key
  */
-function cardTexture(scene, { width, height, color, shape, rim, paint, paintKey }) {
+function cardTexture(scene, { width, height, color, shape, backing, rim, paint, paintKey }) {
   // Include the painter name in the texture key.
-  const shapeKey = `${shape}:${Math.round(width)}x${Math.round(height)}:${color}:${rim ? 1 : 0}`;
+  const shapeKey = `${shape}:${Math.round(width)}x${Math.round(height)}:${color}:${backing ? 1 : 0}:${rim ? 1 : 0}`;
   const key = paintKey ? `${paintKey}:${shapeKey}` : `card:${shapeKey}`;
   if (scene.textures.exists(key)) return key;
 
@@ -178,29 +178,31 @@ function cardTexture(scene, { width, height, color, shape, rim, paint, paintKey 
   else if (shape === 'blob') outline = blobPoints(width, height);
   else if (shape === 'circle') outline = blobPoints(width, height, 4, 0);
 
-  ctx.fillStyle = css(COLORS.shadow, 0.22);
-  if (outline) polygon(ctx, outline, 8);
-  else roundedRect(ctx, -width / 2, -height / 2 + 8, width, height, 26);
-  ctx.fill();
+  if (backing) {
+    ctx.fillStyle = css(COLORS.shadow, 0.22);
+    if (outline) polygon(ctx, outline, 8);
+    else roundedRect(ctx, -width / 2, -height / 2 + 8, width, height, 26);
+    ctx.fill();
 
-  ctx.fillStyle = css(color);
-  if (outline) polygon(ctx, outline);
-  else roundedRect(ctx, -width / 2, -height / 2, width, height, 26);
-  ctx.fill();
-
-  if (rim) {
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-    ctx.lineWidth = 6;
-    if (outline) polygon(ctx, shrink(outline, shape === 'star' ? 0.9 : 0.93));
-    else roundedRect(ctx, -width / 2 + 3, -height / 2 + 3, width - 6, height - 6, 23);
-    ctx.stroke();
-
-    ctx.strokeStyle = css(COLORS.outline, 0.85);
-    ctx.lineWidth = 3;
+    ctx.fillStyle = css(color);
     if (outline) polygon(ctx, outline);
     else roundedRect(ctx, -width / 2, -height / 2, width, height, 26);
-    ctx.stroke();
+    ctx.fill();
+
+    if (rim) {
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth = 6;
+      if (outline) polygon(ctx, shrink(outline, shape === 'star' ? 0.9 : 0.93));
+      else roundedRect(ctx, -width / 2 + 3, -height / 2 + 3, width - 6, height - 6, 23);
+      ctx.stroke();
+
+      ctx.strokeStyle = css(COLORS.outline, 0.85);
+      ctx.lineWidth = 3;
+      if (outline) polygon(ctx, outline);
+      else roundedRect(ctx, -width / 2, -height / 2, width, height, 26);
+      ctx.stroke();
+    }
   }
 
   // Anything the caller wants on the face, drawn into the same texture rather than stacked on top as more quads.
@@ -221,6 +223,7 @@ function cardTexture(scene, { width, height, color, shape, rim, paint, paintKey 
  * @param {number} config.height
  * @param {number} [config.color]
  * @param {'card'|'star'|'blob'|'circle'} [config.shape='card']
+ * @param {boolean} [config.backing=true] Whether to draw the coded card beneath the contents.
  * @param {boolean} [config.rim=true] The white-and-dark sticker edge.
  * @param {() => void} config.onTap
  * @param {(ctx: CanvasRenderingContext2D, size: object) => void} [config.paint]
@@ -236,6 +239,7 @@ export function makeButton(scene, config) {
     height,
     color = COLORS.panel,
     shape = 'card',
+    backing = true,
     rim = true,
     onTap,
     paint,
@@ -246,7 +250,7 @@ export function makeButton(scene, config) {
 
   // One baked image rather than a shadow Graphics and a face Graphics.
   const card = scene.add
-    .image(0, 0, cardTexture(scene, { width, height, color, shape, rim, paint, paintKey }))
+    .image(0, 0, cardTexture(scene, { width, height, color, shape, backing, rim, paint, paintKey }))
     .setScale(1 / CARD_SUPERSAMPLE);
 
   container.add(card);
