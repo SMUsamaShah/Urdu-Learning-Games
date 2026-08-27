@@ -106,7 +106,7 @@ const game = new Phaser.Game({
 // Exposed so the Playwright checks can drive the app without depending on pixel coordinates.
 useAudioContext(game.sound?.context ?? audioContext);
 
-// Every DOM screen that covers the canvas.
+// Track DOM overlays that cover the canvas.
 useGameInput(game);
 
 window.__game = game;

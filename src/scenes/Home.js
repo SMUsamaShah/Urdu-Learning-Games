@@ -379,7 +379,7 @@ export default class Home extends Phaser.Scene {
         if (this.settingsOpening) return;
         this.settingsOpening = true;
         drawRing(0);
-        // The DOM gate is above the canvas.
+        // Keep the DOM gate above the canvas.
         this.input.enabled = false;
         const allowed = await askParentalQuestion();
         if (allowed) {

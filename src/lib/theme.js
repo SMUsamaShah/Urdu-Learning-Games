@@ -160,7 +160,7 @@ const CARD_PAD = 14;
  * @returns {string} texture key
  */
 function cardTexture(scene, { width, height, color, shape, rim, paint, paintKey }) {
-  // The painter's name leads, so a baked face still announces its role and its em the way a glyph texture does.
+  // Include the painter name in the texture key.
   const shapeKey = `${shape}:${Math.round(width)}x${Math.round(height)}:${color}:${rim ? 1 : 0}`;
   const key = paintKey ? `${paintKey}:${shapeKey}` : `card:${shapeKey}`;
   if (scene.textures.exists(key)) return key;

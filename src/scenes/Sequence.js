@@ -120,7 +120,7 @@ export default class Sequence extends QuizScene {
           })
           .setOrigin(0.5);
         layer.add(mark);
-        // The question mark pulses, and nothing else on the caterpillar does.
+        // Pulse only the question mark.
         breathe(this, mark, { amount: 0.16, duration: 900 });
         this.gapMarker = { x, y: this.promptY };
         return;

@@ -40,7 +40,7 @@ export const TUNES = {
       ['F4', 1], ['A4', 1], ['C5', 1], ['A4', 1],
       ['G4', 0.5], ['A4', 0.5], ['C5', 2], [null, 1],
     ],
-    // I - vi - IV - V, the progression half of all nursery music is built on, for the reason that it goes round for ever.
+    // Familiar I–vi–IV–V progression.
     bars: [
       { pad: ['C3', 'E3', 'G3'], bass: rootFifth('C3', 'G2') },
       { pad: ['A2', 'C3', 'E3'], bass: rootFifth('A2', 'E2') },
@@ -134,7 +134,7 @@ export const TUNES = {
       ['D4', 1], ['E4', 1], ['G4', 1], ['A4', 1],
       ['G4', 1.5], ['E4', 0.5], ['C4', 1], [null, 1],
     ],
-    // No progression: the same open fifth throughout, which is what a tanpura does.
+    // Hold an open fifth for a tanpura-style drone.
     bars: Array.from({ length: 8 }, () => ({
       pad: ['C3', 'G3'],
       bass: [[0, 'C3']],

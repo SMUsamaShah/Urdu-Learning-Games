@@ -282,7 +282,7 @@ export function create(scene, { width, height }, options = {}) {
         onComplete: () => bug.setAngle(0),
       });
     }
-    // The count is true immediately even though the fade is still running.
+    // Publish the count before the visual fade completes.
     shown = Math.max(0, Math.min(steps, k));
     for (let i = shown; i < MAX_STEPS; i++) stems[i].setVisible(false);
     republish();
