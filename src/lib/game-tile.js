@@ -44,6 +44,10 @@ export function paintTilePanel(ctx, game, panel, picture = null) {
     ? Boolean(
         ctx.drawImage(
           picture,
+          GENERATED_BEZEL,
+          GENERATED_BEZEL,
+          picture.width - GENERATED_BEZEL * 2,
+          picture.height - GENERATED_BEZEL * 2,
           -panel.width / 2,
           -panel.height / 2,
           panel.width,
@@ -72,6 +76,9 @@ function tint(color, towards) {
 
 /* How thick the coloured frame is, as a fraction of the tile. */
 const FRAME = 0.055;
+
+/* Generated tile files include their own outer bezel; the coded card owns that edge. */
+const GENERATED_BEZEL = 28;
 
 /** Measures a set of games, then draws tiles from it.
  * @param {Phaser.Scene} scene
