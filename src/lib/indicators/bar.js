@@ -2,17 +2,7 @@ import { sparkleBurst, starShower } from '../particles.js';
 import * as sfx from '../sfx.js';
 import { levelColour, levelTint, makeCanvas, publish, SUPERSAMPLE } from './canvas.js';
 
-/**
- * A tube that fills from the bottom, one pour per right answer.
- *
- * The plainest thing the rail can hold, and worth having for exactly that: it
- * is unambiguous at a glance from across a room, it reads the same to an adult
- * as to a child, and it is the fallback when a fancier one turns out to be
- * confusing. Nothing here is decorative except the shine.
- *
- * A filled level empties the tube and changes its colour, so "how many times
- * have I filled it" is carried by the colour rather than by a number.
- */
+/* A tube that fills from the bottom, one pour per right answer. */
 
 const TUBE = { width: 96, radius: 46, inset: 8 };
 
@@ -41,7 +31,7 @@ function trackTexture(scene, height) {
   return publish(scene, key, canvas);
 }
 
-/** The column of liquid, at the tube's inner shape. Tinted per level. */
+/* The column of liquid, at the tube's inner shape. */
 function fillTexture(scene, height) {
   const key = `bar:fill:${Math.round(height)}`;
   if (scene.textures.exists(key)) return key;
@@ -55,7 +45,7 @@ function fillTexture(scene, height) {
   return publish(scene, key, canvas);
 }
 
-/** The glassy highlight, over the fill. */
+/* The glassy highlight, over the fill. */
 function shineTexture(scene, height) {
   const key = `bar:shine:${Math.round(height)}`;
   if (scene.textures.exists(key)) return key;
@@ -81,16 +71,7 @@ export function create(scene, { width, height }) {
       .setScale(1 / SUPERSAMPLE)
   );
 
-  // The whole column, drawn once at the tube's inner shape, and revealed from
-  // the bottom by cropping.
-  //
-  // Not a mask and not a stretched rounded rectangle. A geometry mask is in
-  // world coordinates, so it has to be built after the container is placed and
-  // it does not follow a container that is later scaled — which is exactly what
-  // the preview sheet does, and it drew every bar unmasked. Stretching a
-  // rounded texture instead flattens its corners at every height but the one it
-  // was drawn at. A crop is in texture space, so it is right at any size and
-  // needs to know nothing about where the rail ended up.
+  // The whole column, drawn once at the tube's inner shape, and revealed from the bottom by cropping.
   const fillKey = fillTexture(scene, height);
   const fill = scene.add
     .image(0, -TUBE.inset, fillKey)
@@ -136,9 +117,7 @@ export function create(scene, { width, height }) {
   root.apply = (next, previous) => {
     if (next.levelledUp) {
       sfx.tada();
-      // All the way to the top, held, then emptied into the new colour. An
-      // instant reset would read as the fill being taken away rather than as
-      // one having been finished.
+      // All the way to the top, held, then emptied into the new colour.
       glideTo(1, previous.level, 300);
       sparkleBurst(scene, 0, -height, { count: 26, tint: [levelTint(previous.level), 0xffffff] });
       starShower(scene, { duration: 1400 });
@@ -188,7 +167,7 @@ export function create(scene, { width, height }) {
   return root;
 }
 
-/** Used by the preview sheet, which draws a frame without a progress event. */
+/* Used by the preview sheet, which draws a frame without a progress event. */
 export function still(scene, box, { fraction, level }) {
   const el = create(scene, box);
   el.apply({ fraction, level, reset: true }, { fraction, level });

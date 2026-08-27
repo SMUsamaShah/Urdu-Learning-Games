@@ -1,14 +1,4 @@
-/**
- * Checks the built service worker really can run the app with no network.
- *
- * These read dist/, so they only assert once a build exists — `npm run build`
- * before `npm test` to get the coverage. Skipping when dist/ is absent keeps
- * `npm test` useful on a fresh clone.
- *
- * The assertion that matters is precache coverage. Audio clips are fetched
- * lazily at runtime, so a clip left out of the precache works perfectly online
- * and is silent on a plane — the exact failure this app must not have.
- */
+/* Checks the built service worker really can run the app with no network. */
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +10,7 @@ const DIST = path.join(ROOT, 'dist');
 const swPath = path.join(DIST, 'sw.js');
 const built = fs.existsSync(swPath);
 
-/** URLs baked into the generated service worker's precache list. */
+/* URLs baked into the generated service worker's precache list. */
 function precachedUrls() {
   const sw = fs.readFileSync(swPath, 'utf8');
   return new Set([...sw.matchAll(/url:"([^"]+)"/g)].map((m) => m[1]));
@@ -75,8 +65,7 @@ describe('pwa', { skip: built ? false : 'no dist/ — run `npm run build`' }, ()
   });
 
   test('every recorded clip is precached', () => {
-    // Workbox's default glob covers {js,css,html,ico,png,svg} and would drop
-    // every .webm silently. This is what catches that.
+    // Include non-default asset types such as .webm in the precache.
     const manifest = JSON.parse(
       fs.readFileSync(path.join(ROOT, 'content', 'audio.json'), 'utf8')
     );

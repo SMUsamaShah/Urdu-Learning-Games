@@ -1,41 +1,11 @@
-/**
- * The furniture of a game screen, drawn rather than approximated.
- *
- * A game called "sort the letters into baskets" was showing two rounded
- * rectangles, on a backdrop that has real baskets painted into it — so the
- * scenery was better drawn than the thing being played with. A game called
- * "caterpillar" was a row of white circles with no caterpillar anywhere. In
- * both cases the picture was saying nothing, and the reference apps this is
- * chasing do the opposite: one big painted prop, filling the frame, that *is*
- * the game.
- *
- * These use the same kit as the menu tiles (src/lib/draw-kit.js), at play-area
- * size. One pen, one palette, so a basket on a screen and a basket on a tile
- * are recognisably the same basket.
- *
- * ## Baked, not drawn every frame
- *
- * Each of these returns a texture key. A Phaser Graphics re-tessellates on the
- * CPU every single frame for a picture that never changes — see the note above
- * `shapeTextures` in theme.js, and the meadow in scenery.js, which are here for
- * the same reason. A prop is decided when a round is dealt and never moves.
- */
+/* The furniture of a game screen, drawn rather than approximated. */
 
 import { INK, PAPER, WOOD, mix, pen } from './draw-kit.js';
 
-/**
- * Rasterised at this multiple and scaled back down.
- *
- * Props have long curved edges — a basket's rim, a caterpillar's back — and
- * those alias badly at 1x on a phone. Every caller must remember the matching
- * `setScale(1 / SUPERSAMPLE)`; forgetting it is the standard bug here, so the
- * helpers below hand back a ready-made image rather than a key where they can.
- */
+/* Rasterised at this multiple and scaled back down. */
 export const SUPERSAMPLE = 2;
 
-/**
- * A canvas texture with the origin at its centre, and the drawing kit on it.
- *
+/** A canvas texture with the origin at its centre, and the drawing kit on it.
  * @returns {string} the texture key
  */
 function baked(scene, key, width, height, draw) {
@@ -53,15 +23,7 @@ function baked(scene, key, width, height, draw) {
   return key;
 }
 
-/**
- * A baked prop as an image, already scaled back down.
- *
- * Named, so a check can find every prop on a screen without knowing what any of
- * them are. The failure this exists for is silent: a texture sized too small
- * for what is drawn into it crops the drawing, and the first caterpillar came
- * out with the side of its head missing. Nothing throws, and it is only visible
- * on the one screen somebody happens to open. See verify-games.mjs.
- */
+/* A baked prop as an image, already scaled back down. */
 function propImage(scene, key, width, height, draw) {
   return scene.add
     .image(0, 0, baked(scene, key, width, height, draw))
@@ -69,21 +31,7 @@ function propImage(scene, key, width, height, draw) {
     .setName('prop');
 }
 
-// ------------------------------------------------------------------ baskets
-
-/**
- * A woven basket, open at the top, with a front the letter goes on.
- *
- * Wider at the rim than at the base, because that is what makes a shape read as
- * a basket rather than as a bucket, and the weave runs in both directions —
- * verticals behind, horizontals over — because a single set of lines reads as
- * corrugated iron.
- *
- * The colour is the game's, not a wicker brown: the two baskets have to be told
- * apart at a glance from across a room, and two brown baskets are one wide
- * brown thing. So the wicker is the game's colour with the warmth of wood mixed
- * through it, which keeps them distinct and still lets them look woven.
- *
+/** Draws a woven basket with a front letter panel.
  * @param {Phaser.Scene} scene
  * @param {{width: number, height: number, color: number}} spec
  * @returns {Phaser.GameObjects.Image} centred on (0, 0)
@@ -160,8 +108,7 @@ export function basket(scene, { width, height, color }) {
     d.ctx.stroke();
     d.ctx.restore();
 
-    // A plain panel across the front. The letter goes here, and a letter drawn
-    // straight onto the weave is a letter nobody can read.
+    // A plain panel across the front.
     d.rrect(0, height * 0.09, width * 0.62, height * 0.4, height * 0.09, {
       fill: p.base,
       stroke: shade,
@@ -170,36 +117,19 @@ export function basket(scene, { width, height, color }) {
   });
 }
 
-// -------------------------------------------------------------- caterpillar
-
-/** Two greens, alternating along the body. */
+/* Two greens, alternating along the body. */
 const BODY_GREENS = ['#6aab3f', '#7cbf4a'];
 
-/**
- * The caterpillar the segments sit on.
- *
- * The segments themselves stay exactly what they were — white discs with a
- * letter on, or an empty socket — because they are the game and they have to
- * stay legible. What was missing was everything around them: the creature they
- * are the back of.
- *
- * So this draws underneath: a green body swelling around each segment, joined
- * between them, on legs, with a head at the leading end. It is one baked image
- * behind the whole row rather than a piece per segment, because the shape is
- * continuous — a chain of separate circles is what the screen already had.
- *
+/** Draws the caterpillar behind its segments.
  * @param {Phaser.Scene} scene
  * @param {{x: number, y: number}[]} places segment centres, in reading order —
- *   right to left, since the alphabet starts at the right-hand end
  * @param {number} radius of a segment
  * @returns {Phaser.GameObjects.Image} positioned in world coordinates
  */
 export function caterpillar(scene, places, radius) {
   if (!places.length) return null;
 
-  // Rows, because a long run wraps. Each is its own creature: one body that
-  // teleported from the end of one line to the start of the next would be a
-  // stranger thing to look at than two caterpillars.
+  // Rows, because a long run wraps.
   const rows = new Map();
   for (const place of places) {
     if (!rows.has(place.y)) rows.set(place.y, []);
@@ -208,12 +138,7 @@ export function caterpillar(scene, places, radius) {
 
   const swell = radius * 1.26;
   const headSize = radius * 1.34;
-  // Room for everything that sticks out past a segment, worked out from where
-  // the head is actually put rather than guessed: the face sits two radii in
-  // front of the leading segment and is 1.34 radii across, and the antennae
-  // reach another 2.3 above it. Getting this wrong does not throw — the texture
-  // is simply too small and the drawing is cropped, which on the first attempt
-  // took the side of the caterpillar's head off.
+  // Room for everything that sticks out past a segment.
   const left = Math.min(...places.map((p) => p.x)) - swell - radius * 0.9;
   const right = Math.max(...places.map((p) => p.x)) + radius * 3.8;
   const top = Math.min(...places.map((p) => p.y)) - radius * 2.9;

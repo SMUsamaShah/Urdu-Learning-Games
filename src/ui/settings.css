@@ -1,20 +1,6 @@
-/*
- * The settings screen.
- *
- * Rows are large and plain, the way a phone's own settings are: this is read
- * once in a while by somebody holding a phone at arm's length, not scanned
- * daily. 56px minimum row height is a comfortable thumb target and roughly what
- * every mobile platform uses for the same thing.
- *
- * Deliberately not the game's visual language. The games are rounded, tilted
- * and colourful because a three-year-old is looking at them; this is a form,
- * and dressing a form up as a toy makes it harder to use without making it more
- * fun. The only colour is the accent on a switch and a tick.
- */
+/* The settings screen. */
 
-/* No global reset reaches this overlay, and a row is `width: 100%` with 16px of
-   padding each side — under the default content-box that is 32px wider than the
-   card it sits in, which put every switch off the right-hand edge. */
+/* No global reset reaches this overlay. */
 .set-root,
 .set-root *,
 .set-root *::before,
@@ -33,8 +19,6 @@
   font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
   overscroll-behavior: contain;
 }
-
-/* ------------------------------------------------------------------- head */
 
 .set-head {
   display: flex;
@@ -74,8 +58,6 @@
   background: rgba(0, 0, 0, 0.06);
 }
 
-/* ------------------------------------------------------------------- body */
-
 .set-body {
   flex: 1;
   overflow-y: auto;
@@ -88,7 +70,7 @@
   padding: 8px 12px 40px;
 }
 
-/* A quiet heading over each group. Not a title — a label for a set of rows. */
+/* A quiet heading over each group. */
 .set-group {
   padding: 20px 8px 6px;
   font-size: 13px;
@@ -104,8 +86,6 @@
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
-
-/* -------------------------------------------------------------------- row */
 
 .set-row {
   display: flex;
@@ -123,16 +103,13 @@
   position: relative;
 }
 
-/* Separators are drawn inside the row rather than as a border on it. A border
-   plus a left margin shifts the row right without narrowing it, which pushed
-   every switch and chevron 16px past the edge of the card. */
+/* Separators are drawn inside the row rather than as a border on it. */
 
 .set-row + .set-row::before {
   content: '';
   position: absolute;
   top: 0;
-  /* Inset to where the labels start, so the separators read as dividing a list
-     rather than boxing each row. */
+  /* Inset to where the labels start, so the separators read as dividing a list rather than boxing each row. */
   left: 16px;
   right: 0;
   border-top: 1px solid rgba(0, 0, 0, 0.07);
@@ -152,13 +129,7 @@
   font-size: 17px;
 }
 
-/*
- * A row on one of the content pages: the thing itself, then what it is called,
- * then the switch.
- *
- * The glyph rather than a name, because a parent picking letters for the week
- * is looking for ب. Same shapes the games draw — see src/ui/glyph-svg.js.
- */
+/* A row on one of the content pages: the thing itself, then what it is called, then the switch. */
 .set-row-glyph {
   width: 54px;
   height: 32px;
@@ -210,8 +181,6 @@
   visibility: visible;
 }
 
-/* ----------------------------------------------------------------- switch */
-
 .set-switch {
   appearance: none;
   -webkit-appearance: none;
@@ -252,8 +221,6 @@
   outline-offset: 3px;
 }
 
-/* ------------------------------------------------------------------ pages */
-
 /* A page that is not a list of rows: the recorder, the sound check. */
 .set-page {
   display: flex;
@@ -275,13 +242,7 @@
   font-size: 14px;
 }
 
-/* ---------------------------------------------------------- letter traces */
-
-/*
- * The page is mostly the shared stroke editor, which brings its own styles.
- * What is here is the strip above it: what is guided, where the open letter's
- * path came from, and the way out to a file.
- */
+/* The page is mostly the shared stroke editor, which brings its own styles. */
 .set-traces-bar {
   display: flex;
   align-items: center;
@@ -334,16 +295,7 @@
   min-width: 0;
 }
 
-/* --------------------------------------------------------- short windows */
-
-/*
- * A phone held sideways is about 390px tall, and the traces page is the one
- * that cannot simply scroll: it holds an editor whose board should take the
- * room that is left, not push the Save button past the bottom of the screen.
- *
- * Keyed on height rather than orientation, because the problem is the height —
- * a small phone in portrait with a keyboard up is the same shape.
- */
+/* A phone held sideways is about 390px tall. */
 @media (max-height: 520px) {
   .set-head {
     padding: 6px 10px;
@@ -363,27 +315,17 @@
     font-size: 13px;
   }
 
-  /*
-   * Only Export survives here.
-   *
-   * Sideways, chrome is nearly two thirds of the screen and the board is what
-   * suffers. The count and the "from the app" note are both things you read
-   * once; the button is the one thing on this row you cannot do without, and
-   * there is nowhere else to put it.
-   */
+  /* Only Export survives here. */
   .set-traces-bar .set-traces-count,
   .set-traces-bar .set-traces-where {
     display: none;
   }
 
-  /* The explanation is for somebody deciding whether to use this page, and it
-     has already been read by the time the screen is this size. */
+  /* The explanation is for somebody deciding whether to use this page. */
   .set-traces .set-note {
     display: none;
   }
 }
-
-/* ------------------------------------------------------------------ slider */
 
 .set-row-slider {
   gap: 18px;
@@ -393,8 +335,7 @@
   flex: 1;
   min-width: 120px;
   max-width: 260px;
-  /* The browser's own slider is a 4px line and a 12px thumb: fine for a mouse,
-     awkward for the finger this is actually dragged with. */
+  /* The browser's own slider is a 4px line and a 12px thumb. */
   height: 28px;
   appearance: none;
   background: none;
@@ -438,14 +379,6 @@
   outline-offset: 4px;
 }
 
-/* ---------------------------------------------------------- how he's doing
- *
- * A wall of letters, grouped by how they are going. Chips rather than the
- * switch rows the other content pages use, because this page is read at a
- * glance and nothing on it is a control: forty rows of "ٹ ————— missing it"
- * is a spreadsheet, and the shape a parent wants is "which pile is big".
- */
-
 .set-card-band {
   padding: 14px 16px 16px;
 }
@@ -479,8 +412,7 @@
   gap: 7px;
   padding: 6px 11px 6px 8px;
   border-radius: 12px;
-  /* A tint rather than a fill: the glyph inside is the thing being read, and a
-   * saturated chip behind a black letterform wins the fight for the eye. */
+  /* A tint rather than a fill. */
   background: var(--chip-bg, rgba(0, 0, 0, 0.05));
   border: 1px solid var(--chip-edge, rgba(0, 0, 0, 0.08));
 }
@@ -503,9 +435,7 @@
   color: var(--set-muted, #6b7280);
 }
 
-/* Warm for the ones wanting work, cool for the ones that are done, and nothing
- * at all for the ones he has not met — an unmet letter is not a problem and
- * must not be coloured like one. */
+/* Warm for the ones wanting work. */
 .set-chip-missing {
   --chip-bg: rgba(220, 78, 60, 0.13);
   --chip-edge: rgba(220, 78, 60, 0.3);
@@ -525,17 +455,8 @@
   opacity: 0.6;
 }
 
-/* -------------------------------------------------------------------- games
- *
- * One row per game: a handle to drag it by, its menu tile, its name, a switch.
- * The order decides which page of the menu it lands on, so the list is read
- * top to bottom as "the front page, then the second page" and the marks
- * between say where those lines fall.
- */
-
 .set-card-games {
-  /* The rows move under a finger, so nothing may spill out of the card while
-     one is in flight past the ends of the list. */
+  /* The rows move under a finger, so nothing may spill out of the card while one is in flight past the ends of the list. */
   overflow: hidden;
 }
 
@@ -543,9 +464,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  /* Transformed rather than reordered while a drag is in progress, so a
-     transition here is what makes the others glide out of the way instead of
-     jumping a row at a time. */
+  /* Transformed rather than reordered while a drag is in progress. */
   transition: transform 140ms ease;
   background: var(--set-card, #fff);
   position: relative;
@@ -561,8 +480,7 @@
   color: var(--set-muted, #9aa1ad);
   font-size: 17px;
   cursor: grab;
-  /* Without this a drag down the list scrolls the settings body instead, and
-     the row never moves. */
+  /* Without this a drag down the list scrolls the settings body instead, and the row never moves. */
   touch-action: none;
 }
 
@@ -570,8 +488,7 @@
   flex: 1;
 }
 
-/* The picture is deliberately the menu asset, not a generic icon: this list
-   is where a parent matches an English name to the tile the child knows. */
+/* The picture is deliberately the menu asset. */
 .set-row-game-tile {
   width: 54px;
   height: 42px;
@@ -596,8 +513,7 @@
   max-height: 78%;
 }
 
-/* Lifted, and the transition off so it tracks the finger exactly rather than
-   easing along behind it. */
+/* Lifted, and the transition off so it tracks the finger exactly rather than easing along behind it. */
 .set-row-game.is-dragging {
   transition: none;
   z-index: 2;
@@ -606,8 +522,7 @@
   cursor: grabbing;
 }
 
-/* Switched off: still legible, and plainly not in play. Not hidden — this is
-   the page where you put one back. */
+/* Switched off: still legible, and plainly not in play. */
 .set-row-game.is-off .set-row-label,
 .set-row-game.is-off .set-row-game-tile {
   opacity: 0.42;

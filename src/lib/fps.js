@@ -1,19 +1,4 @@
-/**
- * A frame-rate readout, for telling a rendering problem from an input one.
- *
- * Worth having as a real feature rather than a debug flag. "It feels jerky" has
- * two completely different causes — the app is dropping frames, or the app is
- * running at sixty and mishandling the input — and they need opposite fixes.
- * Without a number on screen, the two are indistinguishable by eye, and the
- * last time the two got confused here the wrong thing was optimised.
- *
- * DOM rather than a Phaser text object on purpose: it must not itself be a
- * draw call, it must not be added to every scene, and it must keep updating
- * while the game loop is asleep — which is exactly when the reading matters.
- *
- * Off by default, and remembered. It sits behind the grown-ups gate because a
- * three-year-old does not need a number in the corner.
- */
+/* A frame-rate readout, for telling a rendering problem from an input one. */
 
 import { stageElement } from './turn.js';
 
@@ -44,10 +29,7 @@ function apply(on) {
   el.hidden = !on;
 }
 
-/**
- * Attaches the readout. Safe to call once at startup whatever the setting —
- * hidden costs nothing, and the toggle then works without a reload.
- */
+/* Attaches the readout. */
 export function mountFpsMeter(game) {
   if (el) return el;
   el = document.createElement('div');
@@ -58,36 +40,22 @@ export function mountFpsMeter(game) {
   let last = 0;
   const tick = (now) => {
     requestAnimationFrame(tick);
-    // Four times a second. Every frame makes the number unreadable and adds a
-    // layout to each one.
+    // Four times a second.
     if (now - last < 250) return;
     last = now;
     if (el.hidden) return;
 
     const fps = game?.loop?.actualFps ?? 0;
-    // With what it took to draw it. A frame rate on its own says something is
-    // slow; this says what to look at, and it is the difference between a
-    // round trip and a fix. Objects and textures are what actually moved the
-    // menu from 40fps — 69 objects and 67 textures down to 29 and 26.
+    // Include the time spent rendering the last frame.
     el.textContent = `${Math.round(fps)} fps · ${describe(game)}`;
-    // Green above 50, amber 30-50, red below: the point is to be readable at a
-    // glance while a child is using the app, not to be precise.
+    // Green above 50, amber from 30–50, and red below 30.
     el.dataset.level = fps >= 50 ? 'good' : fps >= 30 ? 'fair' : 'poor';
   };
   requestAnimationFrame(tick);
   return el;
 }
 
-/**
- * What the running scene is asking the renderer to do.
- *
- * Counted on the display list rather than read off the renderer, because
- * Phaser 4 publishes no draw-call figure — and the two numbers that actually
- * predict the cost here are how many things are drawn and how many distinct
- * textures they come from. A Graphics count is included separately: those
- * re-tessellate every frame whether or not they changed, and a screen quietly
- * accumulating them is the failure this readout exists to make visible.
- */
+/* What the running scene is asking the renderer to do. */
 function describe(game) {
   const scene = game?.scene?.scenes?.find((s) => s.sys.settings.visible && s.sys.isActive());
   if (!scene) return '';

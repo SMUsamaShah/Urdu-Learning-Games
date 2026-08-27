@@ -1,18 +1,4 @@
-/*
- * The parental gate.
- *
- * Its own stylesheet, and that is the whole point of this file existing.
- *
- * These rules used to live in recorder.css, which is loaded by the dynamic
- * import of the recorder — and the gate is shown *before* that import runs,
- * because it is what decides whether the recorder opens at all. So the very
- * first time anyone held the Grown-ups button, the question appeared as
- * unstyled text in the corner of the screen; every time after that it looked
- * right, because the stylesheet was by then in the document. A bug that fixes
- * itself after one use is one nobody reports and everybody hits.
- *
- * parental-gate.js imports this directly, so it cannot arrive late.
- */
+/* The parental gate. */
 
 .gate-backdrop {
   --panel: #ffffff;
@@ -24,10 +10,7 @@
 
   position: fixed;
   inset: 0;
-  /* Above everything, including the "that's enough for today" screen below —
-     which is the one place the gate is opened from *on top of* another overlay.
-     At 60 it opened behind it and the Continue button could not be pressed, so
-     the only way back in was unreachable. Found by tools/verify-limit.mjs. */
+  /* Above everything, including the "that's enough for today" screen below — which is the one place the gate is opened. */
   z-index: 80;
   font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--ink);
@@ -89,14 +72,6 @@
   font-weight: 600;
 }
 
-/* ------------------------------------------------------- that's enough today
- *
- * Lives beside the gate because it is the same kind of thing: a full-screen
- * backdrop over everything the app is doing, mounted into the stage so it turns
- * with it. The difference is that this one has no way out that a child can
- * find, which is the whole point of it.
- */
-
 .timeup-backdrop {
   position: fixed;
   inset: 0;
@@ -104,9 +79,7 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  /* Warmer and heavier than the gate's. The gate interrupts an adult for two
-     seconds; this ends the session, and it should feel like the lights going
-     down rather than like an error. */
+  /* Warmer and heavier than the gate's. */
   background: rgba(28, 34, 52, 0.86);
   animation: timeup-in 380ms ease-out;
 }
@@ -135,32 +108,27 @@
   height: auto;
 }
 
-/* The baked Nastaliq, sized by height rather than by font-size: these are
-   paths, not text, and Nastaliq's vertical range is enormous. */
+/* The baked Nastaliq. */
 .timeup-title svg {
   height: clamp(40px, 10vh, 68px);
   width: auto;
 }
 
-/* Two thirds of the title rather than a third of it. The first pass sized this
-   at 5.5vh and the English underneath at a fixed 15px, which on a 400px-tall
-   phone made the English the largest writing on a screen addressed to a child
-   who cannot read either — and this one is the sentence that matters. */
+/* Two thirds of the title rather than a third of it. */
 .timeup-sub svg {
   height: clamp(30px, 7vh, 46px);
   width: auto;
   opacity: 0.82;
 }
 
-/* For whoever picks the phone up, not for him. Smallest thing here. */
+/* For whoever picks the phone up, not for him. */
 .timeup-roman {
   margin: 2px 0 0;
   font: clamp(11px, 3vh, 14px)/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color: #8d8571;
 }
 
-/* Small, quiet, and at the bottom. It is the only control here and it is not
-   for the person the screen is addressed to. */
+/* Small, quiet, and at the bottom. */
 .timeup-grown {
   margin-top: 6px;
   padding: 8px 18px;

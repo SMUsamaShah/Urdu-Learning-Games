@@ -1,37 +1,4 @@
-/**
- * Sound check: works out *where* bad audio is coming from.
- *
- * "Playback sounds wrong" has at least four different causes and they need
- * completely different fixes, so guessing is expensive. This narrows it down on
- * the actual device, because the fault only appears on real phone hardware: a
- * headless browser on a fast machine never starves its audio thread, and no
- * amount of testing here will reproduce a cheap phone that does.
- *
- * Each check isolates one layer, and which ones sound wrong is the answer:
- *
- *   1. **Tone** — an oscillator through the app's AudioContext. No file, no
- *      recording, no decode. If this is rough, nothing downstream matters: the
- *      output device or the context is the problem.
- *   2. **Clip through Web Audio** — the app's real playback path.
- *   3. **The same clip through an <audio> element** — a completely separate
- *      decode and output path that shares nothing with Web Audio except the
- *      speaker. If this is clean and (2) is rough, the recording is fine and
- *      the fault is ours. If both are rough, the recording itself is bad.
- *   4. **The same clip with the game stopped** — identical file, decode and
- *      output, with the only difference being that nothing is being drawn. If
- *      this is clean and (2) is rough, the audio thread is being starved by
- *      rendering, and the fix is a bigger buffer or a cheaper scene.
- *
- * Plus the numbers that make a recording bad in ways you cannot hear until it
- * is too late: sample rate, peak level, and how much of it is clipped.
- *
- * ## Reading the result
- *
- * The single most useful observation is not in this panel at all: does the
- * roughness land in the *same place* every time you play the same clip? If it
- * does, the file is bad. If it moves around, the file is fine and the audio
- * thread is missing deadlines — which is what the buffer setting below is for.
- */
+/* Sound check: works out *where* bad audio is coming from. */
 
 import { getAudioContext, invalidate, play, stopAll } from '../lib/audio.js';
 import { LATENCY_MODES, latencyMode, setLatencyMode } from '../lib/audio-context.js';
@@ -39,7 +6,7 @@ import { allKeys, getClip } from '../lib/clip-store.js';
 
 const TONE_SECONDS = 2;
 
-/** Reads a stored clip and measures what is actually in it. */
+/* Reads a stored clip and measures what is actually in it. */
 async function inspect(key) {
   const record = await getClip(key);
   if (!record?.blob) return { key, missing: true };
@@ -49,8 +16,7 @@ async function inspect(key) {
   const info = { key, size: record.blob.size, type: record.blob.type || 'unknown' };
 
   try {
-    // decodeAudioData detaches the buffer it is given, so anything that wants
-    // to reuse the bytes afterwards has to hand over a copy.
+    // decodeAudioData detaches the buffer it is given.
     const buffer = await ctx.decodeAudioData(bytes.slice(0));
     const data = buffer.getChannelData(0);
 
@@ -75,7 +41,7 @@ async function inspect(key) {
   return info;
 }
 
-/** A plain sine through the app's context. The control for everything else. */
+/* A plain sine through the app's context. */
 function playTone(onDone) {
   const ctx = getAudioContext();
   if (!ctx) return onDone?.();
@@ -85,8 +51,7 @@ function playTone(onDone) {
   const gain = ctx.createGain();
   osc.type = 'sine';
   osc.frequency.value = 440;
-  // Ramped, or the start and stop click and the click gets mistaken for the
-  // fault being looked for.
+  // Fade the test clip to avoid mistaking edges for the fault.
   const t0 = ctx.currentTime;
   gain.gain.setValueAtTime(0.0001, t0);
   gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.05);
@@ -99,13 +64,7 @@ function playTone(onDone) {
   osc.stop(t0 + TONE_SECONDS);
 }
 
-/**
- * Plays a stored clip through an <audio> element.
- *
- * Deliberately not Web Audio: this shares no decoder, no buffer and no graph
- * with the app's playback, so comparing the two says whether a bad-sounding
- * clip is bad on disk or only bad through us.
- */
+/* Plays a stored clip through an <audio> element. */
 function playThroughElement(blob, onDone) {
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
@@ -126,11 +85,8 @@ const fmt = {
   bytes: (n) => `${(n / 1024).toFixed(1)} KB`,
 };
 
-/**
- * Builds the panel. Returns an element for the caller to place.
- *
+/** Builds the panel.
  * @param {(key: string) => string} labelFor turns a clip key into something
- *   readable, so this module needs to know nothing about what a clip is.
  */
 export function buildSoundCheck(labelFor = (k) => k) {
   const root = document.createElement('div');
@@ -214,8 +170,7 @@ export function buildSoundCheck(labelFor = (k) => k) {
             `${info.channels}ch, peak ${info.peak.toFixed(2)}, ` +
             `clipped ${fmt.pct(info.clippedPercent)}`
         );
-        // The two ways a recording is bad on its own terms, both of which sound
-        // like "the app is broken" to anybody who has not measured it.
+        // The two ways a recording is bad on its own terms.
         if (info.peak < 0.08) lines.push('WARNING: this recording is very quiet.');
         if (info.clippedPercent > 1) {
           lines.push('WARNING: this recording is clipped — it distorts however it is played.');
@@ -250,8 +205,7 @@ export function buildSoundCheck(labelFor = (k) => k) {
 
     if (what === 'tone') playTone();
     if (what === 'webaudio' && clipKey) {
-      // From cold, so this measures a real first play rather than a buffer that
-      // has been sitting decoded since before the microphone was opened.
+      // Start cold to measure first-play latency.
       invalidate(clipKey);
       play(clipKey);
     }
@@ -260,9 +214,7 @@ export function buildSoundCheck(labelFor = (k) => k) {
       if (record?.blob) playThroughElement(record.blob);
     }
     if (what === 'quiet' && clipKey) {
-      // Stop the render loop outright, play, then start it again. Pausing the
-      // scenes is not enough: Phaser keeps drawing them, and drawing is the
-      // thing under suspicion.
+      // Stop the render loop outright, play, then start it again.
       const game = window.__game;
       invalidate(clipKey);
       game?.loop?.sleep?.();
@@ -279,8 +231,7 @@ export function buildSoundCheck(labelFor = (k) => k) {
         event.target.textContent = 'Copied';
         setTimeout(() => (event.target.textContent = 'Copy the details'), 1500);
       } catch {
-        // Clipboard is blocked in plenty of contexts; selecting the text is a
-        // fine fallback and needs no permission.
+        // Clipboard is blocked in plenty of contexts; selecting the text is a fine fallback and needs no permission.
         getSelection()?.selectAllChildren(factsEl);
       }
     }

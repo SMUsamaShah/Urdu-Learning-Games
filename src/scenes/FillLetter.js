@@ -8,48 +8,9 @@ import { COLORS, familyColor } from '../lib/theme.js';
 import { lettersById } from '../lib/content.js';
 import { chooseWeighted, weightOf } from '../lib/mastery.js';
 
-/**
- * One letter is missing. Which one?
- *
- * The gentlest of the three spelling screens and the one to meet first. The
- * word is already spelled out — its letters in their isolated shapes, right to
- * left, the way the Letters screen shows them — with exactly one of them
- * replaced by an empty socket. Three letters underneath; one of them fits.
- *
- * ## Why the broken form rather than the written word
- *
- * Cutting a hole in بکری is the more elegant question and mostly impossible:
- * AlQalam Taj fuses joined letters into single outlines, so in twenty-eight of
- * the thirty-seven words there is no ب-shaped piece to remove. `taughtCluster()`
- * exists precisely to say when there is, and it says no far more often than
- * yes.
- *
- * Taking the word apart first sidesteps that completely, and it asks the same
- * thing: which letter belongs here. It also builds directly on the row the
- * Letters screen already shows under every word, so a child arrives here having
- * seen this exact layout before.
- *
- * ## Carried into the hole
- *
- * The socket in the row is a real place, so the letter is dragged into it
- * rather than tapped. That is the one thing this screen has that the other
- * pick-one games do not, and it is why this one drags and they do not.
- *
- * ## The picture is the clue
- *
- * Without it this would be a memory test — nothing on screen says which word
- * is meant. With it, and with the word spoken, a child who knows the letters'
- * sounds can work it out, which is the skill.
- */
+/* One letter is missing. */
 
-/**
- * The row of letters being read, and the empty socket in it.
- *
- * `y` is measured from the prompt layer's own origin, which QuizScene puts at
- * `promptY` — everything a subclass draws in `buildPrompt` is in that layer's
- * coordinates, so this is 120px below the picture rather than 356 down the
- * screen.
- */
+/* The row of letters being read, and the empty socket in it. */
 const ROW = { size: 108, gap: 12, y: 126 };
 
 export default class FillLetter extends QuizScene {
@@ -63,10 +24,9 @@ export default class FillLetter extends QuizScene {
     this.choicesByStreak = [2, 2, 3, 3, 3, 4];
     /** @type {string|null} */
     this.wordId = null;
-    /** Which letter of the word has been taken out. */
+    /* Which letter of the word has been taken out. */
     this.gap = 0;
-    // The empty socket in the row. Worked out from the same numbers that draw
-    // it, rather than remembered when it is drawn, so the two cannot disagree.
+    // The empty socket in the row.
     this.dragTarget = () => {
       const letters = brokenWord(this.wordId) ?? [];
       const step = ROW.size + ROW.gap;
@@ -80,30 +40,16 @@ export default class FillLetter extends QuizScene {
     queueWordImages(this);
   }
 
-  /**
-   * A letter of a word, as `wordId:index`.
-   *
-   * The target is the missing letter's *id*, so two words that both want a ب
-   * are the same answer; what changes round to round is which word and which
-   * position, which is carried here rather than in a field so QuizScene's
-   * "never the same target twice running" applies to the letter.
-   */
+  /* A letter of a word, as `wordId:index`. */
   pickTarget(previous) {
-    // Words weighed by the letters inside them, because the question this
-    // screen asks is about a letter and the word is only where it lives. A word
-    // is worth dealing to the extent that it contains a letter he is missing,
-    // so the pull is the best letter in it rather than the average — one hard
-    // letter is a reason to show a word, three easy ones are not a reason not
-    // to.
+    // Words weighed by the letters inside them.
     const word = pickWord(this.wordId, undefined, (candidate) => {
       const inside = (brokenWord(candidate.id) ?? []).slice(1);
       return inside.length ? Math.max(...inside.map((id) => weightOf('letter', id))) : 1;
     });
     this.wordId = word.id;
     const letters = brokenWord(word.id);
-    // Never the first letter. That one is what StartsWith already asks about,
-    // and it is guessable from the picture alone by a child who cannot yet read
-    // a single other letter of the word.
+    // Never the first letter.
     const choices = letters.map((id, index) => index).filter((index) => index > 0);
     const from = choices.filter((index) => letters[index] !== previous);
     const pool = from.length ? from : choices;
@@ -111,12 +57,7 @@ export default class FillLetter extends QuizScene {
     return letters[this.gap];
   }
 
-  /**
-   * The answer plus letters that really do turn up in words.
-   *
-   * Its own shape family first where there is one — telling ب from ت is a
-   * question about dots, which is the question this game is best at asking.
-   */
+  /* The answer plus letters that really do turn up in words. */
   lineUpFor(target, count) {
     const family = lettersById.get(target)?.shapeFamily;
     const others = new Set();

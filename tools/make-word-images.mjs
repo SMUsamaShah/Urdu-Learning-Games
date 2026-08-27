@@ -1,34 +1,4 @@
-/**
- * Draws every word in content/words.json.
- *
- * A wall of letterforms is not interesting to a three-year-old. The words are
- * all concrete nouns chosen to teach a letter — a goat, a kite, an apple — so a
- * picture is what makes them mean anything before the child can read.
- *
- * Images are generated once and committed. This is not run at build time: it
- * costs money, needs a key, and the output is a design decision somebody should
- * look at before it ships.
- *
- * These are drawn on nothing: `background: 'transparent'` and a PNG, which is
- * the only format that carries an alpha channel. That is new. The thirty-seven
- * pictures already committed were drawn on white and had it keyed out by
- * tools/cutout.mjs, which still runs and still handles them — it looks at the
- * border and only reaches for the flood fill when it finds a background there.
- *
- * The style is one sentence shorter for it. It used to have to say "plain solid
- * white background" and "no shadows", the second only because a cast shadow is
- * a grey smear connected to the border and the fill would have taken a bite out
- * of it. Neither is a rule about how a picture should look, and both are gone.
- *
- * Usage:
- *   OPENAI_API_KEY=... node tools/make-word-images.mjs [--force] [--only id,id]
- *
- * Re-running is cheap: raw PNGs are cached in .image-cache/, so only words with
- * no picture yet cost anything, and the cutout runs again over everything. That
- * is deliberate — it means the keying can be tuned without paying to redraw.
- *
- * The key is only ever read from the environment. Do not put it in a file.
- */
+/* Draws every word in content/words.json. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -39,7 +9,7 @@ const OUT = path.join(ROOT, 'public', 'images', 'words');
 const RAW = path.join(ROOT, '.image-cache');
 const MODEL = 'gpt-image-2';
 const SIZE = 1024;
-/** Displayed at roughly 190px, so this stays crisp on a 2x screen. */
+/* Displayed at roughly 190px, so this stays crisp on a 2x screen. */
 const TARGET = 384;
 const CONCURRENCY = 4;
 
@@ -59,11 +29,7 @@ const STYLE =
   'a fully transparent background, nothing behind it, no text, no letters, ' +
   'no numbers';
 
-/**
- * Subjects the English gloss alone would get wrong. The gloss is a translation,
- * not an art brief: "fruit" gives a generic fruit bowl where the word is about
- * fruit on a tree, and "halwa" means nothing to the model without context.
- */
+/* Subjects the English gloss alone would get wrong. */
 const OVERRIDES = {
   halwa: 'a bowl of halwa, an orange South Asian semolina sweet, garnished with nuts',
   samar: 'a cluster of ripe fruit hanging on a leafy branch',
@@ -76,8 +42,7 @@ const OVERRIDES = {
   ainak: 'a pair of round eyeglasses',
   gaari: 'a small cheerful toy car seen from the side',
   patang: 'a diamond kite with a tail, flying',
-  // The nose on its own. A whole face reads as "face", which is the word
-  // next door, and a child asked to name the picture says the wrong thing.
+  // The nose on its own.
   naak: 'a single human nose on its own, front view, no face around it, no eyes, no mouth, no head',
   qalam: 'a single pen at a slight angle',
   saabun: 'a bar of soap with a few bubbles',
@@ -103,8 +68,7 @@ const todo = words.filter(
   (w) => force || !fs.existsSync(path.join(OUT, `${w.id}.webp`))
 );
 
-// Not an early exit: with nothing to draw there is still the cut-out pass to
-// run over the cached originals, which is how the keying gets tuned for free.
+// Still run the cut-out pass for cached originals.
 if (todo.length === 0) {
   console.log('Every word already has a picture; re-cutting from the cache.');
 } else {
@@ -135,8 +99,7 @@ async function generate(word) {
           prompt: promptFor(word),
           size: `${SIZE}x${SIZE}`,
           quality: 'low',
-          // PNG because it is the only output format that carries alpha, and
-          // the file this writes is a WebP made from it downstream anyway.
+          // PNG because it is the only output format that carries alpha.
           background: 'transparent',
           output_format: 'png',
           n: 1,
@@ -164,7 +127,7 @@ async function generate(word) {
   }
 }
 
-/** Runs `worker` over `items`, `limit` at a time. */
+/* Runs `worker` over `items`, `limit` at a time. */
 async function pool(items, limit, worker) {
   const queue = [...items];
   await Promise.all(
@@ -185,20 +148,10 @@ async function pool(items, limit, worker) {
 
 await pool(todo, CONCURRENCY, generate);
 
-// -------------------------------------------------------- cut out and resize
-//
-// The keying itself lives in tools/cutout.mjs, shared with the mascot. See
-// there for why the background is removed by a flood fill from the border
-// rather than by a threshold, and why the downscale is what gives the cut a
-// soft edge.
-//
-// Full-size PNGs are about 750 KB each, which would add 25 MB to a repo whose
-// whole point is working offline on a phone.
-
 console.log('Cutting out backgrounds and resizing…');
 const cutter = await openCutter();
 
-/** Every word with a cached original, so tuning the cut costs nothing. */
+/* Every word with a cached original, so tuning the cut costs nothing. */
 const toProcess = words.filter((w) => fs.existsSync(path.join(RAW, `${w.id}.png`)));
 
 let totalBytes = 0;
@@ -211,9 +164,7 @@ for (const word of toProcess) {
   );
   if (keyed) keyedCount++;
 
-  // A picture that is almost all background, or none at all, means the fill
-  // leaked, or the model was asked for a transparent background and sent back
-  // an opaque one. Better to know than to ship it.
+  // A picture that is almost all background.
   if (cutLooksWrong(clearedRatio)) {
     console.warn(
       `  ! ${word.id}: ${(clearedRatio * 100).toFixed(0)}% of it is background — check it`
@@ -226,9 +177,7 @@ for (const word of toProcess) {
 }
 await cutter.close();
 
-// Said out loud because it is the difference between a picture the model drew
-// on nothing and a picture something guessed the edges of. A new word landing
-// in the keyed column means `background: 'transparent'` did not take.
+// Report the number of images that still need generation.
 if (keyedCount) {
   console.log(
     `${keyedCount} of ${toProcess.length} arrived on a background and had it keyed out.`

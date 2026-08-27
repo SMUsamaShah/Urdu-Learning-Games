@@ -1,77 +1,4 @@
-/**
- * Draws the furniture a game is played with.
- *
- * ## What a prop is, and which ones may be generated
- *
- * `src/lib/props.js` draws props in code, and it will go on doing so. This tool
- * does not replace it; it covers the cases it was never going to reach.
- *
- * A prop may be generated when it is **furniture**: one fixed picture, no
- * colour assigned by the game, no geometry worked out when the round is dealt.
- * Anything that carries meaning through its colour or its shape stays drawn.
- *
- * That rule rules out both props that already exist, which is worth being
- * plain about:
- *
- * - `basket(scene, {width, height, color})` takes the game's colour on purpose.
- *   Its docstring says why: "two brown baskets are one wide brown thing". The
- *   generated Baskets *tile* shows the failure — two brown wicker baskets, told
- *   apart only by a coloured label. That is survivable at 200px on the menu and
- *   would not be at 300px on the screen a child is sorting into.
- * - Fishing's fish and Bounce's balls take `familyColor(letter.shapeFamily)`,
- *   so their colour says which family the letter belongs to. A fixed picture
- *   throws that away.
- * - `caterpillar(scene, places, radius)` is built around segment centres that
- *   depend on how the run wrapped.
- *
- * What is left is scenery that happens to be in front rather than behind: the
- * mound a letter pops out of, the trampoline a ball lands on, the bush a letter
- * hides in. None of them mean anything by their colour, and all of them are
- * currently a couple of ellipses standing in front of a painted backdrop.
- *
- * ## Transparent, and the prompt matters more than the parameter
- *
- * `background: 'transparent'` with `output_format: 'png'`, which is the only
- * format that carries an alpha channel. The cookbook is blunt about the catch:
- * a prompt that describes a backdrop, a scene or a colour behind the subject
- * beats the parameter, and the model paints the background anyway.
- *
- * So a prop brief is one object and nothing else, and this file shares no style
- * constant with make-tile-art.mjs, whose briefs are *all* scene. Where a tile
- * asks for flowers and grass and sun, a prop asks for no ground, no grass, no
- * sky and no surface to stand on.
- *
- * A prop that comes back opaque anyway is **dropped**, not rescued. The flood
- * fill in cutout.mjs could key it, but the trim below measures the subject by
- * its alpha, and a keyed picture is one whose edges were guessed. Dropping it
- * leaves it out of the manifest, and a prop that is not in the manifest falls
- * back to whatever the scene drew before — which is the same arrangement the
- * menu tiles have.
- *
- * ## Trimmed to the object
- *
- * The model centres its object in a square with clear space around it, and the
- * amount of clear space is different every time. Left alone, placing a prop in
- * a scene would mean nudging numbers until it looked right, per prop, and doing
- * it again after every re-roll. So each picture is trimmed to its own alpha
- * bounding box and the manifest records the size that came out. A scene asks
- * for a width and gets an object that fills it.
- *
- * ## Two pieces from one picture
- *
- * A prop with a `front` is written twice: once whole, and once with everything
- * above that line erased. Whack needs this — the letter rises *out* of the
- * mound, so something has to draw over its bottom edge — and two separate
- * generations of "the same mound, front half" would not line up.
- *
- * Both files are the full trimmed size with the same origin, so a scene draws
- * them at identical coordinates and they cannot drift apart.
- *
- * Usage:
- *   OPENAI_API_KEY=... node tools/make-props.mjs [--force] [--only whack-mound]
- *
- * The key is only ever read from the environment. Do not put it in a file.
- */
+/* Draws the furniture a game is played with. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -86,12 +13,7 @@ const MODEL = 'gpt-image-2';
 const SIZE = '1024x1024';
 const CONCURRENCY = 4;
 
-/**
- * Drawn at twice the width a scene asks for, so a prop holds up on a 2x screen.
- * The same reason `SUPERSAMPLE` exists in props.js, arrived at from the other
- * end: there the drawing is rasterised big and scaled down, here the picture
- * comes big and is scaled down.
- */
+/* Drawn at twice the width a scene asks for, so a prop holds up on a 2x screen. */
 const DENSITY = 2;
 
 const STYLE =
@@ -104,29 +26,10 @@ const STYLE =
   'on, no cast shadow, no glow, no vignette. No text, no letters, no numbers, ' +
   'no logos.';
 
-/**
- * The props, and how wide each is drawn in the game.
- *
- * There was a third, a bush for Hidden, and it is not here because it did not
- * work. Hidden scatters small tinted letters and asks a child to find them, and
- * its own note says the tints stay away from the backdrop's greens because
- * "this is a hunt, not camouflage". A saturated cartoon bush is the strongest
- * green on the screen by some distance, and the letters disappeared into it —
- * a game made unplayable by its own scenery. The backdrops are painted with a
- * clear middle on purpose; a screen that wants foliage in the middle wants a
- * different backdrop, not a prop standing on this one.
- *
- * `width` is design pixels at 1x — the app is laid out at 1280x720 — and is the
- * width of the *object*, since the picture is trimmed to it. `front` splits the
- * picture in two at that fraction of its height; see the note above.
- */
+/* The props, and how wide each is drawn in the game. */
 const PROPS = {
   'whack-mound': {
-    // Just below the opening, not halfway down. The letter rises *out of the
-    // hole*, so everything from the near rim downwards has to be in the front
-    // piece — cut at 0.58 the front was only the mound's base, the letter
-    // cleared it long before it reached the hole, and it read as a card sliding
-    // up over a pile of earth.
+    // Just below the opening, not halfway down.
     width: 220,
     front: 0.3,
     brief:
@@ -183,9 +86,7 @@ async function generate(name) {
           model: MODEL,
           prompt: `${PROPS[name].brief} ${STYLE}`,
           size: SIZE,
-          // Medium, like the tiles. A prop is bigger on screen than a tile is,
-          // so if the alpha edge turns out crunchy at 2x this is the number to
-          // raise first.
+          // Medium, like the tiles.
           quality: 'medium',
           background: 'transparent',
           output_format: 'png',
@@ -213,7 +114,7 @@ async function generate(name) {
   }
 }
 
-/** Runs `worker` over `items`, `limit` at a time. */
+/* Runs `worker` over `items`, `limit` at a time. */
 async function pool(items, limit, worker) {
   const queue = [...items];
   let done = 0;
@@ -235,19 +136,12 @@ async function pool(items, limit, worker) {
 
 await pool(todo, CONCURRENCY, generate);
 
-// ------------------------------------------------------------ trim and pack
-//
-// A browser, for the same reason the tiles and the backdrops use one: a good
-// decoder, a good scaler and a WebP encoder that keeps alpha, none of which is
-// worth pulling from npm for three pictures.
-
 console.log('Trimming and packing…');
 const browser = await chromium.launch(launchOptions());
 const page = await browser.newPage();
 
-/**
+/** height: number, clearRatio: number, fringe: number}>}
  * @returns {Promise<{whole: number[], front: number[]|null, width: number,
- *   height: number, clearRatio: number, fringe: number}>}
  */
 async function pack(png, width, front) {
   return page.evaluate(
@@ -265,18 +159,13 @@ async function pack(png, width, front) {
       const { width: w, height: h } = full;
       const px = fctx.getImageData(0, 0, w, h).data;
 
-      // Where the object is, and how much of the frame is empty. A picture the
-      // model drew on white has no empty frame at all, and clearRatio is what
-      // says so.
+      // Where the object is, and how much of the frame is empty.
       let minX = w;
       let minY = h;
       let maxX = -1;
       let maxY = -1;
       let clear = 0;
-      // A halo: a pixel that is nearly transparent but not quite, sitting well
-      // outside the object. Some of these are the anti-aliased edge and are
-      // meant to be there; a lot of them, spread across the frame, is a picture
-      // with a ghost of its background still in it.
+      // A halo: a pixel that is nearly transparent but not quite, sitting well outside the object.
       let fringe = 0;
       for (let p = 0; p < w * h; p++) {
         const a = px[p * 4 + 3];
@@ -308,9 +197,7 @@ async function pack(png, width, front) {
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(full, minX, minY, box.width, box.height, 0, 0, outW, outH);
-        // The front piece is the same canvas with its top erased, rather than a
-        // shorter canvas: same size and same origin means a scene draws both at
-        // one coordinate and they cannot come apart.
+        // The front piece is the same canvas with its top erased.
         if (clearAbove !== null) ctx.clearRect(0, 0, outW, Math.round(outH * clearAbove));
         return canvas;
       };
@@ -334,9 +221,7 @@ async function pack(png, width, front) {
 }
 
 let totalBytes = 0;
-// Seeded from the manifest already on disk, so a `--only` run keeps the sizes
-// of the props it did not touch. Same reason the manifest itself is built from
-// the directory: a partial run must never produce a partial manifest.
+// Seeded from the manifest already on disk, so a `--only` run keeps the sizes of the props it did not touch.
 const manifestFile = path.join(CONTENT_DIR, 'props.json');
 const sizes = fs.existsSync(manifestFile)
   ? Object.fromEntries(
@@ -352,9 +237,7 @@ for (const name of wanted) {
   const spec = PROPS[name];
   const result = await pack(fs.readFileSync(rawFile), spec.width, spec.front);
 
-  // Came back on a background, or came back with nothing on it. Either way it
-  // is not a prop. Left out of the manifest so the scene keeps its drawing, and
-  // said loudly because the fix is a re-roll and somebody has to decide that.
+  // Came back on a background, or came back with nothing on it.
   if (result.empty || cutLooksWrong(result.clearRatio)) {
     const share = (result.clearRatio * 100).toFixed(0);
     console.error(`  DROPPED ${name}: ${share}% of the frame is empty — not a cut-out object`);
@@ -389,12 +272,6 @@ for (const name of wanted) {
   console.log(line);
 }
 await browser.close();
-
-// --------------------------------------------------------------- the manifest
-//
-// Built from what is on disk, not from what this run touched, so `--only` can
-// never quietly shrink it — the mistake that once cut the backgrounds manifest
-// down to two entries and sent every other screen back to the drawn meadow.
 
 const props = {};
 for (const file of fs.readdirSync(OUT).sort()) {

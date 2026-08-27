@@ -1,25 +1,4 @@
-/**
- * The background cut, against images built to break it.
- *
- * This is the part of the picture pipeline most likely to be wrong in a way
- * nobody notices: a leak eats a hole in the middle of a drawing, and the only
- * symptom is that one word's picture looks odd on one screen. The two cases
- * below are the ones that actually matter.
- *
- * ## Why this one skips without a browser
- *
- * The cut runs in Chromium, which the Pages workflow deliberately does not
- * install: nothing it deploys needs one, and a 150 MB download on every build
- * to check an asset-generation tool is a bad trade. The tool only ever runs
- * locally, by a person who then looks at the pictures it made, so a regression
- * here cannot reach the deployed app.
- *
- * It skips *loudly* — `npm test` reports it as skipped rather than passing
- * silently — because a check that quietly stops running is worse than one that
- * was never written.
- *
- * Run: npm test
- */
+/* The background cut, against images built to break it. */
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,7 +10,7 @@ const SKIP = hasBrowser()
   ? false
   : 'no Chromium installed — run `npx playwright install chromium` to run this';
 
-/** Draws a PNG in a browser, so the test does not need an image encoder. */
+/* Draws a PNG in a browser, so the test does not need an image encoder. */
 async function drawPng(page, draw) {
   const dataUrl = await page.evaluate((source) => {
     const canvas = document.createElement('canvas');
@@ -44,7 +23,7 @@ async function drawPng(page, draw) {
   return Buffer.from(dataUrl.split(',')[1], 'base64');
 }
 
-/** Alpha at a point of the cut result, read back through a canvas. */
+/* Alpha at a point of the cut result, read back through a canvas. */
 async function alphaAt(page, webp, size, x, y) {
   return page.evaluate(
     async ([src, px, py]) => {
@@ -79,9 +58,7 @@ describe('background cut', { skip: SKIP }, () => {
   });
 
   test('white inside the subject survives, white outside it does not', async () => {
-    // A football: a saturated disc with white patches inside it. A threshold
-    // over the whole image erases the patches; a fill seeded from the border
-    // cannot reach them.
+    // A football: a saturated disc with white patches inside it.
     const png = await drawPng(
       page,
       `ctx.fillStyle = '#ffffff';

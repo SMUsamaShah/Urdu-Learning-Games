@@ -1,17 +1,4 @@
-/*
- * The stroke editor's styles, shared by the desktop studio and the Settings
- * page, exactly as stroke-editor.js is.
- *
- * Everything is scoped under `.ste-root` and every class is prefixed. The
- * studio owns its whole document and could get away with bare element
- * selectors — the app cannot, because this drops into the settings screen
- * beside `.rec-*` and the game's own chrome. One set of rules that is safe in
- * the tighter of the two places is simpler than two sets.
- *
- * Sized for a fingertip. The tablet is where a parent actually has ten spare
- * minutes to fix ھ, so the buttons are 36px targets and the board takes the
- * whole width on a narrow screen rather than sharing it with the stroke list.
- */
+/* Styles shared by the desktop studio and Settings page. */
 
 .ste-root {
   --bg: #fdf3e3;
@@ -29,12 +16,9 @@
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  /* The board captures its own pointers; this stops a drag that starts on a
-     handle from scrolling the page underneath it on a touch screen. */
+  /* The board captures its own pointers. */
   overscroll-behavior: contain;
 }
-
-/* -------------------------------------------------------------------- head */
 
 .ste-head {
   display: flex;
@@ -49,8 +33,7 @@
   margin: 0;
   font-size: 17px;
   font-weight: 600;
-  /* The Urdu name sits in here, so it must not be clipped by the arrows on a
-     narrow screen. */
+  /* The Urdu name sits in here, so it must not be clipped by the arrows on a narrow screen. */
   flex: 1;
   min-width: 0;
   text-align: center;
@@ -68,15 +51,7 @@
   color: var(--bad);
 }
 
-/* ----------------------------------------------------------------- letters */
-
-/*
- * All 38 at once, wrapped rather than a carousel.
- *
- * Correcting traces is a "which ones are still grey" job, and a row you have
- * to scroll hides the answer. Capped so it cannot eat the board on a phone;
- * it scrolls inside itself past that.
- */
+/* All 38 at once, wrapped rather than a carousel. */
 .ste-letters {
   display: flex;
   flex-wrap: wrap;
@@ -116,8 +91,6 @@
   color: #fff;
 }
 
-/* -------------------------------------------------------------------- body */
-
 .ste-body {
   flex: 1;
   display: flex;
@@ -126,15 +99,7 @@
   min-height: 0;
 }
 
-/*
- * The board is wrapped, and the wrapper is what carries `touch-action`.
- *
- * Without it a drag scrolls the page instead of moving the point, which is the
- * single most annoying thing a touch editor can do. On an HTML div as well as
- * on the `<svg>`, because `touch-action` is specified to apply to elements that
- * take a width and a height, which SVG children do not — and the page
- * underneath (`.set-body`) scrolls.
- */
+/* The board is wrapped, and the wrapper is what carries `touch-action`. */
 .ste-stage {
   flex: 1;
   min-width: 0;
@@ -159,31 +124,13 @@
   outline-offset: 2px;
 }
 
-/*
- * The stroke numbers and direction arrows are labels, not targets: a tap that
- * lands on one should still reach the line underneath.
- *
- * No `font` shorthand here, however tempting. Inside an SVG the font size is
- * set in *user units* — the numbers are sized as a fraction of the em so they
- * scale with the letter — and a CSS shorthand beats the presentation attribute,
- * which turns a 154-unit number into a 16-unit one and makes it vanish.
- */
+/* The stroke numbers and direction arrows are labels. */
 .ste-number {
   pointer-events: none;
   font-weight: 700;
 }
 
-/*
- * The handle you see and the handle you can hit are different sizes, and the
- * one you can hit is not a DOM element at all.
- *
- * There used to be an invisible circle over each ring to take the taps. It was
- * still a hit test, and hit tests were the problem: the other thing worth
- * touching is a stroke's line, which is under 6px wide on a phone. Both are now
- * decided by distance in font units — see GRAB and NEAR_LINE — so nothing on
- * the board needs to receive a pointer event at all, and the marks can stay
- * small enough to see the letter through.
- */
+/* The handle you see and the handle you can hit are different sizes, and the one you can hit is not a DOM element at all. */
 .ste-handle {
   pointer-events: none;
 }
@@ -203,8 +150,6 @@
   color: var(--dim);
 }
 
-/* ------------------------------------------------------------- stroke list */
-
 .ste-strokes {
   list-style: none;
   margin: 0;
@@ -216,13 +161,7 @@
   min-height: 0;
 }
 
-/*
- * Label on its own line, buttons under it.
- *
- * Five 28px buttons and a swatch leave about fifty pixels for the label in a
- * 250px panel, which turns "3. 22 points" into "3. 2…" — and the point count is
- * the one thing the row is there to tell you.
- */
+/* Label on its own line, buttons under it. */
 .ste-strokes li {
   display: flex;
   flex-wrap: wrap;
@@ -266,8 +205,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* ----------------------------------------------------------------- buttons */
 
 .ste-btn {
   font: inherit;
@@ -314,14 +251,7 @@
   line-height: 1;
 }
 
-/*
- * Pinned to the bottom of the scrolling page.
- *
- * Five buttons wrap to two rows on a phone, which put Save below the fold —
- * the same way the board once did. Save is the one control that must never
- * need hunting for: everything else can be found again, an unsaved letter
- * cannot.
- */
+/* Pinned to the bottom of the scrolling page. */
 .ste-controls {
   position: sticky;
   bottom: 0;
@@ -337,25 +267,19 @@
   margin-left: auto;
 }
 
-/* ------------------------------------------------------------------ narrow */
-
-/* Below this the side panel goes under the board rather than beside it: 250px
-   of list plus a usable board does not fit across a phone held upright. */
+/* Below this the side panel goes under the board rather than beside it. */
 @media (max-width: 720px) {
   .ste-body {
     flex-direction: column;
   }
 
   .ste-letters {
-    /* Two and a bit rows, so it is visibly a scrolling strip rather than the
-       whole alphabet eating the board. */
+    /* Two and a bit rows, so it is visibly a scrolling strip rather than the whole alphabet eating the board. */
     max-height: 96px;
   }
 
   .ste-board {
-    /* `flex: 1` means width in a row and *height* in a column, so without this
-       the board grows to fit the letter and pushes Save off the bottom of the
-       screen — where nothing says it is there. */
+    /* `flex: 1` means width in a row and *height* in a column, so without this the board grows to fit the letter and. */
     flex: none;
     height: 44vh;
     min-height: 240px;
@@ -373,30 +297,9 @@
   }
 }
 
-/* ------------------------------------------------------------------- short */
-
-/*
- * A phone held sideways: about 390px tall, and most of that was chrome.
- *
- * The header, the count bar, the title row and three rows of letter picker came
- * to more than the whole window, so the board was a sliver at the bottom and
- * everything below it was off screen. This is the shape the installed app is
- * usually in, so it is the one that has to work: the picker becomes a single
- * scrolling row, the rows lose their padding, and the board takes what is left.
- *
- * Keyed on height rather than orientation, because a short window is the actual
- * problem — a small phone in portrait with the keyboard up is the same shape.
- */
+/* A phone held sideways: about 390px tall, and most of that was chrome. */
 @media (max-height: 520px) {
-  /*
-   * Fit the window rather than grow past it.
-   *
-   * `min-height: 100%` lets the editor be taller than the space it is given and
-   * scroll, which is right when there is room to scroll into and wrong here:
-   * the board would stretch to its content and push Save off the bottom. A
-   * flex item will not shrink below its content unless it is told it may, hence
-   * min-height: 0 all the way down the chain.
-   */
+  /* Fit the window rather than grow past it. */
   .ste-root {
     height: 100%;
     min-height: 0;
@@ -411,8 +314,7 @@
   }
 
   .ste-letters {
-    /* One row that scrolls sideways. Three rows of the alphabet is more of the
-       screen than the letter being corrected. */
+    /* One row that scrolls sideways. */
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
@@ -435,8 +337,7 @@
   }
 
   .ste-board {
-    /* No min-height: there is no height to spare, and a floor here is exactly
-       what pushed everything else off the screen. */
+    /* No min-height: there is no height to spare, and a floor here is exactly what pushed everything else off the screen. */
     height: 100%;
     min-height: 0;
   }
@@ -455,8 +356,7 @@
   }
 }
 
-/* Sideways on a phone: the side panel goes back beside the board, because
-   height is the scarce thing and width is not. */
+/* On short screens, keep the side panel beside the board. */
 @media (max-height: 520px) and (min-width: 560px) {
   .ste-body {
     flex-direction: row;
@@ -472,16 +372,7 @@
   }
 }
 
-/* ------------------------------------------------------------ trace again */
-
-/*
- * The knobs the tracer runs on.
- *
- * Every path in the app came out of src/lib/skeletonise.js, and it only ever
- * ran from a command line — so a letter it got wrong meant dragging thirty
- * points by hand rather than turning the one knob that was wrong. Folded away
- * by default because most letters do not need it, and one tap from open.
- */
+/* The knobs the tracer runs on. */
 .ste-seed {
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -513,8 +404,7 @@
 
 .ste-knob {
   display: grid;
-  /* Name, slider, value — the value in a fixed column so the slider does not
-     jump about as the number gets wider. */
+  /* Name, slider, value — the value in a fixed column so the slider does not jump about as the number gets wider. */
   grid-template-columns: 68px 1fr 42px;
   align-items: center;
   gap: 8px;

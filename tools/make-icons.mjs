@@ -1,15 +1,4 @@
-/**
- * Generates the app icons from the baked Nastaliq outlines.
- *
- * The icon is the word اردو drawn from content/glyphs.json — the same pipeline
- * that draws every letter in the game — so the icon can never drift from the
- * typography, and there is no hand-made asset to keep in sync.
- *
- * Rendering goes through Chromium (already present for the Playwright checks)
- * rather than adding an image library as a dependency.
- *
- * Usage: npm run icons
- */
+/* Generates the app icons from the baked Nastaliq outlines. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,11 +16,9 @@ if (!glyph?.d) {
   throw new Error('No baked glyph for ui/icon-word. Run `npm run bake` first.');
 }
 
-/**
+/** Maskable icons are cropped to a circle by the launcher.
  * @param {number} size
  * @param {number} scale fraction of the canvas the artwork may occupy.
- *   Maskable icons are cropped to a circle by the launcher, so their content
- *   has to sit inside the middle 80% or it loses its edges on some devices.
  * @param {boolean} round apple-touch icons are squares that iOS rounds itself.
  */
 function iconHtml(size, scale, { radius = 0 } = {}) {
@@ -57,12 +44,11 @@ function iconHtml(size, scale, { radius = 0 } = {}) {
 }
 
 const ICONS = [
-  // Standard icons: a little breathing room, but they are shown as-is.
+  // Standard launcher icons.
   { file: 'pwa-192x192.png', size: 192, scale: 0.68 },
   { file: 'pwa-512x512.png', size: 512, scale: 0.68 },
   // Maskable: the launcher may crop to a circle, so keep well inside.
   { file: 'maskable-512x512.png', size: 512, scale: 0.5 },
-  // iOS applies its own rounding and never uses maskable.
   { file: 'apple-touch-icon.png', size: 180, scale: 0.64 },
 ];
 

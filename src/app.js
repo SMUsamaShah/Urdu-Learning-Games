@@ -50,28 +50,8 @@ import * as sfx from './lib/sfx.js';
 import { useAudioContext } from './lib/tone-setup.js';
 import { DESIGN } from './lib/theme.js';
 
-/**
- * Every screen is a Phaser Scene, so adding a game means adding one file and
- * one entry in this list.
- *
- * `Scale.FIT` still, but against a design surface whose *width* was measured
- * from this screen before any of these scenes was imported — see src/main.js.
- * Fitting a fixed 16:9 into a 20:9 phone used to leave a band of empty page
- * down each side; a canvas cut to the screen's own shape fits it exactly and
- * the arithmetic inside a scene is no more complicated than it was, because
- * every scene reads `DESIGN` and `PLAY` rather than typing 1280 anywhere.
- *
- * The height is still fixed at 720, so a thing drawn 100 tall is the same
- * fraction of the screen on every device. Only the room to the left and right
- * of it changes.
- */
-/**
- * Built here rather than left to Phaser, which would construct one with
- * `latencyHint: 'interactive'` — the smallest buffer the browser will give.
- * That is right for a game of short blips and wrong for one that plays recorded
- * speech over a busy WebGL scene, where a starved audio thread drops samples
- * and the voice breaks up. See src/lib/audio-context.js.
- */
+/* Every screen is a Phaser Scene, so adding a game means adding one file and one entry in this list. */
+/* Built here rather than left to Phaser. */
 const audioContext = createAppAudioContext();
 
 const game = new Phaser.Game({
@@ -81,12 +61,7 @@ const game = new Phaser.Game({
   ...(audioContext ? { audio: { context: audioContext } } : {}),
   scale: {
     mode: Phaser.Scale.FIT,
-    // The browser centres the canvas, not Phaser — `#game` is a flex box, see
-    // index.html. `CENTER_BOTH` does it by setting margins measured off the
-    // parent's *bounding rect*, and when the app turns itself sideways that
-    // rect is the rotated one: an 888x400 canvas got centred inside a 400x888
-    // box and came out 244 pixels down and across the screen. Handing the job
-    // to CSS is one fewer place that has to be told the DOM is lying.
+    // The browser centres the canvas, not Phaser — `#game` is a flex box, see index.html.
     autoCenter: Phaser.Scale.NO_CENTER,
     width: DESIGN.width,
     height: DESIGN.height,
@@ -128,84 +103,46 @@ const game = new Phaser.Game({
   ],
 });
 
-// Exposed so the Playwright checks can drive the app without depending on pixel
-// coordinates, which would break on every layout tweak. `__audio` lets a test
-// assert that a clip really decoded and played, which is otherwise invisible
-// from outside the page.
-//
-// `__music` is here for a subtler reason. A check that wants to listen to the
-// tune cannot simply `import('/src/lib/music.js')`: the dev server serves the
-// app's modules with a cache-busting query string on the URL, so an import
-// without one resolves to a *second copy of the module* with its own
-// module-scope state — uninitialised, silent, and not the one the app is
-// playing. Anything holding state at module scope has to be reached through the
-// running app rather than imported afresh.
-// Whatever Phaser ended up using, which is not always what we handed it:
-// createAppAudioContext() returns null where Web Audio is unavailable or
-// refuses the latency hint, and Phaser then builds its own. Reading it back
-// here is the only way to be sure Tone shares it — pointing Tone at a context
-// Phaser is not using produces an InvalidAccessError the moment two nodes from
-// different contexts are connected, and the music simply never plays.
+// Exposed so the Playwright checks can drive the app without depending on pixel coordinates.
 useAudioContext(game.sound?.context ?? audioContext);
 
-// Every DOM screen that covers the canvas — Settings, the grown-ups question,
-// the time-up screen — asks this to stop Phaser hearing pointers while it is
-// up. Covering the canvas does not do it on its own; see the note there.
+// Every DOM screen that covers the canvas.
 useGameInput(game);
 
 window.__game = game;
 window.__music = music;
-// Which pen paths the app believes in, and where each came from. Held at module
-// scope and filled from IndexedDB at startup, so a check cannot import it
-// afresh and see the same thing — see the note above about the dev server's
-// cache-busting query string.
+// Which pen paths the app believes in, and where each came from.
 window.__strokes = strokes;
 window.__fullscreen = fullscreen;
 window.__orientation = orientation;
-// The master gain and the effects, so a check can measure what actually reaches
-// the speakers rather than trusting that it was wired up.
+// The master gain and the effects.
 window.__volume = volumeControl;
 window.__sfx = sfx;
 window.__history = backHistory;
-// The چلو run. Module-scope state again, and for the same reason: a check has
-// to ask the running app which game the run is on, not a second copy of the
-// module that has never been started.
+// The چلو run.
 window.__chalo = chalo;
-// `wellDone` is the one moment every game agrees is "an activity finished",
-// and it is what a چلو run listens for. A check needs to be able to end an
-// activity the way a game does without playing one through by hand.
+// `wellDone` is the one moment every game agrees is "an activity finished", and it is what a چلو run listens for.
 window.__stage = stage;
 
-// Asks the phone to be held sideways. Where the ask is refused — a tab that is
-// not fullscreen, or rotation switched off in system settings — `watchTurn`
-// turns the app sideways itself and the phone gets held that way to read it.
-// The app is landscape everywhere and on every screen, Settings included.
+// Asks the phone to be held sideways.
 orientation.watchOrientation();
 turn.watchTurn(game);
 window.__turn = turn;
 
-// How long he gets today. Off unless a grown-up switched it on, and counted
-// here rather than by Android's App Timer, which cannot see this app at all —
-// see the note at the top of src/lib/allowance.js.
+// How long he gets today.
 allowance.watchAllowance();
 watchTimeUp();
 window.__allowance = allowance;
 
-// What the phone's back button means. Started before anything can open a screen,
-// because the entry it replaces is the one the app sits on at the menu — see
-// src/lib/history.js.
+// What the phone's back button means.
 backHistory.initHistory();
 window.__progress = progress;
 window.__flourish = flourish;
 window.__updates = updates;
 
-// Hidden unless switched on from the grown-ups screen. Mounted regardless so
-// the toggle takes effect without a reload.
+// Hidden unless switched on from the grown-ups screen.
 mountFpsMeter(game);
 
-// Shows a spinner while the app is fetching a new version of itself. It
-// updates silently — a three-year-old will not tap "a new version is
-// available" — and the point of this is only that somebody can tell whether
-// what they are looking at is current.
+// Shows a spinner while the app is fetching a new version of itself.
 updates.mountUpdateIndicator();
 window.__audio = audio;

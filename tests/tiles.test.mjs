@@ -1,22 +1,4 @@
-/**
- * The pictures on the menu tiles.
- *
- * Every tile's picture is drawn in code now (src/lib/tile-faces.js), and the
- * letters in those drawings are real baked glyphs looked up by id. That makes
- * one silent failure possible: a face that asks for a letter that does not
- * exist, or for a form that letter never takes. `letterGlyph` returns null, the
- * draw call returns early, and the tile comes out with a hole in it where the
- * letter was — no error, no crash, and nothing a person will notice unless they
- * happen to look at that one tile. `sad` and `he` sat on the menu for weeks for
- * exactly this reason (the ids are `suad` and `choti-he`).
- *
- * Read from the source rather than by importing it, like content.test.mjs: the
- * module pulls in Phaser-adjacent code and JSON imports that node will not take
- * without a bundler, and what is being checked here is which ids appear in the
- * text, which is a question the text can answer.
- *
- * Run: npm test
- */
+/* The pictures on the menu tiles. */
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,14 +10,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = (f) => fs.readFileSync(path.join(ROOT, 'src', 'lib', f), 'utf8');
 const content = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'content', f), 'utf8'));
 
-/**
- * The module with its prose taken out.
- *
- * Every check below reads quoted strings, and this file's comments are full of
- * apostrophes — "the model's own light" is a quote mark followed by half a
- * sentence as far as a regex is concerned. Stripping the comments first is what
- * makes reading the source a defensible way to ask these questions at all.
- */
+/* The module with its prose taken out. */
 const strip = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
 const faces = strip(source('tile-faces.js'));
@@ -47,17 +22,17 @@ const { words } = content('words.json');
 
 const lettersById = new Map(letters.map((l) => [l.id, l]));
 
-/** Which forms a letter actually has, matching FORMS_BY_JOINING in content.test.mjs. */
+/* Which forms a letter actually has, matching FORMS_BY_JOINING in content.test.mjs. */
 const FORMS = {
   both: ['isolated', 'initial', 'medial', 'final'],
   right: ['isolated', 'final'],
   none: ['isolated'],
 };
 
-/** The keys of the FACES table — one per tile that has a drawing. */
+/* The keys of the FACES table — one per tile that has a drawing. */
 const drawn = [...faces.matchAll(/^ {2}([A-Z]\w+)\(d\) \{$/gm)].map((m) => m[1]);
 
-/** Every tile the menu can show: the games, plus the door to the rest. */
+/* Every tile the menu can show: the games, plus the door to the rest. */
 const tiles = [
   ...[...games.matchAll(/^\s*scene: '(\w+)',$/gm)].map((m) => m[1]),
   ...[...games.matchAll(/^\s*art: '(\w+)',$/gm)].map((m) => m[1]),
@@ -75,24 +50,14 @@ describe('the menu tiles', () => {
   });
 
   test('there are as many drawings as tiles', () => {
-    // Belt and braces on the two above, and it is the number that tells a
-    // person adding a game that this file is a place they have to visit.
+    // Belt and braces on the two above.
     assert.equal(drawn.length, tiles.length);
     assert.equal(new Set(drawn).size, drawn.length, 'a face is defined twice');
   });
 });
 
 describe('what the drawings ask for', () => {
-  /**
-   * Every bare word the module quotes.
-   *
-   * Read this way round on purpose. Matching the call sites — `letter('be',
-   * 'isolated')` — only catches the ids written out in full, and half of them
-   * are not: a caterpillar picks its segment letters out of an array, and the
-   * card helper is handed an id from its caller. Sweeping every quoted token
-   * and insisting each one is *something* the app knows means a typo cannot
-   * hide inside a list.
-   */
+  /* Every bare word the module quotes. */
   const quoted = [...new Set([...faces.matchAll(/'([^']*)'/g)].map((m) => m[1]))];
 
   /** Strings in the file that are deliberately not content ids. */

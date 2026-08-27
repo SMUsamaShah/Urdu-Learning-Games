@@ -1,11 +1,4 @@
-/*
- * The page around the editor, and nothing else.
- *
- * Everything that is the editor is styled by src/ui/stroke-editor.css, which
- * this page links alongside the module. What is left is the header and the
- * frame it sits in — the part the app does not have, because there the editor
- * drops into the settings screen instead.
- */
+/* The page around the editor, and nothing else. */
 
 :root {
   --paper: #fdf3e3;
@@ -65,8 +58,7 @@ code {
   color: var(--good);
 }
 
-/* The editor fills what is left and scrolls its own panels, so the page itself
-   never scrolls the board out from under a drag. */
+/* The editor fills what is left and scrolls its own panels. */
 main {
   flex: 1;
   min-height: 0;
@@ -78,8 +70,7 @@ main > * {
   min-width: 0;
 }
 
-/* The import sits in the header rather than beside Save: it is a once-in-a-
-   while errand, not part of correcting a letter. */
+/* Keep import in the header; it is separate from letter correction. */
 .import {
   margin-left: auto;
 }

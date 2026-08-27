@@ -1,19 +1,4 @@
-/**
- * End-to-end check of the tracing studio, driven through the real UI.
- *
- * The studio is now a shell around src/ui/stroke-editor.js, which the app's
- * settings screen also loads. That is the point of the extraction and also its
- * risk: the editor is a thousand lines of DOM that nothing else executes, so a
- * broken selector or a swallowed pointer event is invisible until somebody sits
- * down to correct a letter and finds they cannot.
- *
- * So: launch the real server, open the real page, move a point with the mouse,
- * remove one with a long press, and assert content/strokes.json on disk changed
- * to match. Nothing is stubbed, and the file is restored byte for byte
- * afterwards — a verification run must never leave an edit in the repo.
- *
- * Usage: node tools/verify-trace-studio.mjs [screenshot.png]
- */
+/* End-to-end check of the tracing studio, driven through the real UI. */
 
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -22,15 +7,14 @@ import path from 'node:path';
 import { CONTENT_DIR, ROOT } from './audio-keys.mjs';
 import { fail, openApp, step } from './harness.mjs';
 
-// Distinct from every other verifier's port; they are often run one after
-// another and a leftover server makes the next run fail confusingly.
+// Distinct from every other verifier's port.
 const PORT = 5197;
 const SHOT = process.argv[2];
 const STROKES_FILE = path.join(CONTENT_DIR, 'strokes.json');
 
-/** A corrected letter with one plain drag stroke, so the assertions are simple. */
+/* A corrected letter with one plain drag stroke, so the assertions are simple. */
 const LETTER = 'alif';
-/** The point that gets dragged, and the one that gets long-pressed away. */
+/* The point that gets dragged, and the one that gets long-pressed away. */
 const DRAGGED = 2;
 const REMOVED = 1;
 
@@ -49,13 +33,11 @@ const server = spawn(process.execPath, ['tools/trace-studio/server.mjs'], {
 
 const cleanup = () => {
   server.kill();
-  // Byte for byte, not a re-serialised parse: this file is committed, and a
-  // verification run that reformats it would show up as a diff nobody made.
+  // Compare the committed file without reformatting it.
   fs.writeFileSync(STROKES_FILE, original);
 };
 process.on('exit', cleanup);
-// 'exit' does not fire on a signal, and a killed run must not leave a moved
-// point behind looking like somebody's correction.
+// 'exit' does not fire on a signal.
 for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   process.on(signal, () => process.exit(1));
 }
@@ -74,16 +56,14 @@ const { page, finish } = await openApp({
   context: { viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 },
 });
 
-// Leaving a letter with unsaved edits asks first, and Playwright dismisses a
-// dialog it is not told about — which reads as the letter picker being broken.
-// Accepting is what a person does when they have finished experimenting.
+// Leaving a letter with unsaved edits asks first.
 page.on('dialog', (dialog) => dialog.accept());
 
 step('navigating');
 await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('.ste-board', { timeout: 15000 });
 
-/** The letter's own outline, which is what a correction is aimed at. */
+/* The letter's own outline, which is what a correction is aimed at. */
 const outline = await page.$eval('.ste-board > path', (el) => el.getAttribute('d')?.length ?? 0);
 if (outline < 50) fail('the letter did not render on the board');
 
@@ -106,14 +86,7 @@ await page.waitForFunction(
 const strokeRows = await page.$$eval('.ste-strokes li', (els) => els.length);
 if (strokeRows !== 1) fail(`${LETTER} shows ${strokeRows} strokes, expected 1`);
 
-/**
- * Where a point's grab target is on screen.
- *
- * The centre of the visible ring. What can actually be grabbed is a good deal
- * wider than that — proximity in font units rather than a hit test, see GRAB in
- * the editor — but the ring is what a person aims at, so it is what this aims
- * at too.
- */
+/* Where a point's grab target is on screen. */
 const targetAt = async (index) => {
   const box = await page.locator(`.ste-handle[data-point="${index}"]`).boundingBox();
   if (!box) throw new Error(`no grab target for point ${index}`);
@@ -129,8 +102,7 @@ step('dragging a point');
 const from = await targetAt(DRAGGED);
 await page.mouse.move(from.x, from.y);
 await page.mouse.down();
-// In steps, so the pointermove listener actually fires: a single jump can be
-// delivered as one event that arrives before capture is set up.
+// In steps, so the pointermove listener actually fires: a single jump can be delivered as one event that arrives.
 for (let i = 1; i <= 6; i++) {
   await page.mouse.move(from.x + (44 * i) / 6, from.y + (30 * i) / 6);
 }
@@ -162,8 +134,7 @@ step('removing a point with a long press');
 const hold = await targetAt(REMOVED);
 await page.mouse.move(hold.x, hold.y);
 await page.mouse.down();
-// Longer than LONG_PRESS in the editor, and with no movement in between —
-// movement is what tells it this is a drag instead.
+// Longer than LONG_PRESS in the editor.
 await page.waitForTimeout(900);
 await page.mouse.up();
 await page.waitForFunction(
@@ -183,12 +154,6 @@ console.log(`points after the long press: ${pruned.strokes[0].points.length}`);
 if (pruned.strokes[0].points.length !== before.strokes[0].points.length - 1) {
   fail('the long press did not remove a point');
 }
-
-// --- tracing a letter from its own outline ----------------------------------
-//
-// The thing that produced every path in the app, now reachable from the editor
-// instead of only from a command line. Its knobs are what make it worth
-// exposing: a letter it gets wrong is usually one number away from right.
 
 step('tracing a letter from its outline');
 await page.$$eval('.ste-letters button', (els) => els.find((el) => el.textContent === 'khe')?.click());
@@ -214,15 +179,7 @@ await page.waitForTimeout(400);
 const traced = await shapeNow();
 step(`  ${wasShowing.length} stroke(s) -> ${traced.length}`);
 
-// The property worth protecting: the button in the editor and the command line
-// run one implementation. So the seeder is actually run, for this one letter,
-// and its answer compared with the editor's.
-//
-// This used to compare against the letter's *committed* path instead, on the
-// reasoning that it had come from the seeder — true until somebody corrected
-// every letter by hand, at which point the check started failing for the best
-// possible reason. Running the seeder says the same thing and keeps saying it.
-// Safe to --force: the cleanup above restores strokes.json byte for byte.
+// The property worth protecting: the button in the editor and the command line run one implementation.
 step('  running the seeder for the same letter');
 const seedRun = spawnSync(process.execPath, ['tools/seed-strokes.mjs', '--force', '--only', 'khe'], {
   cwd: ROOT,
@@ -262,13 +219,6 @@ if (undone.join() !== wasShowing.join()) {
   step('  and one undo puts back what was there before any of it');
 }
 
-// --- importing a tablet export ---------------------------------------------
-//
-// The far end of the loop: fix a letter on the sofa, export, send it over,
-// merge it here. The refusal matters more than the merge — an import writes
-// into the repo, where a path drawn for the wrong font looks exactly like a
-// good one and outlives the mistake.
-
 const glyphs = JSON.parse(fs.readFileSync(path.join(CONTENT_DIR, 'glyphs.json'), 'utf8'));
 const exported = {
   kind: 'urdu-traces',
@@ -305,8 +255,7 @@ if (Math.abs(imported.strokes[0].points[0][0] - before.strokes[0].points[0][0] -
   fail('the import did not replace the letter in content/strokes.json');
 }
 
-// The same thing through the button somebody actually presses. The endpoint
-// working and the file picker being wired to it are two different claims.
+// The same thing through the button somebody actually presses.
 step('importing through the file picker');
 const dropped = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'traces-')), 'urdu-traces.json');
 fs.writeFileSync(dropped, JSON.stringify(exported));
@@ -324,8 +273,7 @@ const stale = await post({ ...exported, font: { file: 'another.woff2', sha: 'dea
 if (stale.status !== 409) fail(`a stale export was answered with ${stale.status}, not a refusal`);
 else console.log(`refused: ${stale.body.error}`);
 
-// And refused *whole*: a half-merge would leave the repo carrying paths from
-// two different fonts with nothing to say which is which.
+// And refused *whole*.
 const afterStale = JSON.parse(fs.readFileSync(STROKES_FILE, 'utf8')).letters[LETTER];
 if (JSON.stringify(afterStale) !== JSON.stringify(imported)) {
   fail('the refused import changed content/strokes.json anyway');

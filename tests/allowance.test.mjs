@@ -1,25 +1,4 @@
-/**
- * That a daily limit is a limit, and that it never charges him for time he
- * did not have.
- *
- * Two of these matter more than the rest.
- *
- * **The sleeping phone.** Some Androids do not fire `visibilitychange` when the
- * screen goes off under a covered sensor, so the page can be "visible" through
- * an entire nap. If a long gap counted, a twenty-minute allowance would be gone
- * before he woke up, and that is the one failure a parent cannot argue with
- * because there is nothing on screen to show what happened.
- *
- * **The new day.** The rollover is checked on read rather than scheduled,
- * because nothing of ours runs while the app is closed — which is most of the
- * time. A phone switched off for a week must come back to a full allowance.
- *
- * Importable in plain node: src/lib/allowance.js touches localStorage only
- * inside try/catch and `document` only inside the interval, which the tests
- * never start. Same discipline as tests/mastery.test.mjs.
- *
- * Run: npm test
- */
+/* That a daily limit is a limit, and that it never charges him for time he did not have. */
 
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -44,7 +23,7 @@ import {
 
 const MINUTE = 60000;
 
-/** Fresh state between tests: no localStorage in node, so this is the reset. */
+/* Fresh state between tests: no localStorage in node, so this is the reset. */
 beforeEach(() => {
   setLimitMinutes(0);
   forgetToday();
@@ -113,9 +92,7 @@ describe('handing time back', () => {
   });
 
   test('ending the day does nothing when there is no limit', () => {
-    // Not merely "does not crash": the minutes he has already played are still
-    // on the Settings row, and switching the limit off must not quietly wipe
-    // them. A no-op has to be a no-op.
+    // Not merely "does not crash".
     setLimitMinutes(10);
     grant(-4);
     setLimitMinutes(0);
@@ -144,12 +121,7 @@ describe('handing time back', () => {
 });
 
 describe('the moment it runs out', () => {
-  /**
-   * The clock is not the only thing that can spend the last minute, and when
-   * this edge lived inside the ticking clock the other two ways were silent:
-   * the "that's enough for today" screen simply never appeared. Found by
-   * tools/verify-limit.mjs, which is why it is here.
-   */
+  /* The clock is not the only thing that can spend the last minute. */
   const watch = () => {
     let times = 0;
     const stop = onRanOut(() => (times += 1));
@@ -202,9 +174,7 @@ describe('the moment it runs out', () => {
   });
 
   test('midnight arms it again', () => {
-    // An app left open past bedtime rolls over to a fresh allowance, and when
-    // that one goes it is a new edge — even though the last thing announced was
-    // "out of time". Checked on the rule rather than by waiting for midnight.
+    // An app left open past bedtime rolls over to a fresh allowance.
     const out = { day: '2026-8-23', remaining: 0 };
     assert.equal(ranOutNow(out, out), false, 'still out is not out again');
     assert.equal(ranOutNow(out, { day: '2026-8-24', remaining: 0 }), true, 'a new day is');
@@ -250,14 +220,7 @@ describe('a new day', () => {
   });
 
   test('the day is the local one, not UTC', () => {
-    // Half past eleven at night in Karachi is already the next day in UTC, and
-    // rolling on UTC would hand out a second allowance at bedtime — which is
-    // exactly when it would be noticed.
-    //
-    // Asserted against a clock whose local and UTC answers differ, rather than
-    // against a real Date, because these tests run in whatever timezone the
-    // machine is in and on a UTC box the two are the same. This one caught
-    // nothing at all until it was written this way.
+    // Half past eleven at night in Karachi is already the next day in UTC.
     const bedtimeInKarachi = {
       getFullYear: () => 2026,
       getMonth: () => 7,
@@ -279,7 +242,7 @@ describe('what counts as time spent', () => {
   });
 
   test('a sleeping phone counts for nothing', () => {
-    // The one that matters. See the note at the top of this file.
+    // The one that matters.
     assert.equal(accrual({ ...playing, gap: 8 * 3600 * 1000 }), 0);
   });
 
@@ -300,8 +263,7 @@ describe('what counts as time spent', () => {
   });
 
   test('a clock that went backwards costs him nothing', () => {
-    // Daylight saving, or an NTP correction. Negative spent time would hand
-    // back minutes, which is harmless, but so is refusing to.
+    // Daylight saving, or an NTP correction.
     assert.equal(accrual({ ...playing, gap: -5000 }), 0);
   });
 });

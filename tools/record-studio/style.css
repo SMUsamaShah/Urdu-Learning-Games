@@ -22,8 +22,6 @@ body {
   font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
-/* ---- sidebar ---- */
-
 #sidebar {
   background: var(--panel);
   border-right: 1px solid #2b365e;
@@ -97,8 +95,6 @@ body {
 .clip-row.done .dot { background: var(--good); }
 .clip-row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ---- stage ---- */
-
 main {
   display: flex;
   flex-direction: column;
@@ -142,8 +138,6 @@ main {
 }
 
 #roman { font-size: 14px; color: var(--dim); }
-
-/* ---- controls ---- */
 
 #controls {
   border-top: 1px solid #2b365e;
@@ -206,8 +200,7 @@ kbd {
 #hint { font-size: 12px; color: #6b7899; text-align: center; }
 #hint code { background: rgba(0, 0, 0, 0.3); padding: 1px 5px; border-radius: 4px; }
 
-/* Importing an export from a phone, which is how a device recording becomes
-   part of the repo. */
+/* Importing an export from a phone, which is how a device recording becomes part of the repo. */
 #import-row {
   margin-top: 10px;
   display: flex;

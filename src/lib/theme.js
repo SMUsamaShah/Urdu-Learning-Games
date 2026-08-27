@@ -1,98 +1,32 @@
-/**
- * Shared look and feel.
- *
- * Design targets a three-year-old holding a phone in landscape: nothing smaller
- * than a fingertip, high contrast against the background, and no reliance on
- * reading Latin text to navigate.
- */
+/* Shared look and feel. */
 
-/**
- * Design resolution. Everything is laid out against this and scaled to fit.
- *
- * The height is fixed. The **width is decided at startup** from the shape of
- * the screen, because a phone in landscape is 19.5:9 or 20:9 and a 16:9 canvas
- * fitted into one leaves a band of empty page down each side with a smaller
- * game in the middle. So a 20:9 phone gets a 1600x720 canvas that fills it.
- *
- * `setDesignSize` mutates this object rather than replacing it, and runs before
- * a single scene module is imported. That ordering is the whole trick: two
- * dozen layout constants across the scenes are written as
- * `const LANE = { right: DESIGN.width - 150 }` and evaluated once, when their
- * module loads. Decide the width first and every one of them comes out right
- * with nothing to change; decide it afterwards and they are all frozen at 1280.
- * See src/main.js.
- */
+/* Design resolution. */
 export const DESIGN = { width: 1280, height: 720 };
 
-/**
- * How wide the canvas may get, in design pixels at 720 tall.
- *
- * 1280 is 16:9 and the floor: a window narrower than that keeps the old size
- * and letterboxes top and bottom, which only a desktop can produce. 1728 is
- * 2.4:1, past every phone in circulation, and it is a ceiling rather than a
- * prediction — an ultrawide desktop window would otherwise stretch the app into
- * a letterbox with a tiny rail down one end of it.
- */
+/* How wide the canvas may get, in design pixels at 720 tall. */
 const WIDTH_RANGE = { min: 1280, max: 1728 };
 
-/**
- * Fits the design surface to a screen of this shape. Call once, at startup,
- * before importing anything that lays a screen out.
- *
- * @param {{width: number, height: number}} viewport in CSS pixels, landscape —
- *   the caller swaps them if the app is being turned sideways itself
+/** Fits the design surface to a screen of this shape.
+ * @param {{width: number, height: number}} viewport in landscape CSS pixels
  */
 export function setDesignSize(viewport) {
   const aspect = viewport.width / viewport.height;
   const wanted = Math.round(DESIGN.height * aspect);
   DESIGN.width = Math.min(WIDTH_RANGE.max, Math.max(WIDTH_RANGE.min, wanted));
-  // PLAY is derived from it and was computed at import, so it has to be brought
-  // along by hand. Mutated in place for the same reason DESIGN is.
+  // PLAY is derived from it and was computed at import, so it has to be brought along by hand.
   PLAY.right = DESIGN.width;
   PLAY.width = DESIGN.width - RAIL_EDGE;
   PLAY.centerX = (RAIL_EDGE + DESIGN.width) / 2;
   return DESIGN;
 }
 
-/**
- * The strip down the left of every game screen, which belongs to progress.
- *
- * One number, here, because every game already reserved roughly this much on
- * the left for the character and each of them had picked its own figure — 250,
- * 268, 280, 300, 320, 330. Those were all guesses at the same thing, so they
- * now read `RAIL.width + something` and the width can move without twenty-four
- * separate corrections.
- *
- * `gap` is the clear space a game leaves between the rail and its own content:
- * nothing the child taps should touch the panel.
- *
- * It was 200 + 56, which is 256 pixels — a fifth of the screen — spent on a
- * plant. The reference apps this is chasing have no progress furniture on their
- * play screens at all, and 128 + 32 is the narrowest the vine still reads at
- * with twenty flowers up it (`npm run preview-indicators`, which now measures
- * the box rather than being told it). The home button is 96 wide and still sits
- * inside with room either side.
- */
+/* The strip down the left of every game screen, which belongs to progress. */
 export const RAIL = { width: 128, gap: 32 };
 
-/** The first x a game may use. */
+/* The first x a game may use. */
 export const RAIL_EDGE = RAIL.width + RAIL.gap;
 
-/**
- * The part of the screen that belongs to the game, and its middle.
- *
- * `DESIGN.width / 2` is the middle of the canvas, and on every screen with a
- * rail on it that is **not** the middle of anything a child is looking at — it
- * is a quarter of the way across the play area, with the rail's 256 pixels
- * pulling the whole picture off centre. Games laid out around it come out
- * hugging the panel with a void down the right.
- *
- * Every screen had already noticed and nobody had said so: the boards were
- * written as `DESIGN.width / 2 + 48`, `+ 40`, `+ 30`, each a different guess at
- * the same correction, exactly the way the left margin was 250, 268, 280, 300,
- * 320 and 330 before RAIL existed. So it is one number here, derived rather
- * than typed, and it moves when the rail moves.
- */
+/* The part of the screen that belongs to the game, and its middle. */
 export const PLAY = {
   left: RAIL_EDGE,
   right: DESIGN.width,
@@ -100,75 +34,35 @@ export const PLAY = {
   centerX: (RAIL_EDGE + DESIGN.width) / 2,
 };
 
-/**
- * A bright palette, because the audience is three.
- *
- * Two surfaces, and which one something sits on decides its colour:
- *
- *   - **Paper** (`bg`, `card`): warm and light. Anything drawn here uses `ink`
- *     or `inkDim`, which are dark.
- *   - **Colour** (the family hues, the menu tiles, a balloon): saturated enough
- *     that `onColor` — white — stays legible on top of it. The hues below are
- *     deliberately mid-tone rather than pastel for that reason: a pale tile on
- *     pale paper has no edge, and white on a pale tile cannot be read.
- *
- * Getting this backwards is the easiest mistake to make here, so the two ink
- * colours are named for where they go rather than for what they look like.
- */
+/* A bright palette, because the audience is three. */
 export const COLORS = {
   bg: 0xfdf3e3,
   bgCss: '#fdf3e3',
-  /** Cards and plates sitting on the paper. */
+  /* Cards and plates sitting on the paper. */
   card: 0xffffff,
   panel: 0xffffff,
   panelLight: 0xffffff,
-  /** On paper and on cards. */
+  /* On paper and on cards. */
   ink: '#2b3047',
   inkDim: '#767f9c',
-  /** On a saturated tile, balloon or button. */
+  /* On a saturated tile, balloon or button. */
   onColor: '#ffffff',
   onColorDim: '#f0eef8',
   accent: 0xe98a1f,
   accentCss: '#e98a1f',
-  /**
-   * The letter being taught, wherever it appears on the Letters screen — the
-   * big one, the form it is in, and the same letter inside the word.
-   *
-   * Purple, and not the orange accent: the accent is a button colour and this
-   * has to be read as "this is the same thing" rather than "tap this". Not
-   * `familyColor` either, which already means "these share a shape".
-   */
+  /* The letter being taught. */
   taught: 0x8b3ed6,
   taughtCss: '#8b3ed6',
   correct: 0x2fae74,
   gentle: 0xef6c4d,
-  /** Shadow under a card. Softer than on a dark background, or it looks dirty. */
+  /* Shadow under a card. */
   shadow: 0x8a7a63,
-  /** The dark line around cards and letters. Not pure black — that reads cheap. */
+  /* The dark line around cards and letters. */
   outline: 0x2b3047,
   outlineCss: '#2b3047',
 };
 
-/**
- * Glyph options for a letter that has to stand out on a coloured tile.
- *
- * There used to be a heavy dark outline here, on the argument that a white
- * letter on a mid-tone tile has weak edges and a child picking between ب and ت
- * is working entirely from edges. The argument was right about what matters and
- * wrong about the remedy: Nastaliq's strokes are thin where the pen turns, and
- * an outline thick enough to read as an edge closes the counters and turns the
- * letter into a blot. The dots on ث and the join inside ک went first.
- *
- * So: no outline, and the edges come from contrast instead. Every tile this
- * lands on is a `familyColor` at full saturation, which white sits on cleanly.
- * If a paler tile ever wants one of these, darken the tile rather than drawing
- * a line round the letter.
- *
- * Sized by the font's em rather than by the glyph's bounding box, because
- * everything using this sits next to something else — a row of menu tiles, four
- * answers, a caterpillar — and has to come out the same size as its neighbours
- * rather than filling the same box. See fitEmAlone() in glyph.js.
- *
+/** Glyph options for a letter that has to stand out on a coloured tile.
  * @param {number} em pixels per em, normally from one of the fitters
  * @param {string} [fill]
  */
@@ -176,7 +70,7 @@ export function chunkyGlyphEm(em, fill = '#ffffff') {
   return { em, color: fill };
 }
 
-/** One hue per shape family, so a family reads as a group at a glance. */
+/* One hue per shape family, so a family reads as a group at a glance. */
 const FAMILY_COLORS = {
   alif: 0xe4633c, be: 0x2f86d0, jim: 0x7b52c9, dal: 0x2f9e5f,
   re: 0xe0821c, sin: 0x1a9c96, suad: 0xd94f5c, toe: 0x3f74d6,
@@ -189,14 +83,7 @@ export function familyColor(family) {
   return FAMILY_COLORS[family] ?? COLORS.panelLight;
 }
 
-/**
- * The outline of a star, as points on an ellipse rather than a circle.
- *
- * Elliptical because the things that go inside these are Urdu letters, and Urdu
- * has letters several times wider than they are tall. A round star sized to fit
- * ے across its middle would be enormous; a wide one is the same star, stretched
- * to the shape of its contents.
- *
+/** The outline of a star, as points on an ellipse rather than a circle.
  * @param {number} width
  * @param {number} height
  * @param {number} [inset] how deep the notches cut, as a fraction of the radius
@@ -214,15 +101,7 @@ function starPoints(width, height, inset = 0.54) {
   return points;
 }
 
-/**
- * A scalloped sticker outline: a rounded shape with a bumpy edge.
- *
- * The alternative playful shape to a star, and the one the letter games use.
- * A five-pointed star is thin across its middle, so an Urdu letter placed in
- * one has to shrink a long way to fit between the notches — and letter
- * legibility is the entire point of those games. A scallop keeps nearly all of
- * the area while still being obviously not a rectangle.
- */
+/* A scalloped sticker outline: a rounded shape with a bumpy edge. */
 export function blobPoints(width, height, lobes = 9, depth = 0.075) {
   const points = [];
   const steps = lobes * 10;
@@ -237,12 +116,12 @@ export function blobPoints(width, height, lobes = 9, depth = 0.075) {
   return points;
 }
 
-/** Points scaled towards the centre, for drawing the inner rim. */
+/* Points scaled towards the centre, for drawing the inner rim. */
 function shrink(points, factor) {
   return points.map((p) => ({ x: p.x * factor, y: p.y * factor }));
 }
 
-/** `0x8a7a63` as a canvas colour. */
+/* `0x8a7a63` as a canvas colour. */
 function css(hex, alpha = 1) {
   const value = `#${hex.toString(16).padStart(6, '0')}`;
   if (alpha >= 1) return value;
@@ -250,15 +129,13 @@ function css(hex, alpha = 1) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-/** Rounded rectangle, with a hand-rolled path where `roundRect` is missing. */
+/* Rounded rectangle, with a hand-rolled path where `roundRect` is missing. */
 function roundedRect(ctx, x, y, width, height, radius) {
   ctx.beginPath();
   if (ctx.roundRect) {
     ctx.roundRect(x, y, width, height, radius);
     return;
   }
-  // Safari before 16.4, which is exactly the hand-me-down tablet this app is
-  // most likely to be played on.
   const r = Math.min(radius, width / 2, height / 2);
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + width, y, x + width, y + height, r);
@@ -274,40 +151,16 @@ function polygon(ctx, points, dy = 0) {
   ctx.closePath();
 }
 
-/**
- * Rendering at twice the drawn size. Two rather than the three glyph.js uses:
- * these are flat shapes with one curve radius, not Nastaliq strokes a pixel
- * wide, and a menu of ten tiles at 3x is four times the texture memory for an
- * edge nobody can see.
- */
+/* Rendering at twice the drawn size. */
 const CARD_SUPERSAMPLE = 2;
-/** Room around the shape for the shadow (8px down) and the outer rim stroke. */
+/* Room around the shape for the shadow (8px down) and the outer rim stroke. */
 const CARD_PAD = 14;
 
-/**
- * Bakes a button's card — shadow, face and rim — into one cached texture.
- *
- * ## Why this is not three Graphics objects
- *
- * It was, and it cost the menu a third of its frame rate. A Phaser Graphics
- * object re-tessellates its whole path on every frame it is visible, whether or
- * not anything about it changed, so ten menu tiles with a shadow, a face and a
- * caption band each were thirty full retessellations per frame for a picture
- * that had not moved since the scene opened. Measured on the menu: 12.3fps with
- * them, 19.7 without the tile grid at all.
- *
- * A card is completely determined by its size, colour, shape and whether it has
- * a rim, so that tuple is the cache key and buttons that look alike share one
- * texture. The 24 game screens get this for free — every home button, every
- * answer tile and every balloon is a `makeButton`.
- *
+/** Bakes a button's card — shadow, face and rim — into one cached texture.
  * @returns {string} texture key
  */
 function cardTexture(scene, { width, height, color, shape, rim, paint, paintKey }) {
-  // The painter's name leads, so a baked face still announces its role and its
-  // em the way a glyph texture does. verify:sizing walks texture keys to check
-  // that one role is never drawn at two sizes, and a tile whose writing is
-  // inside a card texture would otherwise drop out of that check entirely.
+  // The painter's name leads, so a baked face still announces its role and its em the way a glyph texture does.
   const shapeKey = `${shape}:${Math.round(width)}x${Math.round(height)}:${color}:${rim ? 1 : 0}`;
   const key = paintKey ? `${paintKey}:${shapeKey}` : `card:${shapeKey}`;
   if (scene.textures.exists(key)) return key;
@@ -350,10 +203,7 @@ function cardTexture(scene, { width, height, color, shape, rim, paint, paintKey 
     ctx.stroke();
   }
 
-  // Anything the caller wants on the face, drawn into the same texture rather
-  // than stacked on top as more quads. The origin is the shape's centre and the
-  // scale is 1:1 in game pixels, so a painter positions things exactly as it
-  // would position child objects.
+  // Anything the caller wants on the face, drawn into the same texture rather than stacked on top as more quads.
   paint?.(ctx, { width, height });
 
   const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
@@ -362,17 +212,7 @@ function cardTexture(scene, { width, height, color, shape, rim, paint, paintKey 
   return key;
 }
 
-/**
- * A large, tappable button with a press animation.
- *
- * Deliberately has no fail or disabled state: in a preschool app every tap
- * should do something, so buttons that are not ready simply are not shown.
- *
- * The hit area is the bounding box whatever the shape. That is deliberate for a
- * star: the notches between its arms are exactly where a three-year-old's
- * finger lands, and a tap that does nothing because it missed by 8px reads as a
- * broken game rather than a near miss.
- *
+/** A large, tappable button with a press animation.
  * @param {Phaser.Scene} scene
  * @param {object} config
  * @param {number} config.x
@@ -381,20 +221,11 @@ function cardTexture(scene, { width, height, color, shape, rim, paint, paintKey 
  * @param {number} config.height
  * @param {number} [config.color]
  * @param {'card'|'star'|'blob'|'circle'} [config.shape='card']
- * @param {boolean} [config.rim=true] The white-and-dark sticker edge. Off for
- *   the small chrome buttons, where it is just noise.
+ * @param {boolean} [config.rim=true] The white-and-dark sticker edge.
  * @param {() => void} config.onTap
  * @param {(ctx: CanvasRenderingContext2D, size: object) => void} [config.paint]
- *   Draws the button's contents into the card texture instead of adding them as
- *   children. For a face that never changes this is one quad and one texture
- *   rather than several of each; the menu's tiles are built this way.
- * @param {string} [config.paintKey] Identifies what `paint` will draw, so two
- *   buttons that paint differently do not share a cached texture. Required
- *   whenever `paint` is given.
- * @param {boolean} [config.press=true] The squash-under-the-finger tween. Off
- *   for anything that is going to be dragged: the press tween and the drag's
- *   own lift both animate `scale`, and `pointerout` fires the moment the finger
- *   leaves the tile's bounds — which on a drag is immediately.
+ * @param {string} [config.paintKey] Cache key for custom painting.
+ * @param {boolean} [config.press=true] The squash-under-the-finger tween.
  * @returns {Phaser.GameObjects.Container}
  */
 export function makeButton(scene, config) {
@@ -413,9 +244,7 @@ export function makeButton(scene, config) {
   } = config;
   const container = scene.add.container(x, y);
 
-  // One baked image rather than a shadow Graphics and a face Graphics. See
-  // cardTexture: the shapes never change after the scene opens, and a Graphics
-  // re-tessellates every frame regardless.
+  // One baked image rather than a shadow Graphics and a face Graphics.
   const card = scene.add
     .image(0, 0, cardTexture(scene, { width, height, color, shape, rim, paint, paintKey }))
     .setScale(1 / CARD_SUPERSAMPLE);
@@ -439,11 +268,7 @@ export function makeButton(scene, config) {
   return container;
 }
 
-/**
- * Latin helper text. Urdu never goes through this — see src/lib/glyph.js for
- * why. This is only for romanisation and English glosses, which exist for the
- * parent, not the child.
- */
+/* Latin helper text. */
 export function label(scene, x, y, text, options = {}) {
   const {
     size = 22,

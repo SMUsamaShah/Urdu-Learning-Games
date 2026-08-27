@@ -1,26 +1,17 @@
-/**
- * Browser fullscreen, separate from the landscape lock.
- *
- * A normal website is not allowed to open fullscreen by itself. Browsers only
- * grant it from a tap, key press or other deliberate user gesture, which is why
- * the home screen exposes a button even though the app also tries to enter
- * fullscreen on the first tap when it needs that for orientation locking.
- */
+/* Browser fullscreen, separate from the landscape lock. */
 
-/** Whether this browser has the Fullscreen API entry point we need. */
+/* Whether this browser has the Fullscreen API entry point we need. */
 export function canFullscreen() {
   return typeof document !== 'undefined' &&
     typeof document.documentElement?.requestFullscreen === 'function';
 }
 
-/** Whether the page is currently fullscreen. */
+/* Whether the page is currently fullscreen. */
 export function isFullscreen() {
   return typeof document !== 'undefined' && Boolean(document.fullscreenElement);
 }
 
-/**
- * Enters fullscreen if possible.
- *
+/** Enters fullscreen if possible.
  * @returns {Promise<boolean>} whether the document is fullscreen afterwards
  */
 export async function enterFullscreen() {
@@ -34,9 +25,7 @@ export async function enterFullscreen() {
   }
 }
 
-/**
- * Leaves fullscreen if possible.
- *
+/** Leaves fullscreen if possible.
  * @returns {Promise<boolean>} whether the document is not fullscreen afterwards
  */
 export async function exitFullscreen() {
@@ -50,12 +39,12 @@ export async function exitFullscreen() {
   }
 }
 
-/** Toggles fullscreen from a user gesture. */
+/* Toggles fullscreen from a user gesture. */
 export function toggleFullscreen() {
   return isFullscreen() ? exitFullscreen() : enterFullscreen();
 }
 
-/** Repaints something when browser chrome enters or leaves fullscreen. */
+/* Repaints something when browser chrome enters or leaves fullscreen. */
 export function onFullscreenChange(callback) {
   if (typeof document === 'undefined') return () => {};
   document.addEventListener('fullscreenchange', callback);

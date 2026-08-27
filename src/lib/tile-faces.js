@@ -1,46 +1,14 @@
-/**
- * The picture on a menu tile, drawn in code.
- *
- * ## Why not the generated pictures
- *
- * The tiles used to be illustrations from an image model, with real Nastaliq
- * glyphs composited into named slots afterwards (tools/make-tile-art.mjs). It
- * never came together. The model draws in its own light and its own line
- * weight, so twenty-five tiles read as twenty-five different apps; and a glyph
- * pasted onto somebody else's painting looks pasted on, because it is — it has
- * no shadow, no perspective and no relationship to the paint under it. The
- * halo stroke that made the letters legible over the illustration is what made
- * them look stuck on.
- *
- * Drawing the tile here fixes both at once. Every tile comes out of the same
- * palette, the same corner radius and the same pen, and the letters are simply
- * part of the drawing rather than a layer over it. The reference app whose
- * menu this is chasing does exactly this: flat vector miniatures of the game,
- * with the letters drawn in as objects in the scene.
- *
- * ## What a face is
- *
- * A function that draws into the tile's own texture. The origin is the centre
- * of the white panel, coordinates are game pixels, and everything is written as
- * a fraction of the panel — the same tile is drawn at 234px on the menu and at
- * 178px in the panel of extra games, so nothing here may be a pixel count.
- *
- * They are keyed by `artName(game)`, which is the scene key. A game with no
- * face falls back to the letter it carries, exactly as a game with no picture
- * used to.
- */
+/* The picture on a menu tile, drawn in code. */
 
 import { FRUIT, GRASS, INK, LEAF, PAPER, SLATE, SUN, WATER, WOOD, mix, pen } from './draw-kit.js';
 
-// ----------------------------------------------------------------- the faces
-
-/** A card with a letter on it, the shape half these games are built from. */
+/* A card with a letter on it, the shape half these games are built from. */
 function letterCard(d, x, y, w, h, id, form, { rotate = 0, tone = d.p.base } = {}) {
   d.rrect(x, y, w, h, w * 0.18, { fill: PAPER, stroke: tone, lw: 4, rotate });
   d.letter(id, form, x, y, h * 0.5, { fill: tone, rotate, maxWidth: w * 0.66 });
 }
 
-/** An empty card: the gap a child is being asked to fill. */
+/* An empty card: the gap a child is being asked to fill. */
 function blankCard(d, x, y, w, h, { rotate = 0 } = {}) {
   d.rrect(x, y, w, h, w * 0.18, {
     fill: PAPER,
@@ -81,7 +49,7 @@ function tick(d, x, y, r) {
   );
 }
 
-/** A jigsaw piece: a square with a knob on one side. */
+/* A jigsaw piece: a square with a knob on one side. */
 function puzzlePiece(d, x, y, size, { fill, stroke, lw = 3, dash, rotate = 0 } = {}) {
   const s = size / 2;
   const knob = size * 0.19;
@@ -174,13 +142,7 @@ function brush(d, x, y, len, angle, tip) {
   d.ctx.restore();
 }
 
-/**
- * Every tile's picture, keyed by scene.
- *
- * Read them as stage directions rather than as code: each one is a miniature of
- * what the game looks like when it is being played, which is the only thing a
- * child who cannot read yet can pick a game by.
- */
+/* Every tile's picture, keyed by scene. */
 const FACES = {
   // A card with a letter on it, and the next card behind.
   Flashcards(d) {
@@ -195,16 +157,11 @@ const FACES = {
   // The letter as a dashed guide, with the pencil that follows it.
   Trace(d) {
     const { w, h, p } = d;
-    // A wide letter rather than the tall thin ا the tile used to carry: at
-    // 200px an ا is a vertical stroke, and a vertical stroke with a pencil next
-    // to it is not a picture of writing.
-    // Light enough to read as a guide, dark enough to survive the wash behind
-    // it — a paler one vanished entirely once the panel stopped being white.
+    // Use a wide letter for this tile.
     d.letter('be', 'isolated', -w * 0.03, -h * 0.04, h * 0.42, {
       fill: mix(p.base, PAPER, 0.42), maxWidth: w * 0.74,
     });
-    // Where the pen has been. It stops under the pencil, so the two are one
-    // movement rather than two things sharing a tile.
+    // Where the pen has been.
     [-0.32, -0.22, -0.12, -0.02].forEach((fx, i) => {
       d.circle(w * fx, h * 0.1, w * 0.024, { fill: mix(p.base, PAPER, 0.55 - i * 0.18) });
     });
@@ -417,10 +374,7 @@ const FACES = {
   // A letter with a piece out of it, and the piece.
   LetterPuzzle(d) {
     const { w, h, p } = d;
-    // Whole, then a piece taken out of it. Drawing the letter in two offset
-    // halves was the first try and it read as two letters rather than as one
-    // in pieces — which on a tile teaching the alphabet is worse than saying
-    // nothing.
+    // Whole, then a piece taken out of it.
     d.letter('suad', 'isolated', w * 0.02, -h * 0.1, h * 0.5, { fill: p.base, maxWidth: w * 0.74 });
     puzzlePiece(d, -w * 0.16, h * 0.02, w * 0.24, {
       fill: PAPER, stroke: p.mid, lw: 3.5, dash: [8, 7],
@@ -467,9 +421,7 @@ const FACES = {
     const { w, h, p } = d;
     basket(d, -w * 0.24, h * 0.3, w * 0.38, h * 0.3);
     basket(d, w * 0.24, h * 0.3, w * 0.38, h * 0.3);
-    // One already in, one on its way down. The one on its way is on a card,
-    // because a letter drawn straight onto the white panel at this size reads
-    // as part of the background rather than as a thing being moved.
+    // One already in, one on its way down.
     d.circle(-w * 0.24, h * 0.13, w * 0.11, { fill: PAPER, stroke: p.light, lw: 3 });
     d.letter('te', 'initial', -w * 0.24, h * 0.13, h * 0.13, { fill: p.dark, maxWidth: w * 0.16 });
     d.circle(w * 0.26, -h * 0.19, w * 0.13, { fill: p.base, stroke: p.dark, lw: 3.5 });
@@ -633,8 +585,7 @@ const FACES = {
     d.ellipse(0, -h * 0.24, w * 0.15, h * 0.16, { fill: FRUIT });
     d.line(0, -h * 0.38, w * 0.01, -h * 0.46, { stroke: '#7a5230', lw: 5 });
     d.ellipse(w * 0.08, -h * 0.45, w * 0.08, h * 0.04, { fill: LEAF, rotate: -0.4 });
-    // Two letters placed and one slot still empty. The empty one is on the
-    // left, because the row fills right to left the way the script is read.
+    // Two letters placed and one slot still empty.
     const cell = w * 0.24;
     const ids = ['be', 'kaf', null];
     ids.forEach((id, i) => {
@@ -708,18 +659,15 @@ const FACES = {
 
 };
 
-/** Whether a tile has a drawing of its own. */
+/* Whether a tile has a drawing of its own. */
 export function hasTileFace(name) {
   return Boolean(FACES[name]);
 }
 
-/**
- * Draws one tile's picture.
- *
+/** Draws one tile's picture.
  * @param {CanvasRenderingContext2D} ctx origin at the centre of the panel
- * @param {string} name the game's art name — its scene key
+ * @param {string} name the game's art name
  * @param {{width: number, height: number, color: number}} box the white panel
- *   the picture goes in, and the game's colour to draw it from
  * @returns {boolean} whether anything was drawn
  */
 export function paintTileFace(ctx, name, { width, height, color }) {
@@ -729,5 +677,5 @@ export function paintTileFace(ctx, name, { width, height, color }) {
   return true;
 }
 
-/** For the test: every face this module knows how to draw. */
+/* For the test: every face this module knows how to draw. */
 export const FACE_NAMES = Object.keys(FACES);

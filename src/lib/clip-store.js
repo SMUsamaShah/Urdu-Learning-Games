@@ -1,27 +1,4 @@
-/**
- * Device-local recordings, in IndexedDB.
- *
- * These never leave the device. They are not uploaded, and the app has no
- * server to upload them to. Moving them somewhere else is an explicit export —
- * see clip-archive.js.
- *
- * ## Why persistence is requested
- *
- * "Stored on the device" is weaker than it sounds. Safari deletes a site's
- * storage after seven days of non-use unless the site has been added to the
- * home screen, and any browser may evict under storage pressure. Somebody could
- * record a hundred clips of their own voice and lose them without ever seeing an
- * error.
- *
- * So the store asks for persistent storage as soon as the first clip is saved,
- * and reports honestly whether it got it. The recorder UI shows that state and
- * nudges towards exporting, because a backup the user controls is the only real
- * protection.
- *
- * Every read degrades to "no device clips" rather than throwing: IndexedDB is
- * unavailable in some private-browsing modes, and that should make the app quiet
- * rather than broken.
- */
+/* Device-local recordings, in IndexedDB. */
 
 const DB_NAME = 'urdu-learning-games';
 const DB_VERSION = 1;
@@ -73,26 +50,24 @@ function run(store, mode, work) {
   );
 }
 
-// ------------------------------------------------------------------- clips
-
 /** @returns {Promise<{key,slug,ext,mime,blob,bytes,recordedAt}|null>} */
 export function getClip(key) {
   return run(CLIPS, 'readonly', (s) => s.get(key)).then((r) => r ?? null);
 }
 
-/** Every device-recorded key, for deciding what overrides the bundled clips. */
+/* Every device-recorded key, for deciding what overrides the bundled clips. */
 export async function allKeys() {
   const keys = await run(CLIPS, 'readonly', (s) => s.getAllKeys());
   return keys ?? [];
 }
 
-/** Full records, for export. Blobs included, so do not call this casually. */
+/* Full records, for export. */
 export async function allClips() {
   const clips = await run(CLIPS, 'readonly', (s) => s.getAll());
   return clips ?? [];
 }
 
-/** Sizes and dates without loading a single audio blob into memory. */
+/* Sizes and dates without loading a single audio blob into memory. */
 export async function summaries() {
   const clips = await allClips();
   return clips.map(({ key, slug, ext, bytes, recordedAt }) => ({
@@ -104,11 +79,7 @@ export async function summaries() {
   }));
 }
 
-/**
- * Saves a recording, replacing any previous take for the same clip.
- * Requests persistent storage the first time, when the user has just shown the
- * intent that makes it worth asking for.
- */
+/* Saves a recording, replacing any previous take for the same clip. */
 export async function putClip({ key, slug, ext, mime, blob, recordedAt, profile }) {
   const record = {
     key,
@@ -118,9 +89,7 @@ export async function putClip({ key, slug, ext, mime, blob, recordedAt, profile 
     blob,
     bytes: blob.size,
     recordedAt: recordedAt ?? Date.now(),
-    // Which microphone settings produced this take. Recorded because "it sounds
-    // noisy" is otherwise unattributable months later: the same words recorded
-    // under two profiles are two very different files.
+    // Which microphone settings produced this take.
     profile: profile ?? null,
   };
   await run(CLIPS, 'readwrite', (s) => s.put(record));
@@ -132,18 +101,8 @@ export function deleteClip(key) {
   return run(CLIPS, 'readwrite', (s) => s.delete(key));
 }
 
-// -------------------------------------------------------------------- meta
-
-/**
- * The plain key-value half of the database, open to anything small.
- *
- * Exported because the hand-corrected pen paths live here too — see
- * stroke-store.js. All 38 letters of them come to tens of kilobytes, which is
- * nothing beside one recording, so they need no store of their own and no
- * version bump. Sharing the database also means one `openDb`, one failure path
- * and one thing to clear.
- *
- * @param {string} key namespaced by its owner, e.g. `strokes`
+/** The plain key-value half of the database, open to anything small.
+ * @param {string} key namespaced by its owner, e.g.
  */
 export async function getMeta(key) {
   const value = await run(META, 'readonly', (s) => s.get(key));
@@ -164,19 +123,7 @@ export function setLastExport(when = Date.now()) {
   return putMeta('lastExportedAt', when);
 }
 
-// ------------------------------------------------------------- persistence
-
-/**
- * Asks the browser not to evict this data.
- *
- * Chrome grants it based on engagement or installation; Safari grants it to
- * installed web apps. Calling it repeatedly is harmless — it resolves with the
- * current state once already granted.
- *
- * Exported for stroke-store.js rather than copied into it: hand-drawn pen paths
- * are somebody's evening's work and deserve the same protection from eviction
- * as a recording of their voice.
- *
+/** Asks the browser not to evict this data.
  * @returns {Promise<boolean>}
  */
 export async function requestPersistence() {
@@ -198,11 +145,8 @@ async function isPersisted() {
   }
 }
 
-/**
- * How safe the recordings currently are, for showing the user plainly.
- *
+/** How safe the recordings currently are, for showing the user plainly.
  * @returns {Promise<{persisted: boolean, installed: boolean, count: number,
- *   bytes: number, lastExportedAt: number|null, unexported: number}>}
  */
 export async function storageStatus() {
   const [persisted, clips, lastExportedAt] = await Promise.all([

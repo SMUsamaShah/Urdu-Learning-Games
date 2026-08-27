@@ -13,39 +13,9 @@ import { sayLetter } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, makeButton } from '../lib/theme.js';
 import { pickWeighted } from '../lib/mastery.js';
 
-/**
- * Find every one of them, not just one.
- *
- * ## Why this is a different question
- *
- * Every other screen here puts a handful of choices up and asks which. That can
- * be answered by elimination — three of these are obviously not it — and a
- * child who is guessing well looks exactly like a child who knows. This asks
- * for *all* of them out of a dozen, which cannot be guessed and cannot be
- * eliminated: each letter on the board has to be looked at and judged on its
- * own.
- *
- * It is also the first screen with no single right answer and no way to be
- * wrong once and be done, which makes it the closest thing here to reading —
- * scanning a page for a shape you know.
- *
- * ## What is on the board
- *
- * The target several times over, and distractors drawn first from its own
- * shape family. ب ت ث پ differ only in dots; a board of those is the exercise,
- * and a board of letters from the far end of the alphabet would be a spotting
- * game rather than a reading one.
- *
- * ## No fail state, again
- *
- * A wrong tap wobbles and dims that tile and leaves everything else alone. The
- * ones already found stay found. There is no timer, no lives and no score — a
- * three-year-old will tap every tile on the board to see what happens, and that
- * is exploration rather than cheating, so it costs nothing but does not finish
- * the round either.
- */
+/* Find every one of them, not just one. */
 
-/** Tiles on the board, and how many of them are the target, by round. */
+/* Tiles on the board, and how many of them are the target, by round. */
 const ROUNDS = [
   { tiles: 6, wanted: 2 },
   { tiles: 8, wanted: 3 },
@@ -54,7 +24,7 @@ const ROUNDS = [
   { tiles: 12, wanted: 5 },
 ];
 
-/** The board's area: clear of the ribbon above and the garden at the left. */
+/* The board's area: clear of the ribbon above and the garden at the left. */
 const BOARD = { left: RAIL_EDGE + 44, right: DESIGN.width - 50, top: 190, bottom: DESIGN.height - 40 };
 
 export default class TapAll extends Phaser.Scene {
@@ -89,17 +59,12 @@ export default class TapAll extends Phaser.Scene {
     this.banner = this.stage.banner;
     this.rail = this.stage.rail;
 
-    // The letter being hunted for, in the corner, always there and always
-    // tappable. Taken from the reference apps, which put the target in the same
-    // place on every screen: a child who has lost the question needs one place
-    // to look for it.
+    // The letter being hunted for, in the corner, always there and always tappable.
     this.promptLayer = this.add.container(RAIL_EDGE + 96, 210);
     this.board = this.add.container(0, 0);
 
     this.newRound();
   }
-
-  // ------------------------------------------------------------------ board
 
   newRound() {
     this.board.removeAll(true);
@@ -113,8 +78,7 @@ export default class TapAll extends Phaser.Scene {
     this.target = pickWeighted('letter', this.pool, { avoid: [this.target] });
     this.wanted = plan.wanted;
 
-    // Its own family first: those differ from the target by a dot or two, which
-    // is what makes this a reading exercise rather than a spotting one.
+    // Its own family first.
     const siblings = Phaser.Utils.Array.Shuffle(
       shapeFamilySiblings(this.target).filter((id) => letterGlyph(id))
     );
@@ -158,19 +122,11 @@ export default class TapAll extends Phaser.Scene {
       badge.add(this.add.text(0, 44, '🔊', { fontSize: '22px' }).setOrigin(0.5));
     }
     this.promptLayer.add(badge);
-    // Breathes, so the question does not read as a label that has been left on
-    // the screen.
+    // Breathes, so the question does not read as a label that has been left on the screen.
     bob(this, badge, { distance: 4, duration: 2200 });
   }
 
-  /**
-   * Lays the tiles out on a grid that fills the board.
-   *
-   * A grid rather than a scatter: overlapping tiles are hard for a small finger
-   * to choose between, and "did I already tap that one" is a different puzzle
-   * from the one being set. Each tile is nudged a few pixels off its cell so
-   * the board still reads as things laid out rather than as a spreadsheet.
-   */
+  /* Lays the tiles out on a grid that fills the board. */
   layOut(ids) {
     const columns = ids.length <= 6 ? 3 : 4;
     const rows = Math.ceil(ids.length / columns);
@@ -183,8 +139,7 @@ export default class TapAll extends Phaser.Scene {
     ids.forEach((id, index) => {
       const column = index % columns;
       const row = Math.floor(index / columns);
-      // Short last rows are centred, so a board of ten does not look like a
-      // board of twelve with two missing.
+      // Short last rows are centred, so a board of ten does not look like a board of twelve with two missing.
       const inRow = Math.min(ids.length - row * columns, columns);
       const rowLeft = BOARD.left + ((columns - inRow) * cellW) / 2;
       const x = rowLeft + (column % inRow) * cellW + cellW / 2;
@@ -220,8 +175,6 @@ export default class TapAll extends Phaser.Scene {
     });
   }
 
-  // ------------------------------------------------------------------- play
-
   speak() {
     sayLetter(this.target, { word: false });
   }
@@ -232,9 +185,7 @@ export default class TapAll extends Phaser.Scene {
     if (tile.letterId !== this.target) {
       wrongAnswer({ subject: { kind: 'letter', id: this.target } });
       this.rail?.wonder();
-      // Dimmed and set aside rather than removed. Removing it would shrink the
-      // board towards the answer, which turns "find them all" into "keep
-      // tapping until the board is empty".
+      // Dimmed and set aside rather than removed.
       this.tweens.add({
         targets: tile,
         x: tile.x + 8,
@@ -256,8 +207,7 @@ export default class TapAll extends Phaser.Scene {
     hop(this, tile, { height: 14 });
     dance(this, tile);
 
-    // A green frame, so a found one is visibly finished rather than merely
-    // tapped — which matters here, because the board stays up.
+    // Mark found targets with a green frame.
     const mark = this.add.graphics();
     mark.lineStyle(6, COLORS.correct, 1);
     const half = tile.width ? tile.width / 2 : 60;
@@ -266,8 +216,7 @@ export default class TapAll extends Phaser.Scene {
 
     if (this.found < this.wanted) return;
 
-    // All of them found. The board is complete, so this is a finished activity
-    // rather than one right answer, and gets the big celebration.
+    // All of them found.
     this.locked = true;
     finished();
     sayLetter(this.target);

@@ -5,30 +5,7 @@ import { glyphSheet, letterGlyph, letters } from '../lib/content.js';
 import { editableStrokes, noteDeviceStrokes, strokeSource, strokesMatchFont } from '../lib/strokes.js';
 import { clearLetter, deviceStrokes, exportShape, saveLetter } from '../lib/stroke-store.js';
 
-/**
- * The Letter traces page, inside Settings.
- *
- * The same editor the desktop studio runs, over the device's own copy of the
- * pen paths. It exists because the letters that most need fixing — ڈ ڑ ط ظ ٹ
- * ھ ہ ے م — are the ones worth fixing on the sofa with a tablet in hand, and
- * before this the only way was `npm run trace-studio` at a computer.
- *
- * ## Save, then walk into the game
- *
- * A save goes to IndexedDB *and* into the running app's copy, so closing
- * settings and opening Write shows the new path immediately. Being able to try
- * a correction is most of what makes a correction possible: a stroke order
- * reads fine as a numbered diagram and is obviously wrong the moment a finger
- * follows it.
- *
- * ## And then send me the file
- *
- * Export writes urdu-traces-<date>.json — only the letters edited here, plus
- * the font fingerprint. Small enough to send, and refusable on the other end:
- * the studio's import checks that fingerprint before it merges anything into
- * content/strokes.json, so paths drawn for the old typeface cannot become the
- * repo's.
- */
+/* The Letter traces page, inside Settings. */
 
 const el = (html) => {
   const t = document.createElement('template');
@@ -74,11 +51,10 @@ export function buildTracesPage() {
     return { el: root, dispose() {} };
   }
 
-  // The same set the editor keeps: a letter with no isolated outline has
-  // nothing to trace.
+  // The same set the editor keeps: a letter with no isolated outline has nothing to trace.
   const known = letters.filter((letter) => letterGlyph(letter.id));
 
-  /** `38 of 38 guided · 2 edited here` */
+  /* `38 of 38 guided · 2 edited here` */
   async function tally() {
     const stored = await deviceStrokes();
     const guided = known.filter((l) => strokeSource(l.id) !== 'none').length;
@@ -95,15 +71,13 @@ export function buildTracesPage() {
     glyphs: glyphSheet(),
     letters: known,
     initial: editableStrokes(),
-    // The tracer that produced every path in the app, handed in so its knobs
-    // can be turned here rather than only from a command line.
+    // The tracer that produced every path in the app.
     skeletonise,
     seedDefaults: SEED_DEFAULTS,
     onLetter: showWhere,
     async save(letterId, strokes) {
       await saveLetter(letterId, strokes);
-      // Straight into the running app as well as onto the disk, so the Write
-      // screen has it without a reload.
+      // Straight into the running app as well as onto the disk, so the Write screen has it without a reload.
       noteDeviceStrokes(letterId, strokes);
       showWhere(letterId);
       tally();
@@ -119,13 +93,7 @@ export function buildTracesPage() {
   holder.append(editor.el);
   tally();
 
-  /**
-   * Writes the device's letters out as a file.
-   *
-   * The same Blob and `<a download>` route the recorder's export uses. There is
-   * no server to send it to and there never will be — the app makes no network
-   * calls at runtime — so a file the person controls is the whole handover.
-   */
+  /* Writes the device's letters out as a file. */
   async function exportAll() {
     const stored = await deviceStrokes();
     if (Object.keys(stored.letters).length === 0) {

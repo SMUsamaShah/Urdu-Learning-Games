@@ -1,48 +1,8 @@
-/**
- * The stroke editor, shared by the desktop studio and the app.
- *
- * The seeder gets a pen path roughly right and cannot get it right: thinning
- * knows nothing about writing, so it cannot say which end a stroke starts from
- * or what order the strokes come in. Somebody who writes Urdu has to say, and
- * they should be able to say it either at a computer or on the sofa with a
- * tablet.
- *
- * So this is one editor with two homes — `tools/trace-studio/` serves it and
- * writes to the repo; the Settings screen embeds it and writes to the device.
- * Exactly the split `src/lib/recorder.js` already has between the recording
- * studio and the in-app recorder, and for the same reason: two editors would
- * drift into two different tools.
- *
- * ## Font units all the way down
- *
- * Everything is drawn and edited in the coordinate space of
- * content/glyphs.json, by making that the SVG's viewBox. Nothing converts
- * between spaces, so a path cannot drift from the letter it belongs to and what
- * is saved is exactly what was seen.
- *
- * The letter is the baked `d` string straight out of glyphs.json. An SVG path
- * and a canvas Path2D take the same string, so this needs nothing from
- * lib/glyph.js.
- *
- * ## Touch first
- *
- * Handles are sized for a fingertip and every gesture works without a mouse:
- * a long press removes a point where a desktop would right-click, and
- * everything else is a button. The tablet is where a parent actually has ten
- * spare minutes.
- *
- * ## The stylesheet is the caller's to load
- *
- * stroke-editor.css sits next to this file but is deliberately not imported
- * here: the studio is a plain page with no bundler, and `import './x.css'` is a
- * Vite feature that a browser answers with a MIME error. So the studio links it
- * and the settings page imports it, and this module is loadable by both as it
- * stands.
- */
+/* The stroke editor, shared by the desktop studio and the app. */
 
 const COLOURS = ['#e4633c', '#2f86d0', '#2fae74', '#9b5fc9', '#e98a1f', '#d94f8c', '#0f9c8c'];
 
-/** How long a press has to last to count as "remove this point", in ms. */
+/* How long a press has to last to count as "remove this point", in ms. */
 const LONG_PRESS = 500;
 
 const el = (html) => {
@@ -57,23 +17,14 @@ function svgNode(tag, attrs) {
   return node;
 }
 
-/**
- * Builds the editor.
- *
- * Knows nothing about where the data came from or where it goes: the caller
- * supplies the letters and a `save`, which is what lets the same code write to
- * a repo over HTTP and to IndexedDB on a phone.
- *
+/** Builds the editor.
  * @param {object} config
  * @param {object} config.glyphs content/glyphs.json
  * @param {object[]} config.letters content/letters.json's `letters`
  * @param {Record<string, {strokes: object[], corrected?: boolean}>} config.initial
  * @param {(letterId: string, strokes: object[]) => Promise<void>} config.save
- * @param {(letterId: string) => Promise<void>} [config.revert] back to what
- *   shipped, where that means something (the app; the studio has no such thing)
+ * @param {(letterId: string) => Promise<void>} [config.revert] Restore a letter.
  * @param {(letterId: string) => void} [config.onLetter] which letter is open
- *   now. The app's page shows where the open letter's guide came from, and it
- *   cannot know that from outside.
  * @param {string} [config.startAt] letter id to open on
  * @returns {{el: HTMLElement, dispose: () => void, current: () => string}}
  */
@@ -89,25 +40,18 @@ export function buildStrokeEditor({
   seedDefaults,
 }) {
   const known = letters.filter((letter) => glyphs.letters[letter.id]?.isolated);
-  /** letterId -> { strokes, corrected }. The saved state, as far as we know. */
+  /* letterId -> { strokes, corrected }. */
   const all = structuredClone(initial ?? {});
 
   let index = Math.max(0, known.findIndex((l) => l.id === startAt));
-  /** The strokes on screen. Edited in place, written out on save. */
+  /* The strokes on screen. */
   let strokes = [];
   let selected = 0;
-  /** 'edit' or 'draw'. In draw mode a tap on the board extends a new stroke. */
+  /* 'edit' or 'draw'. */
   let mode = 'edit';
   let dirty = false;
   let disposed = false;
-  /**
-   * Snapshots to step back through, newest last.
-   *
-   * A mis-tap used to mean deleting the whole stroke and drawing it again,
-   * which is a punishing thing to do to somebody correcting thirty-eight
-   * letters on a sofa. A stroke is a few hundred numbers, so keeping thirty
-   * copies costs nothing worth counting.
-   */
+  /* Snapshots to step back through, newest last. */
   const history = [];
   const HISTORY = 30;
 
@@ -160,9 +104,7 @@ export function buildStrokeEditor({
   const seedBox = root.querySelector('.ste-seed');
   const knobBox = root.querySelector('.ste-knobs');
   if (!revert) root.querySelector('[data-act="revert"]').hidden = true;
-  // Only where the caller handed the tracer in. The app's settings page does;
-  // a caller that has not loaded it gets an editor without the panel rather
-  // than a button that throws.
+  // Only where the caller handed the tracer in.
   if (!skeletonise) seedBox.hidden = true;
 
   const current = () => known[index];
@@ -172,57 +114,18 @@ export function buildStrokeEditor({
     status.dataset.bad = String(!good);
   };
 
-  // ------------------------------------------------------------------ sizes
-
-  /** One em, so a handle is the same size on ا as on ص. */
+  /* One em, so a handle is the same size on ا as on ص. */
   const em = () => glyphs.upem;
-  /**
-   * The unit every mark is sized in.
-   *
-   * A fraction of the em rather than of the letter: sizing to the letter gives
-   * ا enormous handles and ص invisible ones. Small enough that a 25-point path
-   * does not hide the letter it is supposed to be following, which is the one
-   * thing the board exists to show.
-   */
+  /* The unit every mark is sized in. */
   const nib = () => em() * 0.032;
 
-  /**
-   * How near a finger has to land, in nibs, to count as touching something.
-   *
-   * These are the whole reason the editor is usable with a finger. Everything
-   * used to be decided by SVG hit-testing — which element was under the
-   * pointer — and the things worth hitting are a 36px circle and a **5.8px
-   * line** on a phone-width board. A line that thin is not a target: on a
-   * phone you could not select another stroke, could not add a point, and so
-   * could not fix a mistake except by deleting the stroke and starting it
-   * again.
-   *
-   * So nothing is hit-tested any more. A tap is compared against the geometry
-   * in font units, and the nearest thing within these distances wins. The marks
-   * on screen stay small enough to see the letter through; what you can hit is
-   * a separate question from what you can see, and it should be.
-   */
+  /* How near a finger has to land, in nibs, to count as touching something. */
   const GRAB = 2.6;
   const NEAR_LINE = 2.2;
-  /**
-   * How far a finger may wander and still count as held, in screen pixels.
-   *
-   * Any movement at all used to cancel a press, and a finger resting on glass
-   * never stops moving — so "press and hold to remove a point" did nothing on a
-   * phone, which is where it is the only way to remove one.
-   */
+  /* How far a finger may wander and still count as held, in screen pixels. */
   const HOLD_SLOP = 12;
 
-  // ----------------------------------------------------------------- render
-
-  /**
-   * The nodes of the selected stroke, so a drag can move them without
-   * rebuilding the board.
-   *
-   * `render()` calls `replaceChildren`, which on a 22-point stroke is dozens of
-   * elements thrown away and remade — for every pointermove, on a phone. The
-   * drag nudges these instead and renders once on release.
-   */
+  /* The nodes of the selected stroke, so a drag can move them without rebuilding the board. */
   let live = { line: null, handles: [], number: null };
 
   function render() {
@@ -281,10 +184,7 @@ export function buildStrokeEditor({
       if (chosen) live.number = number;
 
       if (!chosen) return;
-      // Only what you can see. What you can *hit* is decided by GRAB, in
-      // font units, against the numbers rather than against the DOM — a ring
-      // big enough for a fingertip would bury the letter under a 25-point
-      // path, and the letter is the whole reason the board is there.
+      // Only what you can see.
       live.handles = points.map(([px, py], p) =>
         board.appendChild(
           svgNode('circle', {
@@ -362,18 +262,7 @@ export function buildStrokeEditor({
     );
   }
 
-  /**
-   * The four numbers the tracer runs on, as sliders.
-   *
-   * This is the part worth having. The paths in the app were all produced by
-   * src/lib/skeletonise.js and it got ج right first time — but it only ever ran
-   * from a command line, so a letter it got wrong meant dragging thirty points
-   * by hand instead of turning the knob that was wrong by a little.
-   *
-   * Ranges are wide enough to be worth dragging and stop short of the values
-   * that produce nonsense: under about 120px of raster a Nastaliq hairline is
-   * too thin to have a middle, and over 0.6 the pruning eats real strokes.
-   */
+  /* The four numbers the tracer runs on, as sliders. */
   const KNOBS = [
     { key: 'rasterHeight', label: 'Detail', min: 120, max: 640, step: 10 },
     { key: 'prune', label: 'Trim spurs', min: 0, max: 0.6, step: 0.01 },
@@ -381,7 +270,7 @@ export function buildStrokeEditor({
     { key: 'dabSpan', label: 'Dot size', min: 0.1, max: 0.6, step: 0.01 },
   ];
 
-  /** The live values, starting from what the shipped paths were seeded with. */
+  /* The live values, starting from what the shipped paths were seeded with. */
   const seed = {
     rasterHeight: seedDefaults?.rasterHeight ?? 320,
     prune: seedDefaults?.prune ?? 0.22,
@@ -401,9 +290,7 @@ export function buildStrokeEditor({
           </label>`);
         const slider = row.querySelector('input');
         const shown = row.querySelector('output');
-        // Live while dragging. The whole point is watching the path change: a
-        // number you have to press a button to test is a number you tune by
-        // guessing.
+        // Live while dragging.
         slider.addEventListener('input', () => {
           seed[knob.key] = Number(slider.value);
           shown.textContent = slider.value;
@@ -414,14 +301,7 @@ export function buildStrokeEditor({
     );
   }
 
-  /**
-   * Re-reads the pen path off the letter's outline.
-   *
-   * One undo step for a whole session of dragging, not one per slider frame:
-   * the snapshot is taken on the first re-trace and the rest overwrite what is
-   * on screen. Otherwise a single drag of a slider would fill the history and
-   * push out the edit somebody actually wants back.
-   */
+  /* Re-reads the pen path off the letter's outline. */
   let tracing = false;
   function reseed() {
     if (!skeletonise) return;
@@ -442,9 +322,7 @@ export function buildStrokeEditor({
     selected = 0;
     mode = 'edit';
     change();
-    // Said on every drag, not only on the button: the count is how you tell a
-    // knob has gone too far — ژ turning into three dots and no letter is a
-    // number changing before it is a shape changing.
+    // Said on every drag.
     const dabs = strokes.filter((stroke) => stroke.kind === 'dab').length;
     say(`Traced: ${strokes.length - dabs} stroke(s), ${dabs} dot(s)`);
   }
@@ -466,8 +344,7 @@ export function buildStrokeEditor({
     dirty = false;
     tracing = false;
     history.length = 0;
-    // The Urdu name, not the roman id twice over: this is a screen for somebody
-    // who reads Urdu, and the name is what tells them which letter this is.
+      // Show the Urdu name; the roman id is only an internal key.
     title.textContent = `${current().name} · ${current().id}`;
     markNav();
     render();
@@ -475,15 +352,7 @@ export function buildStrokeEditor({
     onLetter?.(current().id);
   }
 
-  // ------------------------------------------------------------------ edits
-
-  /**
-   * Puts the current shape aside before something changes it.
-   *
-   * Called at the *start* of every edit rather than after, so Undo goes back to
-   * what was on screen a moment ago. A drag remembers once, on the way down —
-   * pulling a point across the board is one edit, not forty.
-   */
+  /* Puts the current shape aside before something changes it. */
   function remember() {
     history.push(structuredClone(strokes));
     if (history.length > HISTORY) history.shift();
@@ -524,16 +393,14 @@ export function buildStrokeEditor({
     const stroke = strokes[s];
     if (stroke.kind === 'dab') {
       stroke.kind = 'drag';
-      // A dab is one point and a drag needs two, so give it a stub to pull into
-      // shape rather than an invalid stroke.
+      // A dab is one point and a drag needs two, so give it a stub to pull into shape rather than an invalid stroke.
       const [x, y] = stroke.points[0];
       stroke.points = [
         [x + nib(), y],
         [x - nib(), y],
       ];
     } else {
-      // The middle of a stroke is a better guess at where a dot goes than
-      // either end.
+      // The middle of a stroke is a better guess at where a dot goes than either end.
       stroke.kind = 'dab';
       stroke.points = [stroke.points[Math.floor(stroke.points.length / 2)]];
     }
@@ -548,7 +415,7 @@ export function buildStrokeEditor({
     change();
   }
 
-  /** Board coordinates from a pointer event, in font units. */
+  /* Board coordinates from a pointer event, in font units. */
   function toBoard(event) {
     const ctm = board.getScreenCTM();
     const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
@@ -565,7 +432,7 @@ export function buildStrokeEditor({
     return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
   }
 
-  /** The nearest point of a stroke to a place on the board, and how far. */
+  /* The nearest point of a stroke to a place on the board, and how far. */
   function nearestPoint(stroke, at) {
     let best = { index: -1, distance: Infinity };
     stroke?.points.forEach((p, i) => {
@@ -575,14 +442,7 @@ export function buildStrokeEditor({
     return best;
   }
 
-  /**
-   * Which stroke a tap is nearest to, measured against the ink rather than
-   * against the DOM.
-   *
-   * A dab is a dot, so it is judged by distance to that dot; a drag is judged
-   * by distance to its nearest segment, and where it passes near the segment
-   * *and* near a point the shorter one wins.
-   */
+  /* Which stroke a tap is nearest to, measured against the ink rather than against the DOM. */
   function nearestStroke(at) {
     let best = { index: -1, distance: Infinity, segment: 1 };
     strokes.forEach((stroke, s) => {
@@ -607,12 +467,7 @@ export function buildStrokeEditor({
     holdTimer = null;
   };
 
-  /**
-   * Moves one point of the selected stroke without redrawing the board.
-   *
-   * The arrow and the neighbouring geometry lag until the finger lifts, which
-   * is not worth a rebuild per frame — everything settles on the release.
-   */
+  /* Moves one point of the selected stroke without redrawing the board. */
   function nudge(p, to) {
     strokes[selected].points[p] = to;
     const points = strokes[selected].points;
@@ -644,17 +499,12 @@ export function buildStrokeEditor({
 
     const grab = nearestPoint(strokes[selected], point);
     if (grab.index >= 0 && grab.distance <= nib() * GRAB) {
-      // Everything below this line assumes it owns the gesture, so stop the
-      // page taking it for a scroll.
+      // Everything below this line assumes it owns the gesture, so stop the page taking it for a scroll.
       event.preventDefault();
       const p = grab.index;
       let dragged = false;
 
-      // Press and hold removes the point — the desktop gesture is a
-      // right-click, which a tablet does not have. Cancelled by *travel*, not
-      // by movement: a finger resting on glass never stops moving, so
-      // cancelling on the first pointermove meant this never fired on the one
-      // device where it is the only way to remove a point.
+      // Press and hold removes the point — the desktop gesture is a right-click, which a tablet does not have.
       cancelHold();
       holdTimer = window.setTimeout(() => {
         if (dragged) return;
@@ -671,8 +521,7 @@ export function buildStrokeEditor({
           if (Math.hypot(moveEvent.clientX - from.x, moveEvent.clientY - from.y) < HOLD_SLOP) {
             return;
           }
-          // One snapshot for the whole drag: pulling a point across the board
-          // is one edit to undo, not forty.
+          // One snapshot for the whole drag: pulling a point across the board is one edit to undo, not forty.
           dragged = true;
           cancelHold();
           remember();
@@ -684,15 +533,11 @@ export function buildStrokeEditor({
         cancelHold();
         window.removeEventListener('pointermove', drag);
         window.removeEventListener('pointerup', drop);
-        // A cancel ends the drag where it got to rather than throwing it away:
-        // the browser can cancel a pointer for reasons that have nothing to do
-        // with what the person meant, and losing their edit to one is worse
-        // than keeping a slightly short drag.
+        // A cancel ends the drag where it got to rather than throwing it away.
         window.removeEventListener('pointercancel', drop);
         if (dragged) render();
       };
-      // On window rather than on the board, so a finger that strays off the
-      // SVG keeps dragging instead of silently letting go.
+      // On window rather than on the board, so a finger that strays off the SVG keeps dragging instead of silently letting go.
       window.addEventListener('pointermove', drag, { passive: false });
       window.addEventListener('pointerup', drop);
       window.addEventListener('pointercancel', drop);
@@ -702,10 +547,7 @@ export function buildStrokeEditor({
     const near = nearestStroke(point);
     if (near.index < 0 || near.distance > nib() * NEAR_LINE) return;
 
-    // A tap on a stroke you are not working on selects it, and does nothing
-    // else. It used to select *and* insert a point in one go, so the first tap
-    // on the stroke you wanted to fix damaged it — and with the line 6px wide
-    // on a phone, that was most taps.
+    // A tap on a stroke you are not working on selects it, and does nothing else.
     if (near.index !== selected) {
       selected = near.index;
       render();
@@ -733,17 +575,9 @@ export function buildStrokeEditor({
   board.addEventListener('pointerdown', onPointerDown);
   board.addEventListener('contextmenu', onContextMenu);
 
-  // ---------------------------------------------------------------- playback
-
   let playing = null;
 
-  /**
-   * Runs a marker along the strokes in order, at about the speed a child draws.
-   *
-   * The only honest test of a stroke order. Reading a numbered diagram it is
-   * easy to convince yourself an order is fine; watching it drawn, a wrong one
-   * is obvious immediately.
-   */
+  /* Runs a marker along the strokes in order, at about the speed a child draws. */
   function play() {
     stopPlaying();
     render();
@@ -771,8 +605,7 @@ export function buildStrokeEditor({
         d += `M${stroke.points[0][0]},${stroke.points[0][1]}l0.1,0`;
         continue;
       }
-      // A constant distance per tick rather than a constant number of ticks per
-      // stroke, so a long stroke really does take longer.
+      // A constant distance per tick rather than a constant number of ticks per stroke.
       const step = em() * 0.06;
       let line = '';
       for (let i = 1; i < stroke.points.length; i++) {
@@ -810,8 +643,6 @@ export function buildStrokeEditor({
     marker?.setAttribute('opacity', 0);
   }
 
-  // ------------------------------------------------------------------ saving
-
   async function commit() {
     const bad = strokes.findIndex((s) =>
       s.kind === 'dab' ? s.points.length !== 1 : s.points.length < 2
@@ -841,8 +672,6 @@ export function buildStrokeEditor({
     show(index);
     say('Back to the version that shipped');
   }
-
-  // ------------------------------------------------------------------ wiring
 
   const onClick = (event) => {
     const act = event.target.closest('[data-act]')?.dataset.act;
@@ -899,7 +728,7 @@ export function buildStrokeEditor({
   return {
     el: root,
     current: () => current().id,
-    /** True when there are unsaved edits — the caller warns before closing. */
+    /* True when there are unsaved edits — the caller warns before closing. */
     isDirty: () => dirty,
     dispose() {
       if (disposed) return;

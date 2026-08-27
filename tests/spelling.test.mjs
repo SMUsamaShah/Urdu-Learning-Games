@@ -1,19 +1,4 @@
-/**
- * What the spelling games are able to ask.
- *
- * The games themselves are checked by playing them (`npm run verify:games`).
- * What that cannot answer is whether there is enough *content* to play with:
- * the difficulty ramp asks for three-letter words at the easy end and
- * five-letter ones at the hard end, and if either band is empty the games
- * silently deal something else. Nothing throws and the screen looks fine — a
- * beginner is simply handed a five-letter word.
- *
- * Read from the content files rather than by importing src/lib/spelling.js:
- * that module pulls in the progress store and localStorage, and the question
- * here is about the words, which the words can answer.
- *
- * Run: npm test
- */
+/* What the spelling games are able to ask. */
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,7 +14,7 @@ const { letters } = read('letters.json');
 const { words } = read('words.json');
 const byChar = new Map(letters.map((l) => [l.char, l.id]));
 
-/** Mirrors brokenWord() in content.js: every character must be a letter. */
+/* Mirrors brokenWord() in content.js: every character must be a letter. */
 const broken = (word) => {
   const ids = [...word.word].map((char) => byChar.get(char));
   return ids.every(Boolean) ? ids : null;
@@ -37,7 +22,7 @@ const broken = (word) => {
 
 const spellable = words.filter(broken);
 
-/** The bands from src/lib/spelling.js, read out of it rather than restated. */
+/* The bands from src/lib/spelling.js, read out of it rather than restated. */
 const bands = [
   ...source('spelling.js').matchAll(
     /\{ from: (\d+), lengths: \[([\d, ]+)\], hint: (true|false), spare: (\d+) \}/g
@@ -51,8 +36,7 @@ const bands = [
 
 describe('the words a spelling game can deal', () => {
   test('most of them can be taken apart', () => {
-    // چائے cannot — ئ is not one of the thirty-eight letters. One is expected;
-    // a second means a word was added that no spelling game can use.
+    // چائے cannot — ئ is not one of the thirty-eight letters.
     assert.equal(words.length - spellable.length, 1);
   });
 
@@ -79,9 +63,7 @@ describe('the words a spelling game can deal', () => {
   });
 
   test('it gets harder rather than easier', () => {
-    // The hint goes away and stays away; the words never get shorter; the tray
-    // never holds fewer wrong letters than it did. Any of these going backwards
-    // is a ramp that dips, which a child feels as the game breaking.
+    // The hint goes away and stays away; the words never get shorter; the tray never holds fewer wrong letters than it did.
     for (let i = 1; i < bands.length; i++) {
       assert.ok(
         !bands[i].hint || bands[i - 1].hint,
@@ -105,8 +87,7 @@ describe('the words a spelling game can deal', () => {
   });
 
   test('every word a game can deal has a picture or an emoji', () => {
-    // The picture is the question. A word with neither is a round where nothing
-    // on screen says which word is meant.
+    // The picture is the question.
     const images = read('images.json').words ?? {};
     for (const word of spellable) {
       assert.ok(

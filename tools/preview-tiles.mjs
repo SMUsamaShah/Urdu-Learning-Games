@@ -1,18 +1,4 @@
-/**
- * Every menu tile on one sheet.
- *
- * The tiles are drawn in code now (src/lib/tile-faces.js), and the only
- * question that matters about a drawing — does a three-year-old look at it and
- * know which game it is — cannot be asked from a test. So this puts all
- * twenty-five side by side at the size they are actually shown at, which is the
- * one view where a tile that is muddy, or that looks like the tile next to it,
- * is obvious.
- *
- * Drawn through the app's own module rather than reimplemented here, so the
- * sheet cannot drift from the menu.
- *
- * Usage: npm run dev &  then  node tools/preview-tiles.mjs [out.png] [baseUrl]
- */
+/* Every menu tile on one sheet. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,7 +8,7 @@ import { launchOptions } from './browser.mjs';
 const OUT = process.argv[2] || 'screenshots/tiles.png';
 const BASE = process.argv[3] || 'http://localhost:5173';
 
-/** The menu's tile size at 1280×720, which is what these have to work at. */
+/* The menu's tile size at 1280×720, which is what these have to work at. */
 const TILE = { width: 234, height: 244 };
 const COLUMNS = 7;
 
@@ -39,13 +25,11 @@ const drew = await page.evaluate(
     const content = await import('/src/lib/content.js');
     await content.loadGlyphs();
     const { GAMES, artName } = await import('/src/lib/games.js');
-    // Through the app's own painter, not a copy of it. See tilePanel().
+    // Through the app's own painter, not a copy of it.
     const { paintTilePanel, tilePanel } = await import('/src/lib/game-tile.js');
     const manifest = (await import('/content/tiles.json')).default;
 
-    // The generated pictures, decoded here rather than through Phaser: this
-    // sheet has no scene and no loader, and the painter takes the picture as an
-    // argument precisely so both callers can find it their own way.
+    // The generated pictures.
     const pictures = {};
     await Promise.all(
       Object.entries(manifest.tiles ?? {}).map(async ([name, file]) => {
@@ -60,8 +44,7 @@ const drew = await page.evaluate(
       })
     );
 
-    // Every game, and that is now every tile: the spelling group and the "more
-    // games" door are both gone, so there are no tiles left that are not games.
+    // Every game, and that is now every tile: the spelling group and the "more games" door are both gone, so there are no.
     const shown = GAMES;
     const rows = Math.ceil(shown.length / columns);
     const gap = 18;
@@ -109,8 +92,7 @@ const drew = await page.evaluate(
   [TILE, COLUMNS]
 );
 
-// The sheet is wider and taller than any sensible window, and an element
-// screenshot is still cropped to the viewport, so the window is grown to fit it.
+// The sheet is wider and taller than any sensible window.
 await page.setViewportSize({ width: Math.ceil(drew.width), height: Math.ceil(drew.height) });
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 await page.locator('#sheet').screenshot({ path: OUT });

@@ -2,48 +2,20 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { TUNES } from './src/lib/tunes.js';
 
-/**
- * Every instrument the app can ask for, read from the tunes themselves.
- *
- * This used to be one name written out by hand, with a test to keep it in step
- * with src/lib/tunes.js. That was the right shape when there was one tune and
- * no way to change it. Now that all five are choosable from the grown-ups
- * screen, every one of their instruments has to be precached, and a
- * hand-maintained list of five would be five chances to make the mistake the
- * test existed to catch.
- *
- * So the list is derived. tunes.js is plain data with no imports, which is what
- * makes it importable from a build config at all — worth keeping that way.
- *
- * The failure this prevents: the app asks for samples the service worker never
- * cached, so the tune plays in development, plays on the first online load, and
- * is silent offline. That is the worst shape a bug can have here, because
- * offline is the case this app exists for.
- */
+/* Every instrument the app can ask for, read from the tunes themselves. */
 const TUNE_INSTRUMENTS = [...new Set(Object.values(TUNES).map((t) => t.instrument))];
 
-/**
- * The instrument the reward flourishes are played on, from src/lib/flourish.js.
- *
- * Still written out, because flourish.js is not data — importing it from here
- * would pull in Tone and the whole audio layer at config time.
- *
- * Worth its extra 100 KB: it has to cut through the tune without the tune
- * ducking for it, which a bright metal strike does and a soft wooden one does
- * not.
- */
+/* The instrument the reward flourishes are played on, from src/lib/flourish.js. */
 const FLOURISH_INSTRUMENT = 'glockenspiel';
 
-/** Everything under audio/instruments/ that must survive into the build. */
+/* Everything under audio/instruments/ that must survive into the build. */
 const KEPT_INSTRUMENTS = [...TUNE_INSTRUMENTS, FLOURISH_INSTRUMENT];
 
 export default defineConfig({
-  // Relative base so the built app works from a GitHub Pages project subpath
-  // (user.github.io/Urdu-Learning-Games/) as well as from a domain root.
+  // Use a relative base so GitHub Pages project subpaths work.
   base: './',
   server: {
-    // Bind all interfaces so the dev server is reachable from a phone on the
-    // same wifi, which is the only way to properly test this thing.
+    // Bind all interfaces so the dev server is reachable from a phone on the same wifi.
     host: true,
   },
   build: {
@@ -55,8 +27,7 @@ export default defineConfig({
       // A three-year-old is never going to tap "a new version is available".
       registerType: 'autoUpdate',
 
-      // Not in dev: a service worker caching a build you are actively editing
-      // makes every change look like it did not apply.
+      // Not in dev: a service worker caching a build you are actively editing makes every change look like it did not apply.
       devOptions: { enabled: false },
 
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
@@ -68,23 +39,14 @@ export default defineConfig({
           'Free, ad-free games for learning the Urdu alphabet, numbers and first words.',
         lang: 'ur',
         dir: 'rtl',
-        // Relative, so an install from a project subpath scopes to that
-        // subpath rather than the domain root.
+        // Relative, so an install from a project subpath scopes to that subpath rather than the domain root.
         start_url: '.',
         scope: '.',
         // Installed PWAs should launch without browser chrome when supported.
-        // Browsers that do not accept fullscreen fall back through
-        // display_override, and a website opened from a URL still needs the
-        // in-app fullscreen button because fullscreen-on-load is not allowed.
         display: 'fullscreen',
         display_override: ['fullscreen', 'standalone'],
         id: '.',
-        // Deliberately not 'landscape', even though the app now is landscape
-        // everywhere. A manifest lock is absolute and cannot be released, and
-        // this app does two things a locked manifest would take away: it turns
-        // *itself* sideways where the phone refuses to (src/lib/turn.js), and
-        // it needs to know which way the window actually is to do that. Asking
-        // here would leave both of those guessing.
+        // Deliberately not 'landscape', even though the app now is landscape everywhere.
         orientation: 'any',
         background_color: '#8fd4f5',
         theme_color: '#8fd4f5',
@@ -102,10 +64,7 @@ export default defineConfig({
       },
 
       workbox: {
-        // Workbox's default pattern is {js,css,html,ico,png,svg}, which would
-        // silently skip every voice recording, every word picture and both
-        // content JSON files — exactly the assets whose absence only shows up
-        // once offline. Anything added to public/ needs its extension here.
+        // Include recordings, pictures, and content JSON in the precache.
         globPatterns: [
           '**/*.{js,css,html,ico,png,svg,webmanifest}',
           '**/*.{json,woff2}',
@@ -113,20 +72,10 @@ export default defineConfig({
           '**/*.{webm,m4a,mp4,mp3,ogg,opus,wav}',
         ],
 
-        // Only the instruments something actually plays. The rest of
-        // public/audio/instruments/ exists so a tune can be auditioned on
-        // another voice during development (npm run music:preview --
-        // --instrument koto). They are gitignored, so a clean clone never has
-        // them — but a machine that has fetched them would otherwise quietly
-        // ship a few hundred KB of audio nobody ever hears, and a build that
-        // differs from CI's by what happens to be lying around is worth ruling
-        // out at the source.
+        // Only the instruments something actually plays.
         globIgnores: [`audio/instruments/!(${KEPT_INSTRUMENTS.join('|')})/**`],
 
-        // The Phaser bundle alone is ~1.4 MB, over Workbox's 2 MiB default once
-        // the glyph payload is counted. Everything here must be precached for
-        // the app to start with no network, so raise the ceiling rather than
-        // let entries be dropped.
+        // The Phaser bundle alone is ~1.4 MB, over Workbox's 2 MiB default once the glyph payload is counted.
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
 
         navigateFallback: 'index.html',

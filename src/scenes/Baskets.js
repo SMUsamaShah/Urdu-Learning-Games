@@ -14,53 +14,24 @@ import { sayLetter } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, PLAY } from '../lib/theme.js';
 import { pickWeighted } from '../lib/mastery.js';
 
-/**
- * Put each letter in the basket it belongs to.
- *
- * ## Sorting is a different job from choosing
- *
- * Every "which one is it?" screen here hands a child one question at a time and
- * takes it away once answered. Sorting hands them a pile and two places to put
- * it, and the work is to keep asking themselves the same question over and over
- * against a changing thing. That is much closer to reading a line of text than
- * any single-answer game, and it is the reason this is worth a screen of its
- * own rather than being FindLetter with baskets.
- *
- * The two baskets are labelled with letters from the *same shape family* — ب
- * and ت, or ج and چ — so every letter in the pile differs from the wrong
- * basket by a dot or two. Sorting ب from ک would be a colour-matching game.
- *
- * ## Dragged, not tapped
- *
- * The second drag screen after LetterPuzzle, and here the drag carries meaning
- * a tap could not: the letter goes *into* a place, and which place is the whole
- * answer. A letter dropped anywhere else swims back to the pile, so a vague
- * drag costs nothing but another go.
- */
+/* Put each letter in the basket it belongs to. */
 
-/** Letters in the pile, by how many piles have been sorted. */
+/* Letters in the pile, by how many piles have been sorted. */
 const PILE_BY_ROUND = [4, 5, 6, 6, 8];
 
 const BASKET = { width: 250, height: 150, y: DESIGN.height - 118 };
-/**
- * One colour each, fixed rather than taken from the letter's shape family.
- *
- * The two baskets are always siblings, so a family colour gives both the same
- * red and they read as one wide thing rather than as two places. The colour
- * does not give the answer away — it is the letter on the front that decides —
- * but it does let a child keep track of which one they are aiming at.
- */
+/* One colour each, fixed rather than taken from the letter's shape family. */
 const BASKET_COLORS = [0x3f7fd4, 0xd4762f];
-/** Where a letter waiting to be sorted sits. */
+/* Where a letter waiting to be sorted sits. */
 const PILE = { y: 250, left: RAIL_EDGE + 44, right: DESIGN.width - 80 };
-/** How close to a basket's middle a letter must be dropped to go in. */
+/* How close to a basket's middle a letter must be dropped to go in. */
 const SNAP = 150;
 
 export default class Baskets extends Phaser.Scene {
   constructor() {
     super('Baskets');
     this.round = 0;
-    /** The two letters being sorted between. */
+    /* The two letters being sorted between. */
     this.kinds = [];
     /** @type {Phaser.GameObjects.Container[]} */
     this.tiles = [];
@@ -86,17 +57,13 @@ export default class Baskets extends Phaser.Scene {
 
     armDragging(this, {
       canLift: (tile) => !tile.sorted && !this.locked,
-      // Says the letter as it is picked up. A child sorting ب from ت is being
-      // asked a question about dots, and hearing which one they are holding is
-      // the difference between sorting and guessing.
+      // Says the letter as it is picked up.
       onLift: (tile) => sayLetter(tile.letterId, { word: false }),
       onDrop: (tile) => this.drop(tile),
     });
 
     this.newRound();
   }
-
-  // ------------------------------------------------------------------ round
 
   newRound() {
     this.baskets.removeAll(true);
@@ -106,15 +73,11 @@ export default class Baskets extends Phaser.Scene {
     this.locked = false;
     this.banner.setInstruction('sort-letters', 'Sort the letters');
 
-    // Two letters that look alike. A family with a sibling if there is one,
-    // because telling ب from ت is the exercise; telling ب from ک is not.
+    // Two letters that look alike.
     const withSiblings = [...lettersById.keys()].filter(
       (id) => letterGlyph(id) && shapeFamilySiblings(id).some((s) => letterGlyph(s))
     );
-    // Both ends weighted. Which pair to practise is the only choice this screen
-    // makes, so it is the only place his record can change what he is asked —
-    // and telling ٹ from ت is worth doing precisely when one of the two is the
-    // letter he keeps getting wrong.
+    // Both ends weighted.
     const first = pickWeighted(
       'letter',
       withSiblings.length ? withSiblings : [...lettersById.keys()]
@@ -126,8 +89,7 @@ export default class Baskets extends Phaser.Scene {
     this.kinds = [first, second];
 
     const count = PILE_BY_ROUND[Math.min(this.round, PILE_BY_ROUND.length - 1)];
-    // Both kinds always present, so neither basket is left empty — an empty
-    // basket at the end reads as a mistake rather than as a finished job.
+    // Both kinds always present.
     const ids = Phaser.Utils.Array.Shuffle(
       Array.from({ length: count }, (_, i) => this.kinds[i % 2])
     );
@@ -148,10 +110,7 @@ export default class Baskets extends Phaser.Scene {
       basket.letterId = id;
       basket.x0 = x;
 
-      // An actual basket, woven, open at the top and standing on the ground —
-      // not a coloured slab with a pale stripe. The backdrop behind this screen
-      // is a market with real baskets painted into it, so the slab was losing a
-      // comparison the child could make without moving their eyes.
+      // An actual basket, woven, open at the top and standing on the ground — not a coloured slab with a pale stripe.
       basket.add(drawBasket(this, { ...BASKET, color: colour }));
 
       basket.add(
@@ -209,8 +168,6 @@ export default class Baskets extends Phaser.Scene {
     });
   }
 
-  // ------------------------------------------------------------------- play
-
   drop(tile) {
     if (tile.sorted || this.locked) return;
     tile.setDepth(0);
@@ -221,8 +178,7 @@ export default class Baskets extends Phaser.Scene {
     };
 
     if (!basket) {
-      // Dropped in mid-air. Back to the pile rather than left floating, so what
-      // is still to be sorted stays legible as a row.
+      // Dropped in mid-air.
       swimHome(this, tile, { onArrive: rebob });
       return;
     }
@@ -230,8 +186,7 @@ export default class Baskets extends Phaser.Scene {
     if (basket.letterId !== tile.letterId) {
       wrongAnswer({ subject: { kind: 'letter', id: tile.letterId } });
       this.rail?.wonder();
-      // The basket shakes it off. Refused rather than punished: the letter goes
-      // home and can be tried again, and nothing is counted against anybody.
+      // The basket shakes it off.
       refuse(this, tile, basket);
       this.time.delayedCall(300, rebob);
       return;
@@ -245,8 +200,7 @@ export default class Baskets extends Phaser.Scene {
     sparkleBurst(this, tile.x, tile.y, { count: 16, tint: [COLORS.correct, 0xffffff] });
     hop(this, basket, { height: 12 });
 
-    // Drops in and out of sight: the basket keeps what it has been given, and
-    // the pile visibly shrinks towards being finished.
+    // Drops in and out of sight: the basket keeps what it has been given, and the pile visibly shrinks towards being finished.
     this.tweens.add({
       targets: tile,
       x: basket.x,

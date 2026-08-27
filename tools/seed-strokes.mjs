@@ -1,38 +1,4 @@
-/**
- * A first draft of the pen path for each letter.
- *
- * ## Why this cannot just be read off the glyph
- *
- * content/glyphs.json stores *outlines*: the boundary of the ink. A pen path is
- * a *centreline*, and the two are not the same curve. Nor can the pieces be
- * told apart by counting contours — ص has two because its loop encloses a
- * counter, ٹ has three because of its toe, ت has two for two dots because the
- * pair is drawn as one shape. Only 19 of 38 letters fit "one body plus one
- * contour per dot".
- *
- * So the centreline is recovered the way it always is: rasterise the shape,
- * thin it to one pixel wide, and trace what is left. That is a decent
- * approximation of where a broad nib travelled, and it is the only part of this
- * a machine can do well.
- *
- * ## Why the output is a draft and not an answer
- *
- * Thinning knows nothing about writing. It produces spurious branches at every
- * terminal, it cannot tell which end of a stroke a pen starts from, and where
- * two strokes cross it sees one junction rather than two passes. The ordering
- * below is a rule of thumb — rightmost first, because Urdu is written right to
- * left — and it will be wrong for letters written in an order that is not
- * simply right-to-left.
- *
- * Every one of those needs a person who can write Urdu to fix, which is what
- * tools/trace-studio is for. This gets that person 80% of the way to a path
- * instead of asking them to draw 38 letters from nothing.
- *
- * Existing entries are never touched, so re-running after a correction session
- * is safe. `--force` re-seeds, `--only alif,be` narrows.
- *
- * Usage: node tools/seed-strokes.mjs [--force] [--only alif,be]
- */
+/* A first draft of the pen path for each letter. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -43,11 +9,7 @@ import { fontFingerprint } from './font.mjs';
 
 const OUT_FILE = path.join(CONTENT_DIR, 'strokes.json');
 
-/**
- * The knobs live with the algorithm, in src/lib/skeletonise.js, because the
- * editor puts them on sliders and a copy here would be a second opinion about
- * what the shipped paths were seeded with.
- */
+/* The knobs live with the algorithm. */
 
 const force = process.argv.includes('--force');
 const onlyArg = process.argv.indexOf('--only');
@@ -75,17 +37,7 @@ if (!todo.length) {
 const browser = await chromium.launch(launchOptions());
 const page = await browser.newPage();
 
-/**
- * Rasterises one glyph and returns its skeleton, in font units.
- *
- * The geometry is src/lib/skeletonise.js — the same module the editor's
- * "Trace again" runs, so what a person tunes on screen and what gets committed
- * here are one implementation rather than two copies that drift.
- *
- * Loaded into the page as a module from a blob URL rather than pasted in as
- * text: that runs the file exactly as written, with no surgery on the source to
- * make it evaluatable, so this cannot quietly diverge from what it imports.
- */
+/* Rasterises one glyph and returns its skeleton, in font units. */
 async function loadSkeletoniser() {
   const source = fs.readFileSync(path.join(ROOT, 'src', 'lib', 'skeletonise.js'), 'utf8');
   await page.evaluate(async (text) => {
@@ -115,8 +67,7 @@ for (const id of todo) {
 
 await browser.close();
 
-// Sorted by the alphabet rather than by when each was seeded, so a diff after a
-// correction session shows what changed instead of what moved.
+// Sorted by the alphabet rather than by when each was seeded.
 const ordered = {};
 for (const letter of letters) {
   if (result.letters[letter.id]) ordered[letter.id] = result.letters[letter.id];

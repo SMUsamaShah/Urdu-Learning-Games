@@ -7,33 +7,14 @@ import { COLORS, chunkyGlyphEm, familyColor, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
 import { chooseWeighted, weightOf } from '../lib/mastery.js';
 
-/**
- * What comes next in the alphabet?
- *
- * The one thing the qaida teaches that nothing else here does. Every other game
- * is about a letter on its own — its shape, its sound, the word it starts. This
- * is about the *order*, which is what a child needs before they can be handed a
- * qaida and follow along, and it is the reason reciting the alphabet is the
- * first thing anyone is taught.
- *
- * The window is a run of consecutive letters with one missing. Early on the
- * missing one is the last, which is the question a child can actually answer:
- * "ا ب پ ت ... and then?". Once they are getting those, the gap moves into the
- * middle, which is a harder question because it cannot be answered by simply
- * carrying on — you have to know what belongs between two things.
- *
- * Distractors are the letters either side in the sequence. Off-by-one is what
- * knowing an alphabet imperfectly actually looks like, so a line-up of the real
- * neighbours is the exercise; a line-up of letters from the far end of the
- * alphabet would be a different, easier game.
- */
+/* What comes next in the alphabet? */
 
-/** Letters shown in the caterpillar, gap included. */
+/* Letters shown in the caterpillar, gap included. */
 const WINDOW = 5;
 
 const SEGMENT = 104;
 
-/** The area a letter is drawn in inside a caterpillar segment. */
+/* The area a letter is drawn in inside a caterpillar segment. */
 const SEGMENT_BOX = { width: SEGMENT - 34, height: SEGMENT - 40 };
 const SEGMENT_STEP = 96;
 
@@ -49,9 +30,9 @@ export default class Sequence extends QuizScene {
     this.promptY = 268;
     /** @type {string[]} */
     this.sequence = [];
-    /** Index in `sequence` of the letter being asked for. */
+    /* Index in `sequence` of the letter being asked for. */
     this.gapIndex = 0;
-    /** Where the gap sits in the window: 0 is the oldest letter shown. */
+    /* Where the gap sits in the window: 0 is the oldest letter shown. */
     this.gapSlot = WINDOW - 1;
   }
 
@@ -60,18 +41,13 @@ export default class Sequence extends QuizScene {
   }
 
   pickTarget(previous) {
-    // The gap only moves off the end once they have a few in a row. "What comes
-    // next" is a question about carrying on; "what goes in the hole" is a
-    // question about what belongs between two letters, and it is much harder.
+    // The gap only moves off the end once they have a few in a row.
     this.gapSlot = this.streak >= 4 ? Phaser.Math.Between(2, WINDOW - 1) : WINDOW - 1;
 
-    // Enough letters before the gap to show a run, and enough after to fill the
-    // window when the gap is not at the end.
+    // Enough letters before the gap to show a run, and enough after to fill the window when the gap is not at the end.
     const lowest = WINDOW - 1;
     const highest = this.sequence.length - 1 - (WINDOW - 1 - this.gapSlot);
-    // Weighted by the letter that would land in the gap, which is the one being
-    // asked for. The rest of the window is context and is not weighed, unlike
-    // Caterpillar where every hole in the run is a question.
+    // Weight the run by the letter in the gap.
     const places = Array.from({ length: highest - lowest + 1 }, (unused, i) => lowest + i);
     let index = chooseWeighted(places, (at) => weightOf('letter', this.sequence[at]));
     if (this.sequence[index] === previous && highest > lowest) {
@@ -83,14 +59,10 @@ export default class Sequence extends QuizScene {
   }
 
   lineUpFor(target, count) {
-    // Letters already visible in the caterpillar are never offered. Seeing ع
-    // sitting in the body and also in the answers asks the child to believe two
-    // contradictory things at once, and the answer stops being findable by
-    // reasoning about the sequence at all.
+    // Letters already visible in the caterpillar are never offered.
     const shown = new Set(this.window());
 
-    // Nearest neighbours first, so two choices is a real "is it this one or the
-    // next one?" rather than an easy pair.
+    // Nearest neighbours first, so two choices is a real "is it this one or the next one?" rather than an easy pair.
     const others = this.sequence
       .filter((id) => id !== target && !shown.has(id))
       .sort(
@@ -106,7 +78,7 @@ export default class Sequence extends QuizScene {
     ]);
   }
 
-  /** The letters visible in the caterpillar, in sequence order. */
+  /* The letters visible in the caterpillar, in sequence order. */
   window() {
     const start = this.gapIndex - this.gapSlot;
     return Array.from({ length: WINDOW }, (_, i) => this.sequence[start + i]);
@@ -115,16 +87,12 @@ export default class Sequence extends QuizScene {
   buildPrompt(layer) {
     const letters = this.window();
 
-    // Right to left, matching the script: the run starts at the right, under
-    // the caterpillar's head, and the gap is wherever it falls along the body.
+    // Start the run at the right, under the caterpillar's head.
     const xFor = (slot) => ((WINDOW - 1) / 2 - slot) * SEGMENT_STEP;
 
     this.drawHead(layer, xFor(-1));
 
-    // One em along the whole caterpillar, so the run reads as the alphabet in
-    // order rather than as letters of assorted importance. Measured across the
-    // whole alphabet, not this window's five, or the size would shift as the
-    // window moved.
+    // One em along the whole caterpillar.
     const segmentFit = fitEmAlone(
       allLetterGlyphs('isolated'),
       SEGMENT_BOX.width,
@@ -137,8 +105,7 @@ export default class Sequence extends QuizScene {
       const body = this.add.graphics();
 
       if (isGap) {
-        // A hole in the body rather than a blank space, so it reads as
-        // something missing from this caterpillar rather than as the end of it.
+        // A hole in the body rather than a blank space.
         body.fillStyle(0xffffff, 0.85);
         body.fillCircle(x, 0, SEGMENT / 2);
         body.lineStyle(5, COLORS.outline, 0.35);
@@ -154,9 +121,6 @@ export default class Sequence extends QuizScene {
           .setOrigin(0.5);
         layer.add(mark);
         // The question mark pulses, and nothing else on the caterpillar does.
-        // It is the one place on the screen the answer goes, and a child who
-        // has not understood the question yet can find it by following the
-        // thing that is moving.
         breathe(this, mark, { amount: 0.16, duration: 900 });
         this.gapMarker = { x, y: this.promptY };
         return;
@@ -185,12 +149,10 @@ export default class Sequence extends QuizScene {
       );
     });
 
-    // The whole caterpillar rocks, a segment at a time from the head back, so it
-    // reads as one animal crawling rather than as five circles in a row.
+    // The whole caterpillar rocks.
     bob(this, layer, { distance: 5, duration: 2400 });
 
-    // Under the gap, not under the middle of the caterpillar: it is pointing at
-    // a place, so it has to be next to that place.
+    // Under the gap, not under the middle of the caterpillar: it is pointing at a place, so it has to be next to that place.
     layer.add(
       label(this, xFor(this.gapSlot), SEGMENT / 2 + 34, 'which one goes here?', {
         size: 15,
@@ -198,7 +160,7 @@ export default class Sequence extends QuizScene {
     );
   }
 
-  /** The caterpillar's face, so the row of letters is an animal. */
+  /* The caterpillar's face, so the row of letters is an animal. */
   drawHead(layer, x) {
     const head = this.add.graphics();
     head.fillStyle(COLORS.shadow, 0.2);
@@ -239,9 +201,7 @@ export default class Sequence extends QuizScene {
   }
 
   decorateTile(tile, id, size) {
-    // A different em from the caterpillar's segments, because the tiles are a
-    // different size; what matters is that the choices match each other, so that
-    // none of them is picked out by being bigger than the rest.
+    // A different em from the caterpillar's segments.
     const fit = fitEmAlone(allLetterGlyphs('isolated'), size - 48, size - 52);
     tile.add(
       addGlyph(this, 0, 0, `seq-choice:em${Math.round(fit.em)}:${id}`,
@@ -249,19 +209,13 @@ export default class Sequence extends QuizScene {
     );
   }
 
-  /**
-   * Reads the run up to the gap, and stops there.
-   *
-   * Deliberately not the answer: the whole question is what comes after those,
-   * and hearing the letters in order is the cue that makes it answerable rather
-   * than a guess. Naming the target here would be the entire game.
-   */
+  /* Reads the run up to the gap, and stops there. */
   speak() {
     const before = this.window().slice(0, this.gapSlot);
     sayLetters(before.slice(-3));
   }
 
-  /** Now it can be named, because it has been found. */
+  /* Now it can be named, because it has been found. */
   onCorrect(id) {
     this.time.delayedCall(400, () => sayLetter(id));
   }

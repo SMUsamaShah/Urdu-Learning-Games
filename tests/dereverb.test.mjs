@@ -1,37 +1,14 @@
-/**
- * Does taking the room off actually take the room off.
- *
- * This is the check the audio pipeline did not have. `verify:polish` builds its
- * test signal out of white noise plus a syllable — a signal with no reverb
- * anywhere in it — so however wrong the code was, that check could not fail on
- * reverb, and for a while the app was described as reducing the room when what
- * it reduced was the noise floor.
- *
- * So the signal here is built the other way round: a dry syllable convolved
- * with a room whose reverberation time this file *chose*. That makes both
- * questions answerable. Is the measured T60 the one that went in, and is the
- * measured T60 of what comes out lower than what went in.
- *
- * Run: npm test
- */
+/* Does taking the room off actually take the room off. */
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { dereverb, estimateT60 } from '../src/lib/dereverb.js';
 
-/**
- * Deliberately low.
- *
- * Everything in dereverb.js is specified in milliseconds, so the sample rate is
- * not a variable it can be wrong about — and convolving a room onto a signal
- * costs one multiply per sample per tap, which at a phone's 48 kHz is a
- * billion of them per test. The real rate is covered where it belongs, through
- * the browser, in tools/verify-take-polish.mjs.
- */
+/* Deliberately low. */
 const RATE = 12000;
 
-/** A deterministic noise source, so a run that fails fails again. */
+/* A deterministic noise source, so a run that fails fails again. */
 function noise(seed = 1) {
   let state = seed >>> 0;
   return () => {
@@ -40,11 +17,7 @@ function noise(seed = 1) {
   };
 }
 
-/**
- * A word: a couple of harmonics under an envelope that starts and stops softly,
- * with a little air either side. Not speech, but it has speech's shape — a
- * bare sine would decay into the room far more cleanly than a voice does.
- */
+/* A word: a couple of harmonics under an envelope that starts and stops softly, with a little air either side. */
 function syllable({ lead = 0.15, length = 0.35, tail = 0.9, floor = 0.0004 } = {}) {
   const random = noise(7);
   const total = Math.round((lead + length + tail) * RATE);
@@ -63,13 +36,7 @@ function syllable({ lead = 0.15, length = 0.35, tail = 0.9, floor = 0.0004 } = {
   return out;
 }
 
-/**
- * A room, as an exponentially decaying burst of noise.
- *
- * That is what a real impulse response looks like after the first few
- * milliseconds, and its decay rate is exactly the T60 asked for — which is what
- * makes the estimate checkable rather than merely plausible.
- */
+/* A room, as an exponentially decaying burst of noise. */
 function room(t60, { direct = 1, wet = 0.5 } = {}) {
   const random = noise(23);
   const length = Math.round(t60 * 1.2 * RATE);
@@ -82,13 +49,7 @@ function room(t60, { direct = 1, wet = 0.5 } = {}) {
   return impulse;
 }
 
-/**
- * Each room built once: they are the expensive part of this file.
- *
- * Normalised, because a convolution sums thousands of random taps and can come
- * out well past full scale, which no recording ever does — a microphone that
- * went past 1 clipped instead.
- */
+/* Each room built once: they are the expensive part of this file. */
 const rooms = new Map();
 const reverberant = (t60) => {
   if (!rooms.has(t60)) {
@@ -111,7 +72,7 @@ function convolve(signal, impulse) {
   return out;
 }
 
-/** RMS over a window, in dB. */
+/* RMS over a window, in dB. */
 function rmsDb(samples, from, to) {
   let sum = 0;
   const a = Math.max(0, Math.round(from));
@@ -122,16 +83,12 @@ function rmsDb(samples, from, to) {
 
 describe('measuring the room', () => {
   test('reads back the reverberation time it was given', () => {
-    // The estimate is a straight-line fit to a decay, extrapolated to 60 dB, so
-    // it is never exact. Within a third is plenty: everything downstream uses
-    // it to set a subtraction depth, not to describe a concert hall.
+    // The estimate is a straight-line fit to a decay, extrapolated to 60 dB, so it is never exact.
     for (const t60 of [0.4, 0.7, 1.0]) {
       const wet = reverberant(t60);
       const measured = estimateT60(wet, RATE);
       assert.ok(measured, `no decay found in a room of ${t60}s`);
-      // It reads about 13% low across the range, consistently. That is the
-      // safe direction — the number sets how hard the tail is subtracted, so
-      // reading low under-subtracts — and it is why this band is not tighter.
+      // It reads about 13% low across the range, consistently.
       const ratio = measured.t60 / t60;
       assert.ok(
         ratio > 0.66 && ratio < 1.5,
@@ -141,13 +98,10 @@ describe('measuring the room', () => {
   });
 
   test('a dry take has no room to find, or a very short one', () => {
-    // Not "returns null": a real recording always has *some* decay, if only the
-    // microphone's. What matters is that it comes out short enough that
-    // dereverb() declines, which is the next test.
+    // Not "returns null": a real recording always has *some* decay, if only the microphone's.
     const measured = estimateT60(syllable(), RATE);
     if (measured) {
       // A dry syllable measures about 0.24s — its own release, read as a room.
-      // MIN_T60 sits at 0.3 for exactly this reason.
       assert.ok(measured.t60 < 0.3, `a dry take measured as a ${measured.t60.toFixed(2)}s room`);
     }
   });
@@ -155,14 +109,7 @@ describe('measuring the room', () => {
 
 describe('taking it off', () => {
   test('the direct sound gains on the room', () => {
-    // Direct-to-reverberant ratio: the word against what the room is still
-    // doing after it. This, not the decay slope, is the thing to measure.
-    //
-    // Spectral subtraction with a floor cannot make a tail decay *faster* —
-    // where it is working fully it scales the tail down by a fixed amount, so
-    // the line on a decay curve moves down without changing its angle, and the
-    // measured T60 barely shifts. What changes, and what a listener hears, is
-    // how far below the voice the room now sits.
+    // Direct-to-reverberant ratio: the word against what the room is still doing after it.
     const wet = reverberant(0.8);
     const result = dereverb(wet, RATE);
     assert.ok(result, 'declined a take with an obvious room on it');
@@ -178,8 +125,7 @@ describe('taking it off', () => {
   });
 
   test('the tail is quieter where the word is not', () => {
-    // The measurement above is a slope. This is the thing a person hears: how
-    // loud the room still is a third of a second after the word stopped.
+    // The measurement above is a slope.
     const wet = reverberant(0.8);
     const result = dereverb(wet, RATE);
     assert.ok(result);
@@ -195,9 +141,7 @@ describe('taking it off', () => {
   });
 
   test('the word itself survives', () => {
-    // The failure mode that matters. A subtraction aggressive enough to kill
-    // the tail can hollow out the voice with it, and a clip of a parent saying
-    // ب through a duvet is worse than one with a room on it.
+    // The failure mode that matters.
     const wet = reverberant(0.8);
     const result = dereverb(wet, RATE);
     assert.ok(result);
@@ -213,8 +157,7 @@ describe('taking it off', () => {
   });
 
   test('a dry take is left alone', () => {
-    // Declining is the whole safety property: there is no room to remove, so
-    // anything this did to the signal would be damage.
+    // Declining is the whole safety property: there is no room to remove, so anything this did to the signal would be damage.
     assert.equal(dereverb(syllable(), RATE), null);
   });
 
@@ -222,15 +165,12 @@ describe('taking it off', () => {
     assert.equal(dereverb(new Float32Array(0), RATE), null);
     assert.equal(dereverb(new Float32Array(64), RATE), null);
     assert.equal(estimateT60(new Float32Array(8), RATE), null);
-    // A room far longer than any a parent records a word in. Acting on a number
-    // that wrong is worse than acting on none — see MAX_T60.
+    // A room far longer than any a parent records a word in.
     assert.equal(dereverb(reverberant(0.8), RATE, { t60: 4 }), null);
   });
 
   test('what comes back is the same length, and no louder', () => {
-    // Subtraction only ever removes, so anything louder than it went in means
-    // the overlap-add is not reconstructing — and the level stage downstream
-    // would then be levelling a reconstruction error.
+    // Subtraction only ever removes.
     const wet = reverberant(0.8);
     const result = dereverb(wet, RATE);
     assert.equal(result.samples.length, wet.length);

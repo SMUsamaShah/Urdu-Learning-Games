@@ -1,59 +1,4 @@
-/**
- * Getting something right: the sound of it, and the credit for it.
- *
- * Every one of the twenty-four games already called in here at exactly the
- * moment a child got something right, so this is where the score is kept too.
- * The alternative was a line in each game, twenty-four chances to forget it,
- * and a twenty-fifth game that silently awards nothing. See progress.js.
- *
- * ## Why this is not in sfx.js
- *
- * The reward used to be three oscillator beeps — a rising major triad — and it
- * was correct and boring, which for the single most-heard sound in the app is
- * the wrong trade. A child answers a hundred questions in a session; that noise
- * is the payoff for every one of them, and it needs to be worth hearing the
- * hundredth time.
- *
- * The rest of sfx.js is right to stay synthesised. A tap blip, a balloon pop
- * and a page whoosh are gestures, they are over in a tenth of a second, and
- * nobody has ever wished a UI click sounded richer. A reward is a *musical*
- * event and gets judged as one.
- *
- * So the flourishes are played on the same sampled instrument as the background
- * tune, through a reverb, with real chords: a struck glockenspiel arpeggio
- * ringing into a room, rather than three sine waves in a row.
- *
- * ## Three sizes, and keeping them apart
- *
- * A reward that is the same size every time stops being a reward. So:
- *
- *   - `rightAnswer()` — one question. Short, bright, up.
- *   - `milestone()` — a run of five. Longer, with a chord under it.
- *   - `finished()` — a whole activity done. The big one, with a roll into it.
- *
- * They are deliberately the same instrument and the same key as each other and
- * as the music, so they sound like the app rather than like three sound packs.
- *
- * ## Falling back
- *
- * All of this needs Tone and a network fetch of five short samples. Until that
- * resolves — and for ever, if it fails — the caller gets the old synthesised
- * chime instead. Nothing here is allowed to make a right answer silent.
- *
- * ## Not only the sound
- *
- * These two are named for the event rather than for the noise, and they have
- * not been only a noise for a while: `rightAnswer` pours the water and
- * `wrongAnswer` takes some back. They now also tell mastery.js which letter it
- * was, so the games can deal the hard ones more often.
- *
- * That goes here rather than in a second call next to each of these, in
- * seventeen scenes. Two things that must happen on exactly the same event, at
- * exactly the same moment, written as two calls in seventeen places, come apart
- * the first time somebody copies a scene — and the failure is silent, because a
- * game that reports its outcome and forgets to record it looks completely
- * normal and simply never learns anything.
- */
+/* Getting something right: the sound of it, and the credit for it. */
 
 import { masterOut } from './volume.js';
 import * as mastery from './mastery.js';
@@ -62,59 +7,33 @@ import { loadTone, renderedChannels } from './tone-setup.js';
 import * as progress from './progress.js';
 import * as sfx from './sfx.js';
 
-/**
- * The voice the rewards are played on.
- *
- * Glockenspiel rather than the tune's music box: it has to cut through the
- * music without the music being ducked for it, and a bright metal strike does
- * that where a soft one does not. It is precached alongside the tune's own
- * instrument — see vite.config.js.
- */
+/* The voice the rewards are played on. */
 const INSTRUMENT = 'glockenspiel';
 
-/** C major pentatonic, matching the tune, so a flourish is never a clash. */
+/* C major pentatonic, matching the tune, so a flourish is never a clash. */
 const UP = ['C5', 'D5', 'E5', 'G5', 'A5', 'C6'];
 
 let ready = null;
 let voice = null;
 
-/**
- * Builds the flourish voice, once, in the background.
- *
- * Called on the first right answer rather than at startup: it is a fetch and a
- * reverb render, and doing it during the loading screen delays the menu for a
- * sound nobody needs for another thirty seconds. The first reward of a session
- * therefore falls back to the synthesised chime, which is the correct trade —
- * silence would not be.
- */
+/* Builds the flourish voice, once, in the background. */
 function prepare() {
   ready ??= (async () => {
     const T = await loadTone();
-    // Into the app's master rather than Tone's own destination, so the volume
-    // setting reaches the celebrations too. Tone connects to a native node
-    // happily. The offline render below keeps Tone's destination, because it is
-    // measuring the instrument rather than playing it.
+    // Into the app's master rather than Tone's own destination, so the volume setting reaches the celebrations too.
     voice = { T, ...(await buildVoice(T, masterOut() ?? T.getDestination())) };
     return voice;
   })().catch(() => {
-    // Kept null, so every call falls through to the synthesised version rather
-    // than retrying a fetch that is not going to start working.
+    // Keep the fallback available if sampled audio cannot load.
     voice = null;
     return null;
   });
   return ready;
 }
 
-/**
- * The sampler and its reverb, built into a destination.
- *
- * Takes its destination so the identical voice serves the live path and the
- * offline render — the same reason createBand does in music.js. A renderer that
- * declares its own instrument is a preview of something else.
- */
+/* The sampler and its reverb, built into a destination. */
 async function buildVoice(T, destination) {
-  // Short and bright. A long tail on something that fires every few seconds
-  // turns into a wash; this is just enough room to stop it sounding dry.
+  // Short and bright.
   const reverb = new T.Reverb({ decay: 1.6, wet: 0.26 });
   reverb.connect(destination);
   await reverb.ready;
@@ -132,14 +51,7 @@ async function buildVoice(T, destination) {
   return { sampler, reverb };
 }
 
-/**
- * Plays notes at offsets in seconds from now, if the voice is up.
- *
- * The fallback fires only when *nothing* was scheduled. Wrapping the whole loop
- * and falling back on any failure means a throw on the fourth note plays the
- * synthesised chime on top of three notes already committed to the audio clock
- * — two rewards at once, which is worse than either.
- */
+/* Plays notes at offsets in seconds from now, if the voice is up. */
 function play(notes, fallback) {
   prepare();
   if (!voice) {
@@ -154,29 +66,15 @@ function play(notes, fallback) {
       sampler.triggerAttackRelease(note, duration, now + at, velocity);
       sounded++;
     } catch {
-      // A late or duplicated trigger; see the note on `safely` in music.js.
+      // Ignore late or duplicate triggers.
     }
   }
   if (!sounded) fallback();
 }
 
-/**
- * The three flourishes, as [note, seconds from the start, length, velocity].
- *
- * Written once and used by both the live path and the renderer below. They were
- * two copies for a while, which is a guaranteed drift: the preview would go on
- * sounding like whatever the app used to do.
- */
+/* The three flourishes, as [note, seconds from the start, length, velocity]. */
 const FLOURISHES = {
-  /**
-   * One right answer: four notes up the scale with the last one held, plus a
-   * fifth above it. That is the shape of every "yes!" in every game ever made,
-   * and it works because it is a question answered — three quick steps and
-   * somewhere to land.
-   *
-   * A function rather than a table, because it starts on a different step each
-   * time; a hundred right answers should not be a hundred identical noises.
-   */
+  /* One right answer: four notes up the scale with the last one held, plus a fifth above it. */
   rightAnswer() {
     const start = Math.floor(Math.random() * 2);
     return [
@@ -188,11 +86,7 @@ const FLOURISHES = {
     ];
   },
 
-  /**
-   * Five in a row: the same idea an octave wider, ending on a held triad rather
-   * than a single note. Audibly bigger than one answer without being the end of
-   * the world.
-   */
+  /* Five in a row: the same idea an octave wider, ending on a held triad rather than a single note. */
   milestone: () => [
     ['C5', 0, 0.14, 0.7],
     ['E5', 0.07, 0.14, 0.75],
@@ -204,10 +98,7 @@ const FLOURISHES = {
     ['C5', 0.31, 1.6, 0.45],
   ],
 
-  /**
-   * A whole activity finished. The one with a run-up: the notes start after the
-   * drum roll rather than under it.
-   */
+  /* A whole activity finished. */
   finished: () => [
     ['G4', 0.42, 0.12, 0.6],
     ['C5', 0.5, 0.12, 0.7],
@@ -220,12 +111,8 @@ const FLOURISHES = {
   ],
 };
 
-/**
- * One right answer.
- *
- * @param {{kind: string, id: string}} [subject] what was answered, so that
- *   mastery.js can stop dealing it so often. Left out by the games where a
- *   right answer is not about one particular letter.
+/** One right answer.
+ * @param {{kind: string, id: string}} [subject]
  */
 export function rightAnswer(subject) {
   play(FLOURISHES.rightAnswer(), () => sfx.correct());
@@ -233,67 +120,31 @@ export function rightAnswer(subject) {
   if (subject) mastery.record(subject.kind, subject.id, true);
 }
 
-/**
- * One wrong answer.
- *
- * The counterpart `rightAnswer` never had: the sound lived in every scene and
- * nothing central knew a mistake had happened, which was fine while a mistake
- * cost nothing. It costs two pours of water now, so there has to be one place
- * that knows.
- *
- * Still the nudge and not a buzzer, and still no fail state — see the note in
- * sfx.nudge and the one at the top of plant.js.
- *
- * Not called by the games where a wrong tap is the mechanic rather than a
- * mistake: turning over two cards that do not match in Pairs is how the game is
- * played, and charging for it would leave that screen unable to grow anything.
- */
+/* One wrong answer. */
 export function wrongAnswer(options = {}) {
-  // Balloons pops the balloon it was given, and a nudge on top of the pop is
-  // two sounds for one tap.
+  // Balloons pops the balloon it was given, and a nudge on top of the pop is two sounds for one tap.
   if (options.sound !== false) sfx.nudge();
   progress.setback();
-  // The letter that was *asked for*, never the one that was tapped. Reaching
-  // for ت when the question was ٹ is evidence about ٹ; it says nothing about
-  // whether he knows ت, and charging ت for it would slowly make every
-  // convincing distractor look like a letter he cannot do.
+  // The letter that was *asked for*, never the one that was tapped.
   if (options.subject) mastery.record(options.subject.kind, options.subject.id, false);
 }
 
-/** A run of five. */
+/* A run of five. */
 export function milestone() {
   play(FLOURISHES.milestone(), () => sfx.fanfare());
-  // Two on top of the one the answer itself earned. A run is worth more than
-  // the same number of answers spread out, which is the only place in this app
-  // where anything rewards not making a mistake.
+  // Two on top of the one the answer itself earned.
   progress.award(2);
 }
 
-/**
- * A whole activity finished — a board matched, a letter traced.
- *
- * The roll is still the synthesised one from sfx.js, because a drum roll is
- * noise rather than notes and that is exactly what oscillators and a filter are
- * good at. The fallback is delayed to match: firing it immediately puts the
- * synthesised finish *on top of* the roll instead of after it, which is what
- * the sampled version is careful not to do.
- */
+/* A whole activity finished — a board matched, a letter traced. */
 export function finished() {
   sfx.drumroll();
   play(FLOURISHES.finished(), () => setTimeout(() => sfx.tada(), 420));
-  // Enough to be worth finishing a board for, not so much that finishing three
-  // easy boards beats playing properly.
+  // Enough to be worth finishing a board for, not so much that finishing three easy boards beats playing properly.
   progress.award(3);
 }
 
-/**
- * Renders the flourishes back to back, for listening to.
- *
- * Same reason music.js can render itself: whether a reward sound is any good is
- * a question only a person can answer, and it should not take playing a game to
- * a milestone to hear one. Offline, so nothing depends on the main thread — see
- * the note on capture in tools/preview-music.mjs.
- *
+/** Renders the flourishes back to back for listening tests.
  * @returns {Promise<{sampleRate:number, channels:Float32Array[]}>}
  */
 export async function renderFlourishes() {
@@ -301,8 +152,7 @@ export async function renderFlourishes() {
   const buffer = await T.Offline(async () => {
     const { sampler } = await buildVoice(T, T.getDestination());
 
-    // Three right answers — they differ from each other — then a milestone and
-    // a finish, spaced so each is heard as its own event.
+    // Three right answers.
     const at = (notes, offset) => {
       for (const [note, t, duration, velocity] of notes) {
         sampler.triggerAttackRelease(note, duration, offset + t, velocity);
@@ -316,26 +166,12 @@ export async function renderFlourishes() {
   return renderedChannels(buffer);
 }
 
-/**
- * Warms the voice up.
- *
- * Called once the menu is up and the audio context has been unlocked, so that
- * the first right answer of a session gets the good sound rather than the
- * fallback. Safe to call repeatedly.
- */
+/* Warms the voice up. */
 export function prepareFlourishes() {
   prepare();
 }
 
-/**
- * Whether the sampled voice came up, or everything is falling back to the
- * synthesised chime.
- *
- * Exported for the volume check, which measures what reaches the speakers and
- * would otherwise report the fallback as though it were the sampler — two very
- * different signal paths that sound alike enough to be mistaken for each other.
- * A check that cannot tell which one it measured proves less than it claims.
- */
+/* Whether the sampled voice came up, or everything is falling back to the synthesised chime. */
 export function flourishVoiceReady() {
   return Boolean(voice);
 }

@@ -1,19 +1,4 @@
-/**
- * The colours the rail's indicators are drawn in.
- *
- * These used to be six hand-picked hex strings and are now twenty generated
- * ones, which trades one failure mode for another. Hand-picked, the risk was
- * choosing badly — a white jasmine went into the first six and was invisible on
- * the rail's cream panel. Generated, the risk is that the arithmetic quietly
- * produces a colour nobody would have chosen: two levels the same, or a hue
- * that lands on the background.
- *
- * Both of those are arithmetic, so they are checked here rather than by looking
- * at a screenshot. What a screenshot is still for — whether twenty flowers up a
- * cane is a record or a speckle — is `npm run preview-indicators`.
- *
- * Run: npm test
- */
+/* The colours the rail's indicators are drawn in. */
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,18 +14,10 @@ import {
 } from '../src/lib/indicators/canvas.js';
 import { VARIETIES, varietyFor } from '../src/lib/indicators/greenery.js';
 
-/**
- * Below this a shape is hard to pick out from the panel behind it.
- *
- * Lower than a text ratio on purpose: these are large solid shapes with their
- * own outlines and highlights. `readable()` in canvas.js walks a colour's
- * lightness down until it clears exactly this, so the test and the generator
- * agree by construction — what it is really asserting is that the generator was
- * *applied*, to every colour, including the ones added later.
- */
+/* Below this a shape is hard to pick out from the panel behind it. */
 const MIN_CONTRAST = 2.4;
 
-/** Two colours closer than this on the wheel read as the same colour. */
+/* Two colours closer than this on the wheel read as the same colour. */
 const MIN_HUE_GAP = 12;
 
 describe('level colours', () => {
@@ -60,8 +37,7 @@ describe('level colours', () => {
   });
 
   test('no hue is green', () => {
-    // A green flower on a green vine among green leaves is a flower nobody can
-    // see, which is why the wheel skips this quarter. See levelHue().
+    // A green flower on a green vine among green leaves is a flower nobody can see, which is why the wheel skips this quarter.
     for (let i = 0; i < LEVEL_CYCLE; i++) {
       const hue = levelHue(i);
       assert.ok(hue <= 75 || hue >= 165, `level ${i + 1} is at hue ${Math.round(hue)}`);
@@ -69,9 +45,7 @@ describe('level colours', () => {
   });
 
   test('consecutive levels are far apart on the wheel', () => {
-    // The comparison a child actually makes is with the level before, so being
-    // evenly spread over twenty is not enough — they have to be spread in the
-    // order they arrive.
+    // The comparison a child actually makes is with the level before.
     for (let i = 1; i < LEVEL_CYCLE; i++) {
       const gap = Math.abs(levelHue(i) - levelHue(i - 1));
       const round = Math.min(gap, 360 - gap);
@@ -82,8 +56,7 @@ describe('level colours', () => {
   test('the cycle wraps rather than running out', () => {
     assert.equal(levelColour(LEVEL_CYCLE), levelColour(0));
     assert.equal(levelColour(LEVEL_CYCLE * 3 + 7), levelColour(7));
-    // Negative levels cannot happen, but a modulo that goes wrong there is the
-    // kind of thing that only shows up as a crash on somebody's device.
+    // Negative levels cannot happen.
     assert.equal(levelColour(-1), levelColour(LEVEL_CYCLE - 1));
     assert.equal(levelTint(0), Number.parseInt(levelColour(0).slice(1), 16));
   });

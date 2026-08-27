@@ -1,80 +1,21 @@
-/**
- * A first draft of a letter's pen path, read off its outline.
- *
- * ## What it does
- *
- * content/glyphs.json stores *outlines* — the boundary of the ink. A pen path
- * is a *centreline*, and the two are not the same curve. Nor can the pieces be
- * told apart by counting contours: ص has two because its loop encloses a
- * counter, ٹ has three because of its toe, ت has two for two dots because the
- * pair is drawn as one shape. Only 19 of 38 letters fit "one body plus one
- * contour per dot".
- *
- * So the centreline is recovered the way it always is. Rasterise the shape,
- * split it into connected components, thin each to one pixel wide
- * (Zhang–Suen), trace what is left into chains, prune the spurs thinning leaves
- * at every terminal, and simplify what survives (Ramer–Douglas–Peucker).
- *
- * ## Why it lives in src/ rather than in the tool that used to own it
- *
- * This was written for tools/seed-strokes.mjs, which runs it inside a headless
- * Chromium because a canvas is the only place to rasterise. That is the same
- * canvas every browser has — so the algorithm was already browser code sitting
- * inside a Node script, reachable only by re-running a command line.
- *
- * It produced ج perfectly first time. Made adjustable and put in front of the
- * person doing the correcting, "draw this letter" becomes "turn four knobs
- * until it looks right", which is a far better use of somebody who can write
- * Urdu than dragging thirty points into place.
- *
- * The seeder still owns the *policy* — which letters, when, and never
- * overwriting a corrected one. This is only the geometry.
- */
+/* A first draft of a letter's pen path, read off its outline. */
 
-/**
- * The knobs, and what each is for.
- *
- * These were tuned against all 38 letters and are the defaults the shipped
- * paths were seeded with. They are exported because the editor puts them on
- * sliders: a letter that comes out wrong is usually one knob away from coming
- * out right, and which knob is obvious from watching it move.
- */
+/* The knobs, and what each is for. */
 export const SEED_DEFAULTS = {
-  /**
-   * How tall the glyph is rasterised for thinning, in pixels.
-   *
-   * Big enough that a Nastaliq hairline is several pixels across — the thinner
-   * needs width to find a middle — and small enough to be instant. Raising it
-   * finds detail in a fine letter; lowering it smooths a ragged one.
-   */
+  /* How tall the glyph is rasterised for thinning, in pixels. */
   rasterHeight: 320,
-  /**
-   * A component this small, and this close to round, is a dot rather than a
-   * stroke: dabbed, not dragged.
-   *
-   * Measured as the component's box against the glyph's box in *both*
-   * directions, relative rather than absolute because ا is a tenth the width of
-   * ص. Ink area was the obvious measure and it is wrong: a Nastaliq curve is
-   * thin, so ژ's body covers under a twentieth of its own bounding box and was
-   * being called a dot — the letter came back as three dots and no letter.
-   */
+  /* A component this small, and this close to round, is a dot rather than a stroke: dabbed, not dragged. */
   dab: { maxSpan: 0.34, aspect: 2.2 },
-  /** Spurs shorter than this fraction of the longest path are thinning noise. */
+  /* Spurs shorter than this fraction of the longest path are thinning noise. */
   prune: 0.22,
-  /** Ramer–Douglas–Peucker tolerance, in raster pixels. */
+  /* Ramer–Douglas–Peucker tolerance, in raster pixels. */
   simplify: 2.2,
 };
 
-/**
- * Traces one glyph.
- *
- * Needs a canvas, so it only runs in a browser — which is where both callers
- * are: the editor directly, and the seeder inside a headless Chromium.
- *
+/** Traces one glyph.
  * @param {{d: string, bbox: number[]}} glyph one form out of glyphs.json
  * @param {Partial<typeof SEED_DEFAULTS>} [options]
  * @returns {{kind: 'drag'|'dab', points: [number, number][]}[]} in font units,
- *   rightmost stroke first because that is the direction the script is written
  */
 export function skeletonise(glyph, options = {}) {
   const { rasterHeight, dab, prune, simplify } = { ...SEED_DEFAULTS, ...options };
@@ -98,11 +39,9 @@ export function skeletonise(glyph, options = {}) {
   const at = (grid, x, y) =>
     x < 0 || y < 0 || x >= width || y >= height ? 0 : grid[y * width + x];
 
-  /** 1 where there is ink. */
+  /* 1 where there is ink. */
   const ink = new Uint8Array(width * height);
   for (let i = 0; i < ink.length; i++) ink[i] = alpha[i * 4 + 3] > 128 ? 1 : 0;
-
-  // --- connected components of the ink, so dots can be told from strokes
 
   const label = new Int32Array(width * height).fill(-1);
   const components = [];
@@ -141,8 +80,6 @@ export function skeletonise(glyph, options = {}) {
     components.push({ id, pixels, minX, maxX, minY, maxY });
   }
 
-  // --- Zhang–Suen thinning, one component at a time
-
   const thin = (pixels) => {
     const grid = new Uint8Array(width * height);
     for (const p of pixels) grid[p] = 1;
@@ -169,8 +106,7 @@ export function skeletonise(glyph, options = {}) {
           const n = neighbours(x, y);
           const filled = n.reduce((a, b) => a + b, 0);
           if (filled < 2 || filled > 6) continue;
-          // Transitions from 0 to 1 going round the ring. Exactly one means
-          // removing this pixel cannot break the shape in two.
+          // Transitions from 0 to 1 going round the ring.
           let transitions = 0;
           for (let i = 0; i < 8; i++) {
             if (n[i] === 0 && n[(i + 1) % 8] === 1) transitions++;
@@ -194,8 +130,6 @@ export function skeletonise(glyph, options = {}) {
     return grid;
   };
 
-  // --- trace a thinned component into polylines
-
   const trace = (grid, pixels) => {
     const live = pixels.filter((p) => grid[p]);
     const around = (p) => {
@@ -215,20 +149,7 @@ export function skeletonise(glyph, options = {}) {
       return found;
     };
 
-    /**
-     * How many separate ways the skeleton leaves this pixel.
-     *
-     * Counted as runs of ink around the eight-neighbour ring, not as a
-     * number of neighbours, and the difference is the whole reason this
-     * function exists. A skeleton climbing diagonally goes
-     *
-     *     . X        and the corner pixels have three neighbours each
-     *     X X        while plainly being the middle of one line.
-     *
-     * Counting neighbours therefore reads a smooth curve as a chain of
-     * junctions, which cut ر — a single arc — into six two-point stubs.
-     * Runs give 2 there and 3 at a real branch.
-     */
+    /* How many separate ways the skeleton leaves this pixel. */
     const degreeAt = (p) => {
       const x = p % width;
       const y = (p - x) / width;
@@ -250,17 +171,14 @@ export function skeletonise(glyph, options = {}) {
     };
 
     const degree = new Map(live.map((p) => [p, degreeAt(p)]));
-    // Ends and junctions are where a path can begin or stop; everything
-    // else is the middle of one.
+    // Ends and junctions are where a path can begin or stop; everything else is the middle of one.
     const nodes = live.filter((p) => degree.get(p) !== 2);
     const used = new Set();
     const paths = [];
 
     const walk = (start, first) => {
       const path = [start];
-      // Tracked rather than just remembering the previous pixel: on a
-      // diagonal staircase the next pixel along *is* adjacent to the one
-      // before it, so "anything but where I came from" walks in circles.
+      // Tracked rather than just remembering the previous pixel.
       const seen = new Set([start]);
       let current = first;
       for (;;) {
@@ -302,22 +220,10 @@ export function skeletonise(glyph, options = {}) {
     return paths.map((p) => p.map((q) => ({ x: q % width, y: (q - (q % width)) / width })));
   };
 
-  /**
-   * Stitches the fragments back into strokes.
-   *
-   * Tracing has to stop wherever the skeleton branches, so one pen stroke
-   * that happens to pass a junction comes back as several pieces. Left
-   * alone that is what turned ڑ into seventeen strokes and ھ into fourteen.
-   *
-   * At each junction the pieces are paired by which two carry on straightest
-   * through it — a pen going round a curve barely turns, where a real branch
-   * like the toe of ٹ leaves at an angle. Pairs are then walked into chains.
-   * Whatever is left unpaired stays its own stroke, which is the right
-   * answer for a branch.
-   */
+  /* Stitches the fragments back into strokes. */
   const chain = (paths) => {
     const key = (p) => `${p.x},${p.y}`;
-    /** Unit vector leaving `end`, measured a few pixels in so noise averages out. */
+    /* Unit vector leaving `end`, measured a few pixels in so noise averages out. */
     const heading = (points, fromStart) => {
       const ordered = fromStart ? points : [...points].reverse();
       const a = ordered[0];
@@ -326,7 +232,7 @@ export function skeletonise(glyph, options = {}) {
       return { x: (b.x - a.x) / length, y: (b.y - a.y) / length };
     };
 
-    /** Every path end, grouped by the point it sits on. */
+    /* Every path end, grouped by the point it sits on. */
     const atPoint = new Map();
     paths.forEach((points, index) => {
       for (const fromStart of [true, false]) {
@@ -342,14 +248,12 @@ export function skeletonise(glyph, options = {}) {
     for (const ends of atPoint.values()) {
       if (ends.length < 2) continue;
       const taken = new Set();
-      // Greedy: the straightest pair first, then the straightest of what is
-      // left. Two passes over a handful of ends, so the cost is nothing.
+      // Greedy: the straightest pair first, then the straightest of what is left.
       const candidates = [];
       for (let i = 0; i < ends.length; i++) {
         for (let j = i + 1; j < ends.length; j++) {
           if (ends[i].index === ends[j].index) continue;
-          // Both headings point away from the shared point, so carrying
-          // straight on means they point opposite ways.
+          // Both headings point away from the shared point, so carrying straight on means they point opposite ways.
           const dot = ends[i].dir.x * ends[j].dir.x + ends[i].dir.y * ends[j].dir.y;
           candidates.push({ i, j, dot });
         }
@@ -372,8 +276,7 @@ export function skeletonise(glyph, options = {}) {
     for (let seed = 0; seed < paths.length; seed++) {
       if (used.has(seed)) continue;
 
-      // Walk back to one end of this chain first, so the result is not cut
-      // in half at whichever piece happened to come first.
+      // Walk back to one end of this chain first, so the result is not cut in half at whichever piece happened to come first.
       let head = seed;
       let headFromStart = true;
       const seen = new Set([seed]);
@@ -411,14 +314,10 @@ export function skeletonise(glyph, options = {}) {
     return total;
   };
 
-  /** Ramer–Douglas–Peucker. */
+  /* Ramer–Douglas–Peucker. */
   const reduce = (points, tolerance) => {
     if (points.length < 3) return points;
-    // A closed loop — ہ, the bowl of ص — has its first and last point in the
-    // same place, and the perpendicular distance to a zero-length line is
-    // meaningless: every point measures the same and the whole loop reduces
-    // to two points. Split it at the point furthest from the start and
-    // reduce each half against a line that actually exists.
+    // Split closed loops at their farthest point.
     const [head] = points;
     const tail = points[points.length - 1];
     if (Math.hypot(tail.x - head.x, tail.y - head.y) < 1.5) {
@@ -458,8 +357,6 @@ export function skeletonise(glyph, options = {}) {
     ];
   };
 
-  // --- put it together
-
   const out = [];
 
   for (const component of components) {
@@ -482,9 +379,7 @@ export function skeletonise(glyph, options = {}) {
     let paths = trace(grid, component.pixels);
     if (!paths.length) continue;
 
-    // Prune before chaining and again after. Before, so a spur at a
-    // terminal is not stitched into the stroke it hangs off; after, because
-    // chaining can leave a genuinely short leftover.
+    // Prune before chaining and again after.
     const spur = Math.max(...paths.map(length)) * prune;
     paths = chain(paths.filter((p) => length(p) >= spur));
     const longest = Math.max(...paths.map(length));

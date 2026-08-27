@@ -1,22 +1,4 @@
-/**
- * Local server for the tracing studio.
- *
- * The seeder in tools/seed-strokes.mjs gets a pen path roughly right and cannot
- * get it right: thinning knows nothing about writing, so it cannot say which
- * end a stroke starts from or what order the strokes come in. Somebody who
- * writes Urdu has to say. This is where they say it.
- *
- * Patterned on tools/record-studio/, which solves the same shape of problem —
- * a browser is the only sane place to draw, and the result has to land in the
- * repo. Dependency-free and bound to localhost, because it writes files.
- *
- * The editing itself is not here: it is src/ui/stroke-editor.js, served over
- * `/lib/` and shared with the app's settings screen, the same way this server's
- * sibling shares the microphone code. This process is the half that is
- * different — reading and writing content/strokes.json.
- *
- * Usage: npm run trace-studio
- */
+/* Local server for the tracing studio. */
 
 import fs from 'node:fs';
 import http from 'node:http';
@@ -36,19 +18,13 @@ const STATIC = {
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
 };
 
-/**
- * The editor, shared with the app so the studio and the tablet run the same
- * code rather than two copies that drift apart.
- *
- * Allow-listed by name rather than resolved from the URL: this serves files out
- * of src/, and a path that came from a request must never reach the filesystem.
- */
+/* The editor, shared with the app so the studio and the tablet run the same code rather than two copies that drift apart. */
 const SHARED_UI = {
   'stroke-editor.js': 'text/javascript; charset=utf-8',
   'stroke-editor.css': 'text/css; charset=utf-8',
 };
 
-/** Shared with the app from src/lib rather than src/ui. */
+/* Shared with the app from src/lib rather than src/ui. */
 const SHARED_LIB = {
   'skeletonise.js': 'text/javascript; charset=utf-8',
 };
@@ -68,8 +44,7 @@ function readBody(req) {
     let size = 0;
     req.on('data', (c) => {
       size += c.length;
-      // A letter's strokes are a few hundred numbers; anything near this is a
-      // bug rather than a big letter.
+      // A letter's strokes are a few hundred numbers; anything near this is a bug rather than a big letter.
       if (size > 2 * 1024 * 1024) {
         reject(new Error('body too large'));
         req.destroy();
@@ -84,14 +59,7 @@ function readBody(req) {
 
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
-/**
- * Writes one letter back, keeping the file in alphabet order.
- *
- * Whole-file rewrite rather than a patch: it is 38 entries, and a diff that
- * shows only the letter that changed is worth more here than saving a few
- * milliseconds. Order comes from letters.json so a save never reshuffles the
- * file and makes the diff unreadable.
- */
+/* Writes one letter back, keeping the file in alphabet order. */
 function writeOrdered(current) {
   const { letters } = readJson(path.join(CONTENT_DIR, 'letters.json'));
   const ordered = {};
@@ -108,22 +76,7 @@ function saveLetter(letterId, strokes) {
   writeOrdered(current);
 }
 
-/**
- * Merges a phone or tablet export into content/strokes.json.
- *
- * The handover at the end of the loop: somebody fixes ھ on the sofa, exports,
- * sends me the file, and this puts it in the repo without anybody editing JSON
- * by hand.
- *
- * ## Why the fingerprint is checked here and not only trusted
- *
- * A path is a centreline through one typeface's outlines. Against another it
- * sits beside the letter, and a guide beside the letter teaches a child to
- * write it wrongly. The app already refuses to *use* stale paths — but an
- * import writes them into the repo, where they look exactly like good ones and
- * outlive the mistake. So a mismatch is refused outright rather than merged
- * with a warning.
- *
+/** Merges a phone or tablet export into content/strokes.json.
  * @returns {{merged: string[], error?: string}}
  */
 function importExport(file) {
@@ -164,8 +117,7 @@ function importExport(file) {
     merged.push(letterId);
   }
 
-  // Nothing is written until every letter has passed, so a bad file leaves the
-  // repo exactly as it was rather than half-merged.
+  // Nothing is written until every letter has passed.
   if (merged.length) writeOrdered(current);
   return { merged };
 }
@@ -180,8 +132,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, fs.readFileSync(path.join(HERE, file)), type);
     }
 
-    // Browsers ask for this unprompted; answering keeps a spurious 404 out of
-    // the console.
+    // Browsers ask for this unprompted; answering keeps a spurious 404 out of the console.
     if (route === '/favicon.ico') return send(res, 204, '');
 
     if (req.method === 'GET' && route.startsWith('/lib/')) {
@@ -192,8 +143,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, fs.readFileSync(path.join(dir, name)), type);
     }
 
-    // The same baked outlines the game draws from, so a path corrected here
-    // sits on exactly the letter the child will see.
+    // The same baked outlines the game draws from, so a path corrected here sits on exactly the letter the child will see.
     for (const [name, file] of [
       ['/glyphs.json', 'glyphs.json'],
       ['/letters.json', 'letters.json'],
@@ -228,8 +178,7 @@ const server = http.createServer(async (req, res) => {
       const { merged, error } = importExport(JSON.parse(body.toString('utf8')));
       if (error) {
         console.log(`  import refused: ${error}`);
-        // 409 rather than 400: the file is well-formed, it just does not belong
-        // with what is in the repo.
+        // 409 rather than 400: the file is well-formed, it just does not belong with what is in the repo.
         return sendJson(res, 409, { error });
       }
       console.log(`  imported ${merged.length} letter(s): ${merged.join(', ')}`);

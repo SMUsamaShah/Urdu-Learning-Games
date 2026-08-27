@@ -16,106 +16,47 @@ import {
   STEM,
 } from './greenery.js';
 
-/**
- * A vine climbing a cane, one leaf per right answer, a flower at the top.
- *
- * ## Why a climb rather than a plant
- *
- * The rail is 200 pixels wide and 570 tall. A pot plant is the wrong shape for
- * that and no amount of adjusting makes it the right one: it is widest at the
- * top, it stops growing at about its own height, and everything above it is
- * empty panel. The thing that came before this drew itself 648 pixels tall,
- * shrank to fit, and reached less than half way up the strip when fully grown.
- *
- * A climb fits, because the shape of the rail *is* the shape of the task. The
- * cane is drawn floor to ceiling before anything has happened, so the strip
- * always reads as somewhere with a top to get to. What a right answer changes
- * is what is on the cane, never how much of the strip has anything in it.
- *
- *   a sprout in a pot -> leaves winding up -> a bud at the top -> it opens
- *
- * ## What accumulates
- *
- * A level is one climb. The flower it opens with is then pinned to the cane and
- * the next vine climbs past it, so a fortnight of playing is a cane with
- * flowers up it where an afternoon is a cane with one. Eight slots; past that
- * the oldest gives up its place and the row shows the eight most recent, which
- * at least keeps changing where the orchard this replaced went flat for ever.
- *
- * ## Assembled, not redrawn
- *
- * Every piece is a small texture baked once in greenery.js — a length of stem,
- * one leaf, a flower, the cane. Growth is one more sprite becoming visible.
- * Nothing here bakes a picture of the whole vine, which is what made the plant
- * expensive (sixty-six frames at three quarters of a megabyte apiece, behind a
- * cache that threw them away as fast as it made them).
- */
+/* A vine climbing a cane, one leaf per right answer, a flower at the top. */
 
-/**
- * Every piece is baked oversampled, so every sprite is drawn back down again.
- *
- * Miss this and the whole thing is half as big again as the box it was given:
- * the cane grows out through the top of the rail, the positions are still in
- * design pixels, and nothing lines up with anything.
- */
+/* Every piece is baked oversampled, so every sprite is drawn back down again. */
 const DRAW = 1 / SUPERSAMPLE;
 
-/** Air at the top, for the flower to open into. */
+/* Air at the top, for the flower to open into. */
 const HEAD = 34;
 
-/** How far the pot stands into the grass, so it is not balanced on a line. */
+/* How far the pot stands into the grass, so it is not balanced on a line. */
 const POT_LIFT = 6;
 
-/** The soil surface: where the vine starts and everything above is measured from. */
+/* The soil surface: where the vine starts and everything above is measured from. */
 const FOOT = POT_LIFT + POT.height + POT.rim;
 
-/** The most steps a level can be worth — `stepsForLevel` caps at twelve. */
+/* The most steps a level can be worth — `stepsForLevel` caps at twelve. */
 const MAX_STEPS = 12;
 
-/**
- * Slots up the cane for the levels already finished.
- *
- * Twenty, which is about two months of daily playing, and the same number the
- * plant in the pot cycles through — so a child reaches the top of the cane and
- * the first flower comes round again together, rather than the record filling
- * up while there are still new plants to see. It was eight, and eight meant a
- * fortnight in the row stopped changing.
- *
- * Twenty across a ~460px span is 23 pixels apart, alternating sides, so two
- * flowers on the *same* side are 46 apart. The blossom comes down to 20 to fit
- * that with air around it.
- */
+/* Slots up the cane for the levels already finished. */
 const SLOTS = 20;
 const SLOT_X = 44;
 const BLOSSOM = 20;
 const BLOOM = 58;
 
-/**
- * Puts a vine in the rail's box.
- *
+/** Puts a vine in the rail's box.
  * @param {Phaser.Scene} scene
  * @param {{width: number, height: number}} box measured from its bottom centre
- * @param {{rider?: boolean}} [options] `rider` puts a ladybird on the tip and
- *   makes this the climber — see src/lib/indicators/climber.js
- * @returns {Phaser.GameObjects.Container} the indicator contract — see
- *   src/lib/indicators/index.js
+ * @param {{rider?: boolean}} [options] Set `rider` to add a ladybird.
+ * @returns {Phaser.GameObjects.Container} the indicator contract
  */
 export function create(scene, { width, height }, options = {}) {
   const { rider = false } = options;
   const root = scene.add.container(0, 0);
 
-  // Everything is laid out against the box rather than against numbers typed
-  // here, which is the whole difference between this and what it replaced. The
-  // menu hands over a box a quarter the height of the rail's and gets the same
-  // vine, shorter.
+  // Everything is laid out against the box rather than against numbers typed here.
   const span = Math.max(90, height - FOOT - HEAD);
   const caneFoot = -(POT_LIFT + POT.height * 0.4);
 
   root.add(
     scene.add.image(0, 0, groundTexture(scene, width)).setOrigin(0.5, 1).setScale(DRAW)
   );
-  // The cane goes in before the pot, so it is planted in the soil rather than
-  // standing on the rim.
+  // The cane goes in before the pot, so it is planted in the soil rather than standing on the rim.
   root.add(
     scene.add
       .image(0, caneFoot, caneTexture(scene, FOOT + span + caneFoot))
@@ -126,7 +67,7 @@ export function create(scene, { width, height }, options = {}) {
     scene.add.image(0, -POT_LIFT, potTexture(scene)).setOrigin(0.5, 1).setScale(DRAW)
   );
 
-  /** One stem and one leaf per step, all built now and shown as they are earned. */
+  /* One stem and one leaf per step, all built now and shown as they are earned. */
   const stems = [];
   const leaves = [];
   for (let i = 0; i < MAX_STEPS; i++) {
@@ -144,7 +85,7 @@ export function create(scene, { width, height }, options = {}) {
     root.add(leaf);
   }
 
-  /** The levels already finished, pinned up the cane, over the leaves. */
+  /* The levels already finished, pinned up the cane, over the leaves. */
   const blossoms = [];
   for (let j = 0; j < SLOTS; j++) {
     const blossom = scene.add
@@ -159,7 +100,7 @@ export function create(scene, { width, height }, options = {}) {
     root.add(blossom);
   }
 
-  /** The growing tip, and the flower it becomes. */
+  /* The growing tip, and the flower it becomes. */
   const bud = scene.add
     .image(0, -FOOT, budTexture(scene, varietyFor(0)))
     .setOrigin(0.5, 1)
@@ -169,22 +110,13 @@ export function create(scene, { width, height }, options = {}) {
   bloom.setScale(DRAW).setVisible(false);
   root.add(bloom);
 
-  /**
-   * Somebody to do the climbing, for the indicator that has one.
-   *
-   * Added last, so it is over the leaves it is walking on. It only ever rides
-   * the tip: where the vine has got to is where the ladybird is, which means
-   * there is one thing to look at rather than two, and a slip carries it down
-   * rather than merely shortening a plant.
-   */
+  /* Somebody to do the climbing, for the indicator that has one. */
   const bug = rider
     ? scene.add.image(0, -FOOT, ladybirdTexture(scene)).setScale(DRAW)
     : null;
   if (bug) {
     root.add(bug);
-    // How high the climber is, live off the sprite rather than sampled into a
-    // field: the fall is a tween, and a number written down when the setback
-    // arrived would say where it was about to leave rather than where it is.
+    // Position the climber at the current level.
     Object.defineProperty(root, 'rider', { get: () => Math.round(bug.y) });
   }
 
@@ -194,24 +126,13 @@ export function create(scene, { width, height }, options = {}) {
   let leafScale = 1;
   let shown = 0;
 
-  /** Where the tip of a vine of `k` segments is. */
+  /* Where the tip of a vine of `k` segments is. */
   const tipY = (k) => -(FOOT + k * cell);
 
-  /**
-   * Just under the tip, on the stem, where a thing climbing would be — but
-   * never below the soil, or at nothing earned it sits half inside the pot.
-   */
+  /* Just under the tip. */
   const rideY = (k) => Math.min(tipY(k) + 12, -FOOT - 2);
 
-  /**
-   * What is on screen, read off the sprites rather than tracked beside them.
-   *
-   * A vine whose model counts perfectly while the picture never changes is
-   * exactly the fault a check against the model would pass, so `drawn` counts
-   * the stems that are actually visible and takes the variety off the bud's own
-   * texture. It ends in the step count because verify-progress.mjs asserts a
-   * fresh vine matches /:0$/.
-   */
+  /* What is on screen, read off the sprites rather than tracked beside them. */
   const republish = () => {
     const kind = bud.texture.key.split(':').pop();
     root.drawn = `vine:${kind}:${stems.filter((stem) => stem.visible).length}`;
@@ -219,24 +140,14 @@ export function create(scene, { width, height }, options = {}) {
     root.species = kind;
   };
 
-  /**
-   * Re-lays the whole cane for a level: which plant, how many steps are in it,
-   * and which flowers are already hanging on it.
-   *
-   * A level is worth five steps at the start and twelve later on, so a cell is
-   * anywhere from a fifth to a twelfth of the climb. The stem stretches
-   * vertically to whatever that is — invisible on a smooth curve — while the
-   * leaves take a uniform scale with a floor under it, so a twelve-step level
-   * comes out as a denser vine rather than a thinner one.
-   */
+  /* Re-lays the whole cane for a level: which plant, how many steps are in it, and which flowers are already hanging on it. */
   const layout = (level, forSteps) => {
     variety = varietyFor(level);
     steps = Math.max(1, Math.min(MAX_STEPS, forSteps || MAX_STEPS));
     cell = span / steps;
     leafScale = DRAW * Math.min(1, Math.max(0.58, cell / STEM.height));
 
-    // A cell tall on screen: the texture is STEM.height design pixels baked
-    // oversampled, so the factor that gets it there is DRAW × cell / height.
+    // A cell tall on screen.
     const stemY = (DRAW * cell) / STEM.height;
     const stemX = DRAW * Math.min(1, Math.max(0.5, cell / 80));
     const stemKey = stemTexture(scene, variety);
@@ -246,11 +157,7 @@ export function create(scene, { width, height }, options = {}) {
       const right = i % 2 === 0;
       const foot = -(FOOT + i * cell);
       stems[i].setTexture(stemKey).setPosition(0, foot).setScale(stemX, stemY).setFlipX(!right);
-      // Joined at the apex of the stem's bow, which a quadratic puts half way
-      // to its control point — so half a cell up, and `bow` out to the side.
-      // Flipping mirrors the texture inside the frame but leaves the origin
-      // where it was, so a leaf flipped for the left side would hang off the
-      // vine by its tip. The origin has to be mirrored with it.
+      // Joined at the apex of the stem's bow.
       leaves[i]
         .setTexture(leafKey)
         .setOrigin(right ? LEAF_ORIGIN.x : 1 - LEAF_ORIGIN.x, LEAF_ORIGIN.y)
@@ -262,22 +169,19 @@ export function create(scene, { width, height }, options = {}) {
     bud.setTexture(budTexture(scene, variety));
 
     for (let j = 0; j < SLOTS; j++) {
-      // Once there are more finished levels than slots, the row shows the eight
-      // most recent — so it keeps moving instead of freezing as eight identical
-      // flowers for ever, which is what the orchard did.
+      // Once there are more finished levels than slots.
       const which = level <= SLOTS ? j : level - SLOTS + j;
       blossoms[j].setTexture(flowerTexture(scene, varietyFor(which), BLOSSOM));
       blossoms[j].setVisible(level > j);
     }
   };
 
-  /** Shows exactly `k` segments, saying nothing about how they got there. */
+  /* Shows exactly `k` segments, saying nothing about how they got there. */
   const face = (k) => {
     shown = Math.max(0, Math.min(steps, k));
     for (let i = 0; i < MAX_STEPS; i++) {
       const on = i < shown;
-      // Anything mid-fade has to be stopped, or a tween that was on its way out
-      // finishes after this and hides a segment that is now supposed to be up.
+      // Anything mid-fade has to be stopped.
       scene.tweens.killTweensOf(stems[i]);
       scene.tweens.killTweensOf(leaves[i]);
       stems[i].setVisible(on).setAlpha(1);
@@ -294,7 +198,7 @@ export function create(scene, { width, height }, options = {}) {
     republish();
   };
 
-  /** One more leaf, and the tip carried up to it. */
+  /* One more leaf, and the tip carried up to it. */
   const grow = (k) => {
     const from = shown;
     face(k);
@@ -340,7 +244,7 @@ export function create(scene, { width, height }, options = {}) {
     }
   };
 
-  /** Water taken back: the top of the vine withers rather than vanishing. */
+  /* Water taken back: the top of the vine withers rather than vanishing. */
   const slip = (k) => {
     const from = shown;
     sfx.nudge();
@@ -367,9 +271,7 @@ export function create(scene, { width, height }, options = {}) {
       onComplete: () => bud.setAngle(0),
     });
     if (bug) {
-      // Down two, with a turn. A tumble rather than a slide: the fall is the
-      // whole point of having somebody up there, and it has to be readable as
-      // "oh" and not as a punishment — it lands on a leaf and carries on.
+      // Down two, with a turn.
       scene.tweens.killTweensOf(bug);
       scene.tweens.add({
         targets: bug,
@@ -380,15 +282,13 @@ export function create(scene, { width, height }, options = {}) {
         onComplete: () => bug.setAngle(0),
       });
     }
-    // The count is true immediately even though the fade is still running: what
-    // is published is what the vine now *is*, not what is still on screen for
-    // another fifth of a second.
+    // The count is true immediately even though the fade is still running.
     shown = Math.max(0, Math.min(steps, k));
     for (let i = shown; i < MAX_STEPS; i++) stems[i].setVisible(false);
     republish();
   };
 
-  /** The bud opens at the top of the cane, and is then pinned to the row. */
+  /* The bud opens at the top of the cane, and is then pinned to the row. */
   const flower = (next) => {
     face(steps);
     bud.setVisible(false);
@@ -402,8 +302,7 @@ export function create(scene, { width, height }, options = {}) {
     starShower(scene, { duration: 1500 });
     republish();
 
-    // Long enough to be looked at, then hung on the cane and the next one
-    // started from the soil.
+    // Long enough to be looked at, then hung on the cane and the next one started from the soil.
     scene.time.delayedCall(1400, () => {
       if (!scene.scene.isActive()) return;
       const slot = blossoms[Math.min(next.level, SLOTS) - 1];
@@ -431,9 +330,7 @@ export function create(scene, { width, height }, options = {}) {
     layout(next.level, next.steps);
     const to = Math.round(next.step ?? (next.fraction ?? 0) * steps);
     if (next.reset) return void face(to);
-    // Losing a level slips even where the step number happens to go up: coming
-    // off the start of one climb onto the end of the last one takes a flower
-    // off the cane, which is the biggest thing a mistake can do.
+    // Losing a level slips even where the step number happens to go up.
     if (next.levelledDown || to < shown) return void slip(to);
     if (to === shown) return void face(to);
     grow(to);
@@ -452,7 +349,7 @@ export function create(scene, { width, height }, options = {}) {
       onComplete: () => bud.setAngle(0),
     });
 
-  /** The droop, not a frown — nothing here tells anybody off. */
+  /* The droop, not a frown — nothing here tells anybody off. */
   root.wonder = () => {
     const drooping = [bud, ...leaves.filter((leaf) => leaf.visible)];
     scene.tweens.add({
@@ -471,13 +368,7 @@ export function create(scene, { width, height }, options = {}) {
   return root;
 }
 
-/**
- * A frame with no progress event behind it, for the preview sheet.
- *
- * The sheet knows a fraction and a level; the vine counts in whole steps, so
- * the rest of the state is worked out here rather than the vine being made to
- * take a fraction it would only round.
- */
+/* A frame with no progress event behind it, for the preview sheet. */
 export function still(scene, box, { fraction, level }, options = {}) {
   const steps = Math.min(5 + level, MAX_STEPS);
   const el = create(scene, box, options);

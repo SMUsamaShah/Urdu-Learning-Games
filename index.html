@@ -1,25 +1,11 @@
 <!doctype html>
-<!--
-  dir stays ltr even though this is an Urdu app.
-
-  Phaser centres its canvas by setting margin-left, which assumes left-to-right
-  block flow. Under dir="rtl" the canvas right-aligns instead and every screen
-  sits off-centre. Nothing is lost by keeping the document ltr: no Urdu is laid
-  out by the browser at all, because every glyph is a baked path positioned by
-  the game (see src/lib/glyph.js), and the right-to-left reading order lives in
-  the scenes' own layout maths.
--->
+<!-- dir stays ltr even though this is an Urdu app. -->
 <html lang="ur" dir="ltr">
   <head>
     <meta charset="utf-8" />
     <title>اردو کھیل — Urdu Learning Games</title>
 
-    <!--
-      viewport-fit and user-scalable=no together stop a small child's palm from
-      pinch-zooming the game into an unusable state. This is one of the few
-      places where disabling zoom is the right call rather than an a11y sin:
-      the whole UI is already finger-sized and there is no body text to enlarge.
-    -->
+    <!-- viewport-fit and user-scalable=no together stop a small child's palm from pinch-zooming the game into an unusable state. -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
@@ -45,30 +31,14 @@
         height: 100%;
         overflow: hidden;
         background: #8fd4f5;
-        /* Kills pull-to-refresh and rubber-banding, which otherwise fire
-           constantly under a child's dragging. */
+        /* Kills pull-to-refresh and rubber-banding, which otherwise fire constantly under a child's dragging. */
         overscroll-behavior: none;
         touch-action: none;
         -webkit-user-select: none;
         user-select: none;
         -webkit-tap-highlight-color: transparent;
       }
-      /*
-       * Everything the app draws, so that it can be turned as one piece.
-       *
-       * The app is landscape always. Where the phone refuses to turn — a tab
-       * that is not fullscreen, or rotation switched off in system settings —
-       * src/lib/turn.js rotates this instead, and the phone is what gets held
-       * sideways. The canvas and the HTML screens are both inside it, because
-       * a transform here makes this the containing block for their
-       * `position: fixed`, so they come along and the browser hit-tests them
-       * correctly with no help from us.
-       *
-       * The size is set in pixels from JS rather than in vh/vw: on a phone
-       * those units mean the viewport with the URL bar hidden whether it
-       * currently is or not, and the app would hang off the bottom by the
-       * height of the bar.
-       */
+      /* Everything the app draws, so that it can be turned as one piece. */
       #stage {
         position: fixed;
         top: 0;
@@ -86,10 +56,7 @@
         transform: rotate(-90deg) translateX(-100%);
       }
 
-      /*
-       * Flex, because this is what centres the canvas now rather than Phaser's
-       * own `autoCenter` — see the note beside the scale config in src/app.js.
-       */
+      /* Flex centres the canvas after Phaser's autoCenter is disabled. */
       #game {
         width: 100%;
         height: 100%;
@@ -101,7 +68,7 @@
         display: block;
         touch-action: none;
       }
-      /* Shown only if the app fails to start. Never seen during normal play. */
+      /* Shown only if the app fails to start. */
       #boot-error {
         display: none;
         position: fixed;
@@ -131,11 +98,7 @@
         color: #7b7360;
       }
 
-      /*
-        The frame-rate readout. Fixed to the viewport rather than the canvas so
-        it stays put while the game letterboxes, and pointer-events: none so it
-        can never swallow a tap meant for the game underneath.
-      */
+      /* The frame-rate readout. */
       .fps-meter {
         position: fixed;
         top: max(6px, env(safe-area-inset-top));
@@ -161,20 +124,8 @@
         color: #ff8f8f;
       }
 
-      /*
-       * The service-worker indicator, bottom right, opposite the frame counter.
-       *
-       * Deliberately small and low contrast. It answers a question a grown-up
-       * occasionally asks — is this the latest build — and must never be the
-       * most interesting thing on a screen aimed at a three-year-old.
-       */
-      /*
-       * Explicitly, because the rule below sets `display` and an author
-       * declaration beats the user agent's `[hidden] { display: none }`. Without
-       * this the badge is permanently on screen with an empty label and a ring
-       * spinning for ever, and — being pointer-events: none — cannot even be
-       * dismissed. The frame counter escapes it only by never setting `display`.
-       */
+      /* The service-worker indicator, bottom right, opposite the frame counter. */
+      /* Hide the badge when its hidden attribute is set. */
       .update-badge[hidden] {
         display: none;
       }
@@ -240,11 +191,7 @@
   </head>
   <body>
     <div id="stage"><div id="game"></div></div>
-    <!--
-      Outside the stage on purpose. This is the page that says the app did not
-      start, so it must not depend on any of the app's own machinery having run
-      — including the thing that would have turned it.
-    -->
+    <!-- Outside the stage on purpose. -->
     <div id="boot-error">
       <p>کھیل لوڈ نہیں ہو سکا</p>
       <p>The game could not load.</p>

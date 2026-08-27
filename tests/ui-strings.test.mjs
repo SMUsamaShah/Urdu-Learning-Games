@@ -1,18 +1,4 @@
-/**
- * Every Urdu UI string a scene asks for must exist and must have been baked.
- *
- * This is the same class of bug as a missing Workbox glob: nothing throws, no
- * console error appears, and the app runs — a ribbon with a typo'd id simply
- * comes out blank, and the only way to notice is for somebody to look at that
- * particular screen. A build that has not been re-baked after adding a string
- * fails the same way.
- *
- * The ids are found by reading the source rather than by running the app,
- * because the point is to catch the id that is only reached on a screen nobody
- * opened this week.
- *
- * Run: npm test   (requires `npm run bake` to have run first)
- */
+/* Every Urdu UI string a scene asks for must exist and must have been baked. */
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,7 +12,7 @@ const read = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'content', f), 'u
 const { strings } = read('ui.json');
 const glyphs = read('glyphs.json');
 
-/** Every way a scene names a UI string. */
+/* Every way a scene names a UI string. */
 const PATTERNS = [
   /\buiGlyph\(\s*'([\w-]+)'/g,
   /\bui:\s*'([\w-]+)'/g,
@@ -42,7 +28,7 @@ function sourceFiles(dir) {
   });
 }
 
-/** @type {Map<string, string[]>} id -> files that reference it */
+/** @type {Map<string, string[]>} */
 const referenced = new Map();
 for (const file of sourceFiles(path.join(ROOT, 'src'))) {
   const source = fs.readFileSync(file, 'utf8');
@@ -56,8 +42,7 @@ for (const file of sourceFiles(path.join(ROOT, 'src'))) {
 
 describe('ui strings', () => {
   test('the scenes reference some, so the patterns above still match', () => {
-    // Without this, a refactor that changes how ids are written turns every
-    // assertion below into a check over an empty set that can never fail.
+    // Without this, a refactor that changes how ids are written turns every assertion below into a check over an empty set.
     assert.ok(
       referenced.size >= 8,
       `only found ${referenced.size} UI string references in src/ — ` +
@@ -73,10 +58,7 @@ describe('ui strings', () => {
   });
 
   test('every ribbon instruction is in banner.js INSTRUCTIONS', () => {
-    // The ribbon measures all of its possible instructions together to pick one
-    // em, so a scene showing an id the list does not know about gets writing at
-    // the wrong size — and being the wrong size is precisely the bug that list
-    // exists to prevent. Nothing throws, so only this notices.
+    // The ribbon measures all of its possible instructions together to pick one em.
     const banner = fs.readFileSync(path.join(ROOT, 'src/lib/banner.js'), 'utf8');
     const block = banner.match(/INSTRUCTIONS = \[([^\]]*)\]/);
     assert.ok(block, 'could not find INSTRUCTIONS in src/lib/banner.js');
@@ -86,8 +68,7 @@ describe('ui strings', () => {
     for (const file of sourceFiles(path.join(ROOT, 'src'))) {
       const source = fs.readFileSync(file, 'utf8');
       for (const pattern of [
-        // How a scene names its ribbon: through addStage, directly through
-        // addBanner, or as a QuizScene field.
+        // How a scene names its ribbon: through addStage, directly through addBanner, or as a QuizScene field.
         /\binstruction:\s*'([\w-]+)'/g,
         /addBanner\(\s*this,\s*\{\s*ui:\s*'([\w-]+)'/g,
         /\bthis\.instruction\s*=\s*'([\w-]+)'/g,

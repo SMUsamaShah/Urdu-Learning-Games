@@ -12,32 +12,9 @@ import { sayLetter } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, makeButton } from '../lib/theme.js';
 import { pickWeighted } from '../lib/mastery.js';
 
-/**
- * Find the letters hiding in the garden.
- *
- * ## Reading a letter that is not sitting up straight
- *
- * Every other screen in this app presents letters the way a book does: upright,
- * one size, on a plain card. That is right for learning a shape and it quietly
- * teaches something false — that a letter is only that letter when it is
- * upright and that big. A child who has only ever met ب on a white tile can be
- * genuinely stuck by ب tilted on a shop sign.
- *
- * So here they are scattered across the scene at different sizes, tilted either
- * way, and tinted into the greens and browns around them. Nothing else changes:
- * find every one of the letter in the corner. It is TapAll's question asked
- * where the answer is not conveniently laid out, which is the hardest place to
- * ask it and the most like reading.
- *
- * ## Hidden, not camouflaged
- *
- * The tint is muted but never close to the background, and nothing is ever more
- * than half covered. This is a hunt, not a test of eyesight — a three-year-old
- * who cannot find one after a while gets a nudge (see `hint`), and there is no
- * timer, no score and nothing lost by tapping the wrong thing.
- */
+/* Find the letters hiding in the garden. */
 
-/** Letters on screen and how many are the target, by round. */
+/* Letters on screen and how many are the target, by round. */
 const ROUNDS = [
   { total: 7, wanted: 2 },
   { total: 9, wanted: 3 },
@@ -45,11 +22,11 @@ const ROUNDS = [
   { total: 12, wanted: 4 },
 ];
 
-/** Where letters may hide: clear of the ribbon, the badge and the garden. */
+/* Where letters may hide: clear of the ribbon, the badge and the garden. */
 const FIELD = { left: RAIL_EDGE + 74, right: DESIGN.width - 60, top: 190, bottom: DESIGN.height - 50 };
-/** Muted, but never near the backdrop's own greens — this is a hunt, not camouflage. */
+/* Muted, but never near the backdrop's own greens — this is a hunt, not camouflage. */
 const TINTS = [0x3f6f4a, 0x6a4a2f, 0x2f5f7a, 0x7a4a6a, 0x8a6a1f, 0x4a4a6a];
-/** How long before an unfound letter starts waving. */
+/* How long before an unfound letter starts waving. */
 const HINT_MS = 9000;
 
 export default class Hidden extends Phaser.Scene {
@@ -91,8 +68,6 @@ export default class Hidden extends Phaser.Scene {
     this.events.once('shutdown', () => this.time.removeAllEvents());
   }
 
-  // ------------------------------------------------------------------ round
-
   newRound() {
     this.field.removeAll(true);
     this.promptLayer.removeAll(true);
@@ -105,8 +80,7 @@ export default class Hidden extends Phaser.Scene {
     this.target = pickWeighted('letter', this.pool, { avoid: [this.target] });
     this.wanted = plan.wanted;
 
-    // Decoys from the target's own family first, so a letter is not found by
-    // its silhouette alone — which at these angles it otherwise would be.
+    // Decoys from the target's own family first.
     const siblings = Phaser.Utils.Array.Shuffle(
       shapeFamilySiblings(this.target).filter((id) => letterGlyph(id))
     );
@@ -152,18 +126,10 @@ export default class Hidden extends Phaser.Scene {
     bob(this, badge, { distance: 4, duration: 2200 });
   }
 
-  /**
-   * Places the letters so they never overlap.
-   *
-   * Overlapping is the one thing that would turn a hunt into a mess: two
-   * letters on top of each other are both unreadable and impossible to tap
-   * apart. Candidate points are tried and the one furthest from everything
-   * already placed wins, which is cheap and good enough for a dozen.
-   */
+  /* Places the letters so they never overlap. */
   scatter(ids) {
     const placed = [];
-    // One em for every letter, then scaled per letter — so the *variation* is
-    // deliberate rather than a side effect of some glyphs being bigger.
+    // One em for every letter.
     const { em } = fitEmAlone(allLetterGlyphs('isolated'), 120, 100);
 
     ids.forEach((id, index) => {
@@ -202,7 +168,7 @@ export default class Hidden extends Phaser.Scene {
           { em, color: COLORS.ink }
         )
       );
-      // Tinted, tilted and resized. This is the whole point of the screen.
+      // Tinted, tilted and resized.
       letter.list[0].setTint(Phaser.Utils.Array.GetRandom(TINTS));
       letter.setAngle(Phaser.Math.Between(-26, 26));
       letter.setScale(Phaser.Math.FloatBetween(0.62, 1.05));
@@ -212,23 +178,14 @@ export default class Hidden extends Phaser.Scene {
       letter.on('pointerup', () => this.tap(letter));
       this.field.add(letter);
 
-      // Faded in rather than popped in: these are meant to have been lying
-      // around the garden all along, not to have just arrived.
+      // Faded in rather than popped in.
       letter.setAlpha(0);
       this.tweens.add({ targets: letter, alpha: 0.92, duration: 420, delay: index * 60 });
       this.letters.push(letter);
     });
   }
 
-  // ------------------------------------------------------------------- play
-
-  /**
-   * After a while, an unfound target waves.
-   *
-   * A hunt nobody can finish is not a game. This is deliberately slow and it
-   * never says which one it is going to be until it moves, so it helps without
-   * taking the finding away.
-   */
+  /* After a while, an unfound target waves. */
   armHint() {
     this.hintTimer?.remove();
     this.hintTimer = this.time.addEvent({
@@ -269,8 +226,7 @@ export default class Hidden extends Phaser.Scene {
     sfx.sparkle();
     sparkleBurst(this, letter.x, letter.y, { count: 20, tint: [COLORS.correct, 0xffffff] });
 
-    // Straightens up, comes to full size and turns its proper colour: found
-    // means "now I can see it is a ب", so it stops hiding.
+    // Straightens up, comes to full size and turns its proper colour: found means "now I can see it is a ب", so it stops.
     letter.list[0].clearTint();
     this.tweens.add({
       targets: letter,

@@ -1,37 +1,10 @@
-/**
- * Sparks, puffs and sparkle trails.
- *
- * The difference between an app a three-year-old plays once and one they ask
- * for is almost entirely in what happens *at the moment of the tap*. A correct
- * answer that simply becomes correct is information; a correct answer that
- * bursts is a reason to find another one. Every reference app leans on this
- * heavily, and it is the cheapest fun in the whole project.
- *
- * ## Why particles rather than more tweened images
- *
- * `celebrate.js` throws confetti by tweening a few dozen Images, which is right
- * for confetti: each piece needs its own arc, its own tumble and its own
- * landing. It is the wrong tool for a burst of forty sparks that all do the
- * same thing, because forty tweens is forty objects the tween manager has to
- * step every frame for half a second.
- *
- * Phaser's emitter holds one game object however many particles are alive, and
- * everything sharing a texture draws in a single batched call. So: emitters for
- * anything where the particles are interchangeable, tweens for anything with a
- * choreography.
- *
- * ## Textures
- *
- * Three, baked once into canvas textures and tinted at use. All of them are
- * soft-edged — a hard-edged spark reads as a bug at small sizes, and these are
- * mostly seen at eight or ten pixels across.
- */
+/* Sparks, puffs and sparkle trails. */
 
 const SPARK = 'fx:spark';
 const STAR = 'fx:star';
 const PUFF = 'fx:puff';
 
-/** A radial gradient from opaque white to nothing. */
+/* A radial gradient from opaque white to nothing. */
 function drawSoftDot(ctx, size) {
   const r = size / 2;
   const gradient = ctx.createRadialGradient(r, r, 0, r, r, r);
@@ -42,13 +15,7 @@ function drawSoftDot(ctx, size) {
   ctx.fillRect(0, 0, size, size);
 }
 
-/**
- * A four-pointed sparkle: two crossed tapered spikes.
- *
- * Not a five-pointed star. At the size these are drawn a five-pointed star is
- * an indistinct blob, whereas the crossed spikes still read as *a glint* even
- * when they are six pixels across, which is the whole job.
- */
+/* A four-pointed sparkle: two crossed tapered spikes. */
 function drawSparkle(ctx, size) {
   const c = size / 2;
   const long = c * 0.95;
@@ -88,26 +55,17 @@ function ensureTextures(scene) {
   });
 }
 
-/**
- * Runs an emitter once and takes it away afterwards.
- *
- * One-shot bursts are the common case here and a leaked emitter is a silent
- * cost: it stays on the display list, keeps being stepped, and there is nothing
- * on screen to show for it. The lifespan plus a beat is when the last particle
- * can possibly still be alive.
- */
+/* Runs an emitter once and takes it away afterwards. */
 function burst(scene, emitter, count, lifespan) {
   emitter.explode(count);
   scene.time.delayedCall(lifespan + 200, () => emitter.destroy());
   return emitter;
 }
 
-/** The app's own palette, so a burst belongs to the same picture as the tiles. */
+/* The app's own palette, so a burst belongs to the same picture as the tiles. */
 const HAPPY = [0xffc93c, 0xff6b6b, 0x4ecdc4, 0x9b5fc9, 0x63b04b, 0xffffff];
 
-/**
- * A burst of sparkles at a point. The reward for one right answer.
- *
+/** A burst of sparkles at a point.
  * @param {Phaser.Scene} scene
  * @param {number} x
  * @param {number} y
@@ -138,12 +96,7 @@ export function sparkleBurst(scene, x, y, options = {}) {
   return burst(scene, emitter, count, lifespan);
 }
 
-/**
- * The puff a balloon leaves behind.
- *
- * Coloured like the balloon that burst, which is what connects the effect to
- * the thing that popped — a generic white puff reads as unrelated weather.
- */
+/* The puff a balloon leaves behind. */
 export function popPuff(scene, x, y, tint) {
   ensureTextures(scene);
   const lifespan = 420;
@@ -160,13 +113,7 @@ export function popPuff(scene, x, y, tint) {
   return burst(scene, emitter, 18, lifespan);
 }
 
-/**
- * A ring of sparks travelling outwards, for something appearing.
- *
- * Distinct from `sparkleBurst` on purpose: a ring reads as "here it is" and a
- * scatter reads as "well done". Using the same effect for both makes arriving
- * feel like winning, and then winning feels like nothing.
- */
+/* A ring of sparks travelling outwards, for something appearing. */
 export function ringBurst(scene, x, y, tint = 0xffffff) {
   ensureTextures(scene);
   const lifespan = 520;
@@ -183,13 +130,7 @@ export function ringBurst(scene, x, y, tint = 0xffffff) {
   return burst(scene, emitter, 20, lifespan);
 }
 
-/**
- * Sparkles drifting down the whole screen, for finishing something.
- *
- * The screen-wide counterpart to `sparkleBurst`, and kept for milestones for
- * the same reason `paperFall` is: an effect that happens every time is not a
- * reward, it is a background.
- */
+/* Sparkles drifting down the whole screen, for finishing something. */
 export function starShower(scene, options = {}) {
   ensureTextures(scene);
   const { duration = 2200, depth = 40 } = options;
@@ -215,12 +156,7 @@ export function starShower(scene, options = {}) {
   return emitter;
 }
 
-/**
- * A sparkle trail that follows something, for a finger drawing a letter.
- *
- * Returned rather than self-destructing, because the caller decides when the
- * drawing stops. Whoever creates one owns stopping it.
- */
+/* A sparkle trail that follows something, for a finger drawing a letter. */
 export function sparkleTrail(scene, options = {}) {
   ensureTextures(scene);
   const { tint = 0xffe08a, depth = 25 } = options;
