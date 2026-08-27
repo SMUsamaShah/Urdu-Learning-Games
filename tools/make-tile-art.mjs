@@ -23,16 +23,14 @@ const CONCURRENCY = 3;
 
 /* The house style, on every prompt. */
 const STYLE =
-  'Soft flat vector illustration for a toddler picture book. Bright cheerful ' +
-  'saturated colours, simple bold rounded shapes, clean confident outlines, no ' +
-  'fine texture, no photorealism, no gradients in the background. One clear ' +
-  'scene, centred, large, filling most of the frame, seen straight on against a ' +
-  'plain pale background. No Latin letters, no English words, no roman alphabet ' +
-  'anywhere in the picture, no logos and no captions. The one thing that must ' +
-  'be written, and written clearly, is the Urdu letter described above: drawn ' +
-  'large, crisp and unmistakable, in the place the scene puts it. A blank card, ' +
-  'a blank badge or a blank balloon where that letter should be is a failed ' +
-  'picture.';
+  'Premium 2.5D cartoon game-tile illustration for a preschool learning app. ' +
+  'Use saturated cyan, blue, coral, yellow, purple and green, glossy rounded ' +
+  'surfaces, bold clean outlines, friendly expressive objects, layered depth and ' +
+  'bright highlights. Make one clear activity-board scene that remains readable ' +
+  'at small size. No Latin letters, English words, roman alphabet, logos or ' +
+  'captions. Any Urdu writing must be exact, crisp and intentional: never add ' +
+  'random decorative Urdu marks or substitute a similar-looking letter. The ' +
+  'letter described above must appear exactly where the scene asks for it.';
 
 /* How each letter is described to the model. */
 function describeLetter(id, { form = 'isolated' } = {}) {
@@ -112,15 +110,18 @@ const TILES = {
   Memory: {
     letter: 'jim',
     scene:
-      'Four square cards laid out two by two. The two on one diagonal are turned ' +
-      'face up and both carry LETTER; the other two are face down and plain purple.',
-    object: false,
+      'Four square cards laid out two by two. One face-up card carries LETTER and ' +
+      'the matching face-up card shows a friendly cartoon OBJECT; the other two ' +
+      'are face down with plain purple star backs. This is a letter-and-picture ' +
+      'memory pair, not two copies of a letter.',
   },
   JoinForms: {
     letter: 'be',
     scene:
-      'Two white puzzle pieces clicking together side by side, each carrying ' +
-      'LETTER, with a small sparkle where they meet.',
+      'Two glossy puzzle cards clicking together side by side. The left card shows ' +
+      'LETTER in its isolated Urdu form; the right card shows the same letter in ' +
+      'a visibly different initial connected form. Add a small sparkle where they ' +
+      'meet. Do not show the same form twice.',
     object: false,
   },
   Sequence: {
@@ -168,9 +169,10 @@ const TILES = {
   Baskets: {
     letter: 'te',
     scene:
-      'Two woven wicker baskets side by side on sandy ground, each with a plain ' +
-      'coloured label panel on the front. LETTER is on the left basket, and one ' +
-      'small card carrying an Urdu letter is falling into the right one.',
+      'Two woven wicker baskets side by side on sandy ground, both labels clearly ' +
+      'visible: the left basket is labelled exact Urdu ت and the right basket is ' +
+      'labelled exact Urdu ٹ. A small card carrying exact Urdu ٹ is falling into ' +
+      'the right basket.',
     object: false,
   },
   Whack: {
@@ -183,15 +185,19 @@ const TILES = {
   OddOne: {
     letter: 'choti-he',
     scene:
-      'Four round badges in a row on a pale wall. Three of them are identical and ' +
-      'plain; the fourth carries LETTER and has a bright ring drawn round it.',
+      'Four round badges in a row. Three badges visibly carry the identical Urdu ' +
+      'letter ب; the fourth visibly carries the different Urdu letter ہ and has a ' +
+      'bright ring around it. All four choices must be shown.',
     object: false,
   },
   InOrder: {
-    number: 'n2',
+    letter: 'alif',
     scene:
-      'Three soap bubbles of different sizes floating up, each with a numeral ' +
-      'inside it. The biggest bubble carries NUMERAL.',
+      'Three glossy bubbles floating in a clear left-to-right alphabet sequence. ' +
+      'The first bubble carries LETTER, the second carries exact Urdu ب, and the ' +
+      'third carries exact Urdu پ. Add a simple arrow showing the order. Use ' +
+      'letters, never numerals.',
+    object: false,
   },
   Paint: {
     letter: 'ain',
@@ -204,9 +210,11 @@ const TILES = {
   ConnectPairs: {
     letter: 'wao',
     scene:
-      'Two columns of small white cards on a board with a drawn line joining one ' +
-      'card on the left to one on the right. The joined card on the left carries ' +
-      'LETTER, and the card it joins to shows a friendly cartoon OBJECT.',
+      'Two columns of small cards on a bright board. Show picture cards of an ' +
+      'apple, a duck and a police uniform on the right; show blank letter cards ' +
+      'on the left except for one exact Urdu LETTER. Draw one clear line from ' +
+      'that letter card to the police uniform. This is a letter-to-picture match, ' +
+      'not a number-to-picture match.',
   },
   NumberLine: {
     number: 'n5',
@@ -231,24 +239,26 @@ const TILES = {
   BuildWord: {
     letter: 'be',
     scene:
-      'A friendly cartoon OBJECT above a row of three white slots, two of them ' +
-      'filled with coloured letter tiles and the third empty. LETTER is on the ' +
-      'rightmost filled tile.',
+      'A friendly cartoon OBJECT above four colourful word slots for the exact Urdu ' +
+      'word بکری, read right to left. Show the first three slots filled as the ' +
+      'word begins, leave the final slot empty, and place the missing Urdu letter ' +
+      'on a loose tile below. Keep the word sequence coherent.',
   },
   FillLetter: {
     letter: 'kaf',
     scene:
-      'A row of three white cards with the middle one empty and outlined in ' +
-      'orange. Below the row sit two coloured letter tiles to choose from, one of ' +
-      'them carrying LETTER.',
+      'A friendly word picture above a clear right-to-left Urdu word row with one ' +
+      'empty orange-outlined slot. The other slots contain visible exact Urdu ' +
+      'letters, and below the row sit two colourful answer tiles including exact ' +
+      'LETTER. The missing slot must be obvious.',
     object: false,
   },
   JoinWord: {
-    letter: 'jim',
+    letter: 'be',
     scene:
-      'Three small white cards in a row at the top, one of them carrying LETTER, ' +
-      'a downward arrow beneath them, and a wide white plaque at the bottom with a ' +
-      'short handwritten Urdu word on it.',
+      'Four small cards in a row carry the exact isolated Urdu letters ب, ک, ر and ' +
+      'ی. A downward arrow points to a wide plaque showing the exact joined Urdu ' +
+      'word بکری. The result must be a real Urdu word, not random marks.',
     object: false,
   },
 };
