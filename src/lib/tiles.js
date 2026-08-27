@@ -5,6 +5,9 @@ import { artName } from './games.js';
 
 const BASE = import.meta.env.BASE_URL ?? '/';
 
+export const TILE_FRAME_KEY = 'tile-frame';
+const TILE_FRAME_FILE = 'images/ui/tile-frame.png';
+
 /* Texture key for a tile's picture. */
 const tileArtKey = (name) => `tile-art:${name}`;
 
@@ -27,6 +30,13 @@ export function queueTileArt(scene, games) {
     const key = tileArtKey(artName(game));
     if (scene.textures.exists(key)) continue;
     scene.load.image(key, BASE + file);
+  }
+}
+
+/* Queues the shared generated frame used by menu tiles. */
+export function queueTileFrame(scene) {
+  if (!scene.textures.exists(TILE_FRAME_KEY)) {
+    scene.load.image(TILE_FRAME_KEY, BASE + TILE_FRAME_FILE);
   }
 }
 

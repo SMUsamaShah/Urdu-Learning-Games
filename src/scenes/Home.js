@@ -21,7 +21,7 @@ import { GAMES } from '../lib/games.js';
 import { PER_PAGE, menuGames, pagesOf } from '../lib/menu.js';
 import { watchSwipe } from '../lib/swipe.js';
 import { watchMenu } from '../lib/time-up.js';
-import { queueTileArt } from '../lib/tiles.js';
+import { queueTileArt, queueTileFrame } from '../lib/tiles.js';
 
 /* The menu. Games are listed right-to-left to match the reading direction of the script being taught. */
 
@@ -47,8 +47,9 @@ export default class Home extends Phaser.Scene {
 
   preload() {
     queueBackdrop(this);
-    // Every game's picture.
+    // Menu artwork and the shared tile frame.
     queueTileArt(this, GAMES);
+    queueTileFrame(this);
   }
 
   create() {
@@ -111,10 +112,6 @@ export default class Home extends Phaser.Scene {
     this.buildChalo();
     // If the day has run out.
     watchMenu(this);
-
-    // The grid assembles itself instead of being there already.
-    tiles.forEach((tile, index) => popIn(this, tile, { delay: 60 + index * 55 }));
-    // And then they stop.
 
     label(
       this,

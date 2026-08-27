@@ -2,7 +2,7 @@ import { glyphUpem, letterGlyph, numberGlyph } from './content.js';
 import { fitEmLine, paintGlyph } from './glyph.js';
 import { artName } from './games.js';
 import { paintTileFace } from './tile-faces.js';
-import { hasTileArt, tileArtImage } from './tiles.js';
+import { hasTileArt, TILE_FRAME_KEY, tileArtImage } from './tiles.js';
 import { squash } from './liveliness.js';
 import { COLORS, makeButton } from './theme.js';
 
@@ -15,7 +15,7 @@ export function iconGlyph(game) {
   return null;
 }
 
-/* The panel a tile's drawing goes on, inset so the card shows as a frame. */
+/* The artwork panel, inset beneath the generated frame. */
 export function tilePanel(width, height) {
   const inset = Math.round(Math.min(width, height) * FRAME);
   const panel = { width: width - inset * 2, height: height - inset * 2 };
@@ -123,11 +123,14 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
       color: game.color,
       onTap,
       paint: paintFace(game),
+      rim: false,
       // The panel's height stands in for an em here.
       paintKey:
         `${role}-face:em${Math.round(panel.height)}:${artName(game)}` +
         (hasTileArt(game) ? ':art' : ':drawn'),
     });
+    // Keep the frame separate so its transparent opening reveals the artwork.
+    button.add(scene.add.image(0, 0, TILE_FRAME_KEY).setDisplaySize(width, height));
     // Named so a check can find the tiles among everything else on the menu without knowing where they were laid out.
     button.setName(role);
     button.on('pointerdown', () => squash(scene, button));
