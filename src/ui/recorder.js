@@ -98,13 +98,7 @@ function encodeWavBuffer(buffer) {
   return new Blob([bytes], { type: 'audio/wav' });
 }
 
-/**
- * Builds the recording page.
- *
- * @returns {{el: HTMLElement, dispose: () => void}} the page, and what to call
- *   when it is taken off screen — which must happen, because this holds a
- *   microphone and a keyboard listener.
- */
+/** Builds the recording page. */
 export function buildRecorderPage() {
   const clips = expectedClips({ letters, numbers, words });
   const bySlug = new Map(clips.map((c) => [c.slug, c]));
@@ -813,14 +807,7 @@ export function buildRecorderPage() {
   }
 
   let disposed = false;
-  /**
-   * Hands the microphone back and stops listening for keys.
-   *
-   * Must be called when this page leaves the screen — which is the whole reason
-   * the page is returned with a teardown rather than just an element. A
-   * microphone left open moves a phone's audio path into its communications
-   * profile, and everything played afterwards stutters.
-   */
+  /** Releases the microphone and keyboard listener. */
   function dispose() {
     if (disposed) return;
     disposed = true;

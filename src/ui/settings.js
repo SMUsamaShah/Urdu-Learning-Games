@@ -178,12 +178,7 @@ export function openSettings({ onClose } = {}) {
     countRecordings();
   }
 
-  /**
-   * How many letters a child can be guided through, out of the alphabet.
-   *
-   * Synchronous, unlike the recordings count: the device's corrections were
-   * loaded at startup, so this is already in memory.
-   */
+  /* Returns guided-letter progress for Settings. */
   function traceSummary() {
     if (!strokesMatchFont()) return 'Unavailable';
     return `${guidedLetters().length} of ${letters.length}`;

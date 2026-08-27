@@ -203,26 +203,7 @@
     </div>
     <script type="module" src="/src/main.js"></script>
     <script>
-      /*
-       * Reports why startup failed rather than just that it did.
-       *
-       * Three separate things can go wrong and each surfaces differently:
-       * a script that never loads fires a capture-phase error on the element,
-       * a module that loads but throws fires window.onerror, and a rejected
-       * promise inside an async scene fires unhandledrejection.
-       *
-       * This only speaks for STARTUP, and startup is not over when
-       * `new Phaser.Game()` returns — that happens synchronously, before a
-       * single scene has run. The condition is a scene actually being up, so a
-       * throw inside Preload or Home is still reported; anything after that
-       * belongs to something running and this must stay out of its way.
-       *
-       * It did not, and the result was a full-screen "The game could not load"
-       * over a game that was visibly running and playable, triggered by a
-       * dropped note in the background music. A misleading error report is
-       * worse than none: it sends whoever reads it after entirely the wrong
-       * thing.
-       */
+      /* Report startup errors until a scene is running. */
       (function () {
         var shown = false;
         function fail(detail) {
