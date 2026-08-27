@@ -10,7 +10,7 @@ import {
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { addWordImage, queueWordImages } from '../lib/images.js';
 import { HINT_AFTER_MISSES, pickWord, spellingPlan, trayFor } from '../lib/spelling.js';
-import { sayWord } from '../lib/say.js';
+import { sayLetter, sayWord } from '../lib/say.js';
 import * as sfx from '../lib/sfx.js';
 import { finished, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { dance } from '../lib/celebrate.js';
@@ -194,6 +194,11 @@ export default class BuildWord extends Phaser.Scene {
       slot.add(slot.glyph);
     }
 
+    if (slot.glyph) {
+      slot.glyph.setInteractive({ useHandCursor: true });
+      slot.glyph.on('pointerup', () => sayLetter(slot.letterId, { word: false, sound: true }));
+    }
+
     slot.pulse?.stop();
     slot.setScale(1);
     if (wanted && !filled) slot.pulse = bob(this, slot, { distance: 5, duration: 1100 });
@@ -223,6 +228,11 @@ export default class BuildWord extends Phaser.Scene {
           color: COLORS.onColor,
         })
       );
+      tile.on('pointerdown', () => {
+        if (!tile.used && !this.locked) {
+          sayLetter(id, { word: false, sound: true });
+        }
+      });
       this.tray.add(tile);
       popIn(this, tile, { delay: 420 + index * 60, duration: 280 });
       tile.idle = bob(this, tile, { distance: 4, duration: 2200, delay: index * 160 });

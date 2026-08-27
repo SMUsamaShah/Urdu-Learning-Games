@@ -8,7 +8,7 @@ import {
 } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { pickWord, shuffle, wordDistractors } from '../lib/spelling.js';
-import { sayWord } from '../lib/say.js';
+import { sayLetter, sayWord } from '../lib/say.js';
 import { COLORS } from '../lib/theme.js';
 
 /* These letters — which word do they make? */
@@ -79,6 +79,10 @@ export default class JoinWord extends QuizScene {
           color: COLORS.ink,
         })
       );
+      const letterZone = this.add.zone(x, ROW.y, ROW.size, ROW.size);
+      letterZone.setInteractive({ useHandCursor: true });
+      letterZone.on('pointerup', () => sayLetter(id, { word: false, sound: true }));
+      layer.add(letterZone);
     });
   }
 

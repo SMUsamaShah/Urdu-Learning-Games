@@ -3,7 +3,7 @@ import { allLetterGlyphs, brokenWord, letterGlyph } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { addWordImage, queueWordImages } from '../lib/images.js';
 import { pickWord, shuffle, spellableWords } from '../lib/spelling.js';
-import { sayWord } from '../lib/say.js';
+import { sayLetter, sayWord } from '../lib/say.js';
 import { COLORS, familyColor } from '../lib/theme.js';
 import { lettersById } from '../lib/content.js';
 import { chooseWeighted, weightOf } from '../lib/mastery.js';
@@ -26,6 +26,8 @@ export default class FillLetter extends QuizScene {
     this.wordId = null;
     /* Which letter of the word has been taken out. */
     this.gap = 0;
+    /** @type {Promise<void>|null} */
+    this.choiceSpeech = null;
     // The empty socket in the row.
     this.dragTarget = () => {
       const letters = brokenWord(this.wordId) ?? [];
@@ -97,6 +99,11 @@ export default class FillLetter extends QuizScene {
       if (emoji) layer.add(this.add.text(0, -62, emoji, { fontSize: '112px' }).setOrigin(0.5));
     }
 
+    const pictureZone = this.add.zone(0, -62, 168, 168).setOrigin(0.5);
+    pictureZone.setInteractive({ useHandCursor: true });
+    pictureZone.on('pointerup', () => sayWord(this.wordId));
+    layer.add(pictureZone);
+
     const step = ROW.size + ROW.gap;
     const width = letters.length * step - ROW.gap;
     // Right to left, so the first letter of the word is the rightmost cell.
@@ -122,14 +129,28 @@ export default class FillLetter extends QuizScene {
           color: COLORS.ink,
         })
       );
+      const letterZone = this.add.zone(x, ROW.y, ROW.size, ROW.size);
+      letterZone.setInteractive({ useHandCursor: true });
+      letterZone.on('pointerup', () => sayLetter(id, { word: false, sound: true }));
+      layer.add(letterZone);
     });
   }
 
+  onChoiceTap(id) {
+    this.choiceSpeech = sayLetter(id, { word: false, sound: true });
+  }
+
   speak() {
+    const speech = this.choiceSpeech;
+    this.choiceSpeech = null;
+    if (speech) {
+      speech.then(() => sayWord(this.wordId));
+      return;
+    }
     sayWord(this.wordId);
   }
 
   onCorrect() {
-    sayWord(this.wordId);
+    this.speak();
   }
 }

@@ -75,6 +75,9 @@ export default class QuizScene extends Phaser.Scene {
   /* Called when the round has been won, before the celebration. */
   onCorrect(id) {}
 
+  /* Optional sound for a tapped answer before it is checked. */
+  onChoiceTap(id) {}
+
   /* Queues this screen's painted backdrop. */
   preload() {
     queueBackdrop(this);
@@ -152,7 +155,13 @@ export default class QuizScene extends Phaser.Scene {
         height,
         color: this.tileColor(id),
         shape: this.tileShape,
-        onTap: this.dragTarget ? undefined : () => this.choose(id, tile),
+        onTap: this.dragTarget
+          ? undefined
+          : () => {
+              if (this.locked) return;
+              this.onChoiceTap(id);
+              this.choose(id, tile);
+            },
         // The press tween and the drag's lift both animate scale, and `pointerout` fires the moment a drag leaves the tile.
         press: !this.dragTarget,
       });
@@ -164,6 +173,11 @@ export default class QuizScene extends Phaser.Scene {
 
       // Squashes under the finger.
       if (!this.dragTarget) tile.on('pointerdown', () => squash(this, tile));
+      if (this.dragTarget) {
+        tile.on('pointerdown', () => {
+          if (!this.locked) this.onChoiceTap(id);
+        });
+      }
 
       // Each one drops in a beat after the last, so the line-up assembles itself instead of being there already.
       popIn(this, tile, { delay: index * 90, duration: 320 });
