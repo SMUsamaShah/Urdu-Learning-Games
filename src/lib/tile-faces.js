@@ -380,7 +380,7 @@ const FACES = {
       fill: PAPER, stroke: p.mid, lw: 3.5, dash: [8, 7],
     });
     puzzlePiece(d, w * 0.24, h * 0.29, w * 0.28, {
-      fill: p.base, stroke: p.dark, lw: 3, rotate: 0.22,
+      fill: PAPER, stroke: p.dark, lw: 3, rotate: 0.22,
     });
   },
 
