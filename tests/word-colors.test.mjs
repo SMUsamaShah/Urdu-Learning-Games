@@ -2,10 +2,27 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { WORD_COLORS, wordColor } from '../src/lib/word-colors.js';
 
-const rgb = (hex) => [0, 2, 4].map((offset) => parseInt(hex.slice(1 + offset, 3 + offset), 16));
-const distance = (a, b) => Math.hypot(...rgb(a).map((channel, i) => channel - rgb(b)[i]));
-const luminance = (hex) => {
-  const channels = rgb(hex)
+const HSL = /^hsl\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)%\s*,\s*(\d+(?:\.\d+)?)%\s*\)$/;
+const hslValues = (color) => {
+  const match = HSL.exec(color);
+  assert.ok(match, `${color} should be an HSL colour`);
+  return match.slice(1).map(Number);
+};
+const rgbFromHsl = (color) => {
+  const [h, saturation, lightness] = hslValues(color);
+  const s = saturation / 100;
+  const l = lightness / 100;
+  const hueChannel = (n) => {
+    const k = (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    return l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+  };
+  return [0, 8, 4].map(hueChannel).map((channel) => Math.round(channel * 255));
+};
+const distance = (a, b) =>
+  Math.hypot(...rgbFromHsl(a).map((channel, i) => channel - rgbFromHsl(b)[i]));
+const luminance = (color) => {
+  const channels = rgbFromHsl(color)
     .map((channel) => channel / 255)
     .map((channel) => (channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
   return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
@@ -21,6 +38,18 @@ test('joined-word colours are unique and visibly separated', () => {
       `${WORD_COLORS[i]} and ${next} are too similar for adjacent letters`
     );
   }
+});
+
+test('the palette uses distinct HSL lightness levels', () => {
+  const lightness = WORD_COLORS.map((color) => hslValues(color)[2]);
+  assert.ok(new Set(lightness).size >= 4, 'the palette needs varied brightness levels');
+  assert.ok(
+    Math.min(
+      ...lightness.map((value, index) =>
+        Math.abs(value - lightness[(index + 1) % lightness.length])
+      )
+    ) >= 5
+  );
 });
 
 test('every colour stays readable on a white word', () => {
