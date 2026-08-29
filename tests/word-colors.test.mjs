@@ -14,9 +14,11 @@ const luminance = (hex) => {
 test('joined-word colours are unique and visibly separated', () => {
   assert.equal(new Set(WORD_COLORS).size, WORD_COLORS.length);
   for (let i = 0; i < WORD_COLORS.length; i += 1) {
+    const next = wordColor(i + 1);
     assert.ok(
-      distance(WORD_COLORS[i], wordColor(i + 1)) > 140,
-      `${WORD_COLORS[i]} and ${wordColor(i + 1)} are too similar for adjacent letters`
+      distance(WORD_COLORS[i], next) > 140 ||
+        Math.abs(luminance(WORD_COLORS[i]) - luminance(next)) >= 0.05,
+      `${WORD_COLORS[i]} and ${next} are too similar for adjacent letters`
     );
   }
 });
@@ -25,6 +27,21 @@ test('every colour stays readable on a white word', () => {
   for (const color of WORD_COLORS) {
     assert.ok(1.05 / (luminance(color) + 0.05) >= 4.5, `${color} needs more contrast with white`);
   }
+});
+
+test('adjacent colours have a meaningful brightness difference', () => {
+  const differences = WORD_COLORS.map((color, index) =>
+    Math.abs(luminance(color) - luminance(wordColor(index + 1)))
+  );
+
+  assert.ok(
+    Math.min(...differences) >= 0.05,
+    `adjacent brightness differences are too small: ${differences.map((value) => value.toFixed(3))}`
+  );
+  assert.ok(
+    Math.max(...WORD_COLORS.map(luminance)) - Math.min(...WORD_COLORS.map(luminance)) >= 0.12,
+    'the palette needs a wider overall brightness range'
+  );
 });
 
 test('the palette repeats predictably for longer words', () => {

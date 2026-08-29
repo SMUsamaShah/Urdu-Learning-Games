@@ -1,11 +1,11 @@
-/* A high-contrast warm/cool sequence for adjacent source letters. */
+/* Alternate dark and light colours so adjacent letters stay distinct. */
 
 export const WORD_COLORS = Object.freeze([
-  '#005a9c',
-  '#c45100',
-  '#007a55',
+  '#003b73',
+  '#b85c00',
+  '#2f2f2f',
+  '#006b4f',
   '#d81b60',
-  '#806000',
 ]);
 
 export function wordColor(index) {
