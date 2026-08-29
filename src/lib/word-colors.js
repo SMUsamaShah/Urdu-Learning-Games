@@ -4,7 +4,7 @@ export const WORD_COLORS = Object.freeze([
   '#0057b8',
   '#b45309',
   '#7a1fa2',
-  '#008a5a',
+  '#007f4f',
   '#c1123f',
 ]);
 
