@@ -10,7 +10,7 @@ import { armDragging, carry, nearest, swimHome } from '../lib/dragging.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { COLORS, label, makeButton, PLAY } from '../lib/theme.js';
-import { coloredWordParts } from '../lib/word-colors.js';
+import { coloredWordParts, WORD_OUTLINE } from '../lib/word-colors.js';
 
 /* The shape every "which one is it?" game in this app has. */
 
@@ -91,7 +91,7 @@ export default class QuizScene extends Phaser.Scene {
       y,
       `completed-word:em${Math.round(em)}:${id}:coloured`,
       glyph,
-      { em, color: COLORS.ink, parts }
+      { em, color: COLORS.ink, parts, ...WORD_OUTLINE }
     );
     joined.setAlpha(0);
     this.promptLayer.add(joined);

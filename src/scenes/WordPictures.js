@@ -5,7 +5,7 @@ import { clipKeys, hasClip } from '../lib/audio.js';
 import { addWordImage, illustratedWords, queueWordImages } from '../lib/images.js';
 import { sayWord } from '../lib/say.js';
 import { COLORS, label } from '../lib/theme.js';
-import { coloredWordParts } from '../lib/word-colors.js';
+import { coloredWordParts, WORD_OUTLINE } from '../lib/word-colors.js';
 import QuizScene from './QuizScene.js';
 import { pickWeighted } from '../lib/mastery.js';
 
@@ -72,6 +72,7 @@ export default class WordPictures extends QuizScene {
           em: this.promptFit.em,
           color: COLORS.ink,
           parts,
+          ...WORD_OUTLINE,
         })
       );
     }
@@ -100,6 +101,7 @@ export default class WordPictures extends QuizScene {
           em: this.fallbackFit.em,
           color: COLORS.ink,
           parts,
+          ...WORD_OUTLINE,
         })
       );
     }

@@ -21,7 +21,7 @@ import { bob, hop, popIn } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, PLAY, familyColor, makeButton } from '../lib/theme.js';
 import { weightOf } from '../lib/mastery.js';
-import { coloredWordParts } from '../lib/word-colors.js';
+import { coloredWordParts, WORD_OUTLINE } from '../lib/word-colors.js';
 
 /* Build the word out of its letters. */
 
@@ -320,7 +320,7 @@ export default class BuildWord extends Phaser.Scene {
           JOINED.y,
           `build-word:em${Math.round(em)}:${this.wordId}:coloured`,
           glyph,
-          { em, color: COLORS.ink, parts }
+          { em, color: COLORS.ink, parts, ...WORD_OUTLINE }
         )
       : null;
     if (joined) {

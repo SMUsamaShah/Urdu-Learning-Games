@@ -1,12 +1,18 @@
-/* Set both hue and lightness so adjacent letters differ in colour and brightness. */
+/* Paul Tol's vibrant, colour-blind-safe qualitative hues, expressed as HSL. */
 
 export const WORD_COLORS = Object.freeze([
-  'hsl(210, 100%, 22%)',
-  'hsl(32, 100%, 35%)',
-  'hsl(0, 0%, 16%)',
-  'hsl(158, 100%, 25%)',
-  'hsl(335, 90%, 36%)',
+  'hsl(173, 100%, 30%)',
+  'hsl(202, 100%, 37%)',
+  'hsl(22, 85%, 57%)',
+  'hsl(338, 85%, 51%)',
+  'hsl(11, 85%, 38%)',
 ]);
+
+/* A thin edge keeps the brighter fills readable on the white word plate. */
+export const WORD_OUTLINE = Object.freeze({
+  stroke: '#2b3047',
+  strokeWidth: 1.5,
+});
 
 export function wordColor(index) {
   return WORD_COLORS[index % WORD_COLORS.length];

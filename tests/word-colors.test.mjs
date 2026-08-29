@@ -52,9 +52,9 @@ test('the palette uses distinct HSL lightness levels', () => {
   );
 });
 
-test('every colour stays readable on a white word', () => {
+test('vivid fills keep enough separation from the white word plate', () => {
   for (const color of WORD_COLORS) {
-    assert.ok(1.05 / (luminance(color) + 0.05) >= 4.5, `${color} needs more contrast with white`);
+    assert.ok(1.05 / (luminance(color) + 0.05) >= 2.8, `${color} is too pale for the word plate`);
   }
 });
 

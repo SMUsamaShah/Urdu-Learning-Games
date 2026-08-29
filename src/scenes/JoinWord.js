@@ -10,7 +10,7 @@ import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { pickWord, shuffle, wordDistractors } from '../lib/spelling.js';
 import { sayLetter, sayWord } from '../lib/say.js';
 import { COLORS } from '../lib/theme.js';
-import { coloredWordParts } from '../lib/word-colors.js';
+import { coloredWordParts, WORD_OUTLINE } from '../lib/word-colors.js';
 
 /* These letters — which word do they make? */
 
@@ -54,6 +54,7 @@ export default class JoinWord extends QuizScene {
         em,
         color: COLORS.ink,
         parts,
+        ...WORD_OUTLINE,
       })
     );
   }

@@ -23,7 +23,7 @@ import { breathe, hop, jig, popIn, squash } from '../lib/liveliness.js';
 import { ringBurst, sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
 import { watchSwipe } from '../lib/swipe.js';
-import { coloredWordParts, wordColor } from '../lib/word-colors.js';
+import { coloredWordParts, wordColor, WORD_OUTLINE } from '../lib/word-colors.js';
 
 /* Free exploration of the alphabet, and the backbone the other games hang off. */
 
@@ -448,6 +448,7 @@ export default class Flashcards extends Phaser.Scene {
           em: wordFit.em,
           color: COLORS.ink,
           parts,
+          ...WORD_OUTLINE,
         }
       );
       card.add(wordGlyphImage);
