@@ -27,6 +27,7 @@ const MIN_OUTLINE_EM = 50;
  * @param {number} [options.padding=0.06] Fraction of height kept as margin.
  * @param {string} [options.partD] One cluster's outline, redrawn over the glyph.
  * @param {string} [options.partColor]
+ * @param {{d:string,color:string}[]} [options.parts] Cluster outlines and their fills.
  * @returns {string} The texture key, for `scene.add.image(x, y, key)`.
  */
 export function glyphTexture(scene, key, glyph, options = {}) {
@@ -42,6 +43,7 @@ export function glyphTexture(scene, key, glyph, options = {}) {
     padding = 0.06,
     partD = null,
     partColor = null,
+    parts = null,
   } = options;
 
   const [, , bw, bh] = glyph.bbox;
@@ -66,7 +68,16 @@ export function glyphTexture(scene, key, glyph, options = {}) {
   const ctx = canvas.getContext('2d');
   ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
   ctx.translate(pad, pad);
-  paintGlyph(ctx, glyph, { scale, color, stroke, strokeWidth, strokeEm, partD, partColor });
+  paintGlyph(ctx, glyph, {
+    scale,
+    color,
+    stroke,
+    strokeWidth,
+    strokeEm,
+    partD,
+    partColor,
+    parts,
+  });
 
   const texture = scene.textures.createCanvas(key, canvas.width, canvas.height);
   texture.context.drawImage(canvas, 0, 0);
@@ -85,6 +96,7 @@ export function glyphTexture(scene, key, glyph, options = {}) {
  * @param {number} [options.strokeEm] a line as a fraction of the font's em
  * @param {string} [options.partD] one cluster's outline, drawn over the glyph
  * @param {string} [options.partColor]
+ * @param {{d:string,color:string}[]} [options.parts] cluster outlines and their fills
  */
 export function paintGlyph(ctx, glyph, options) {
   const {
@@ -95,6 +107,7 @@ export function paintGlyph(ctx, glyph, options) {
     strokeEm = 0,
     partD = null,
     partColor = null,
+    parts = null,
   } = options;
   const [bx, by] = glyph.bbox;
   if (!glyph.d) return;
@@ -107,7 +120,13 @@ export function paintGlyph(ctx, glyph, options) {
   ctx.fillStyle = color;
   ctx.fill(path, 'nonzero');
 
-  // One letter of the word, again, in another colour.
+  for (const part of parts ?? []) {
+    if (!part?.d || !part.color) continue;
+    ctx.fillStyle = part.color;
+    ctx.fill(new Path2D(part.d), 'nonzero');
+  }
+
+  // One highlighted part, kept for tracing and other single-part overlays.
   if (partD && partColor) {
     ctx.fillStyle = partColor;
     ctx.fill(new Path2D(partD), 'nonzero');

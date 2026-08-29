@@ -11,11 +11,25 @@ export const FONT_WOFF2 = path.join(
   'node_modules/alqalam-taj-nastaliq/fonts/alqalam-taj-nastaliq.woff2'
 );
 
+/* Noto has reliable per-letter clusters for coloured joined words. */
+export const WORD_FONT_WOFF2 = path.join(
+  ROOT,
+  'node_modules/@fontsource/noto-nastaliq-urdu/files/noto-nastaliq-urdu-arabic-400-normal.woff2'
+);
+
 /* Which font a set of outlines came from, recorded alongside them. */
-export function fontFingerprint() {
-  const bytes = fs.readFileSync(FONT_WOFF2);
+function fingerprint(file) {
+  const bytes = fs.readFileSync(file);
   return {
-    file: path.basename(FONT_WOFF2),
+    file: path.basename(file),
     sha: crypto.createHash('sha256').update(bytes).digest('hex').slice(0, 12),
   };
+}
+
+export function fontFingerprint() {
+  return fingerprint(FONT_WOFF2);
+}
+
+export function wordFontFingerprint() {
+  return fingerprint(WORD_FONT_WOFF2);
 }

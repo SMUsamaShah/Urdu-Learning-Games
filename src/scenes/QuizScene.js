@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { allWordGlyphs, wordGlyph } from '../lib/content.js';
+import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { confetti, dance, flyStar } from '../lib/celebrate.js';
@@ -8,6 +10,7 @@ import { armDragging, carry, nearest, swimHome } from '../lib/dragging.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { COLORS, label, makeButton, PLAY } from '../lib/theme.js';
+import { coloredWordParts } from '../lib/word-colors.js';
 
 /* The shape every "which one is it?" game in this app has. */
 
@@ -74,6 +77,28 @@ export default class QuizScene extends Phaser.Scene {
 
   /* Called when the round has been won, before the celebration. */
   onCorrect(id) {}
+
+  /* Shows the joined answer below a row of separated letters. */
+  showCompletedWord(id, { y = 110, width = 520, height = 82 } = {}) {
+    const glyph = wordGlyph(id);
+    if (!glyph) return null;
+
+    const parts = coloredWordParts(glyph);
+    const em = fitEmAlone(allWordGlyphs(), width, height).em;
+    const joined = addGlyph(
+      this,
+      0,
+      y,
+      `completed-word:em${Math.round(em)}:${id}:coloured`,
+      glyph,
+      { em, color: COLORS.ink, parts }
+    );
+    joined.setAlpha(0);
+    this.promptLayer.add(joined);
+    this.tweens.add({ targets: joined, alpha: 1, delay: 100, duration: 340 });
+    this.completedWord = joined;
+    return joined;
+  }
 
   /* Optional sound for a tapped answer before it is checked. */
   onChoiceTap(id) {}
