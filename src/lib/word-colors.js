@@ -1,11 +1,11 @@
-/* The fixed palette used to map source letters onto a joined word. */
+/* A high-contrast warm/cool sequence for adjacent source letters. */
 
 export const WORD_COLORS = Object.freeze([
-  '#0057b8',
-  '#b45309',
-  '#7a1fa2',
-  '#007f4f',
-  '#c1123f',
+  '#005a9c',
+  '#c45100',
+  '#007a55',
+  '#d81b60',
+  '#806000',
 ]);
 
 export function wordColor(index) {
