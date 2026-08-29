@@ -1,22 +1,4 @@
-/**
- * Keeps the grown-up screens away from the child holding the phone.
- *
- * Behind this gate are buttons that delete recordings and overwrite takes, on a
- * device handed to a three-year-old who taps everything. The bar to clear is
- * therefore "cannot be reached by accident or by persistence", not "secure" —
- * there is no secret here worth protecting, and pretending otherwise would only
- * make it annoying for the parent.
- *
- * Two obstacles, both trivial for an adult:
- *
- *   1. Hold the button for a moment. Rules out a stray tap.
- *   2. Answer a small multiplication. Rules out a child who learned that holding
- *      it works, and needs reading and arithmetic a preschooler does not have.
- *
- * Built as plain DOM rather than a Phaser scene because it is adult-facing and
- * needs a real text input, which a canvas cannot give without reimplementing
- * keyboard handling.
- */
+/* Keeps the grown-up screens away from the child holding the phone. */
 
 import './parental-gate.css';
 import { goBack, pushScreen } from './history.js';
@@ -25,13 +7,9 @@ import { holdGameInput } from './game-input.js';
 
 const HOLD_MS = 900;
 
-/**
- * Asks the arithmetic question.
- *
- * @param {HTMLElement} [parent] defaults to the stage, so the gate turns with
- *   the app — see src/lib/turn.js
- * @returns {Promise<boolean>} whether the answer was right. A wrong answer just
- *   closes: no retry loop to bang on, and no feedback to learn from.
+/** Asks the arithmetic question.
+ * @param {HTMLElement} [parent] element that receives the gate
+ * @returns {Promise<boolean>} whether the answer was right.
  */
 export function askParentalQuestion(parent = stageElement()) {
   // Small enough to be instant for an adult, beyond a preschooler either way.
@@ -53,26 +31,9 @@ export function askParentalQuestion(parent = stageElement()) {
         </div>
       </div>`;
 
-    /**
-     * The answer, held until the dialog's history entry is unwound.
-     *
-     * Every way out of here — Cancel, the backdrop, Escape, a right answer, the
-     * phone's back button — goes through `goBack()`, and the promise is settled
-     * by the entry's own handler rather than by whichever control was used.
-     *
-     * One settling point rather than four, and it is the one that runs last.
-     * `history.back()` is asynchronous, so a version that resolved from the
-     * button would hand control back to the caller with this dialog's entry
-     * still on the stack, and the caller's first act is to push a screen of its
-     * own on top of it. In practice the unwind wins that race every time it was
-     * tried — the caller reaches its push through a dynamic import — so this is
-     * ordering discipline rather than a fix for an observed bug. It costs a
-     * variable.
-     */
+    /* The answer, held until the dialog's history entry is unwound. */
     let answer = false;
-    // The question covers the canvas, which does not stop Phaser hearing a tap
-    // on it: see src/lib/game-input.js. Without this, answering the question
-    // opened whichever tile "Continue" was sitting on.
+    // The question covers the canvas, which does not stop Phaser hearing a tap on it: see src/lib/game-input.js.
     const release = holdGameInput();
     const settle = (result) => {
       document.removeEventListener('keydown', onKey);
@@ -101,14 +62,10 @@ export function askParentalQuestion(parent = stageElement()) {
   });
 }
 
-/**
- * Wires hold-to-open onto a Phaser game object.
- *
+/** Wires hold-to-open onto a Phaser game object.
  * @param {Phaser.Scene} scene
  * @param {Phaser.GameObjects.GameObject} target must already be interactive.
  * @param {{onProgress?: (t: number) => void, onOpen: () => void}} handlers
- *   onProgress receives 0..1 so the caller can draw a filling ring, which is
- *   what tells an adult to keep holding rather than tap again.
  */
 export function attachHoldToOpen(scene, target, { onProgress, onOpen }) {
   let start = 0;

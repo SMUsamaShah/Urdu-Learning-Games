@@ -3,22 +3,9 @@ import { sparkleBurst, starShower } from '../particles.js';
 import * as sfx from '../sfx.js';
 import { levelTint, makeCanvas, publish, SUPERSAMPLE } from './canvas.js';
 
-/**
- * A glass that fills with juice, a swallow at a time.
- *
- * The same information as the bar and much more of a thing: a glass has a top
- * to reach, filling one is an everyday event a three-year-old already
- * understands, and finishing a level drinks it and pours a different colour.
- *
- * The juice is the glass's own inside, drawn once and revealed from the bottom
- * by cropping, which is what lets the glass taper without the fill having to
- * know that it does. A crop is in texture space, so it stays right however the
- * container is placed or scaled — a geometry mask is in world coordinates and
- * does neither. The glass itself is two baked pieces: the hollow behind the
- * juice, and the wall and shine in front of it.
- */
+/* A glass that fills with juice, a swallow at a time. */
 
-/** The tumbler, measured up from its base. Slightly tapered, like a real one. */
+/* The tumbler, measured up from its base. */
 const GLASS = { topWidth: 132, baseWidth: 104, wall: 9 };
 
 function glassPath(ctx, height, inset) {
@@ -32,7 +19,7 @@ function glassPath(ctx, height, inset) {
   ctx.closePath();
 }
 
-/** The inside of the glass, filled. Cropped from the bottom to pour it. */
+/* The inside of the glass, filled. */
 function juiceTexture(scene, height) {
   const key = `glass:juice:${Math.round(height)}`;
   if (scene.textures.exists(key)) return key;
@@ -78,8 +65,7 @@ function frontTexture(scene, height) {
   ctx.fill();
   ctx.globalCompositeOperation = 'source-over';
 
-  // A rim, and one long highlight down the left, which is what makes it glass
-  // rather than a bucket.
+  // A rim, and one long highlight down the left, which is what makes it glass rather than a bucket.
   ctx.strokeStyle = 'rgba(43,48,71,0.20)';
   ctx.lineWidth = 3;
   glassPath(ctx, height, 1);
@@ -112,8 +98,7 @@ export function create(scene, { width, height }) {
   root.add(juice);
   const frame = { width: juice.frame.width, height: juice.frame.height };
 
-  // The wall and its shine go over the juice, so the fill looks like it is
-  // inside the glass rather than painted on the front of it.
+  // The wall and its shine go over the juice.
   root.add(
     scene.add
       .image(0, 0, frontTexture(scene, tall))
@@ -155,7 +140,7 @@ export function create(scene, { width, height }) {
     });
   };
 
-  /** A few bubbles rising through whatever is in there. */
+  /* A few bubbles rising through whatever is in there. */
   const fizz = () => {
     const surface = -GLASS.wall - filled * inside;
     bubbles.forEach((bubble, i) => {

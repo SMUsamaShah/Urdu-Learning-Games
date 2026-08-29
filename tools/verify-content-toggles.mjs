@@ -1,37 +1,15 @@
-/**
- * What a game is allowed to deal.
- *
- * Two settings decide it — how high the numbers go, and which individual
- * letters, words and numbers a parent has switched off — and both have the same
- * failure mode: the setting is stored correctly, Settings shows it correctly,
- * and one game somewhere reads the raw content file and deals the thing anyway.
- * That is invisible until a child meets ۹۹ in a matching game, so it is checked
- * from the outside, by dealing rounds and looking at what came up.
- *
- * The switches are the harder half. A letter reaches a game by half a dozen
- * routes — as the answer, as a wrong answer drawn from its shape family, as one
- * step of a generated sequence, as the letter behind a picture — and a filter
- * put on four of the six is a filter that does not work. So this disables a
- * letter and then *plays* every screen that could show one.
- *
- * Usage: npm run dev &  then  node tools/verify-content-toggles.mjs [baseUrl]
- */
+/* What a game is allowed to deal. */
 
 import { fail, homeIsUp, openApp, startScene, step } from './harness.mjs';
 
-/** Must match src/lib/enabled.js. */
+/* Must match src/lib/enabled.js. */
 const BAND_KEY = 'urdu-games:numbers-band';
 const OFF_KEY = 'urdu-games:disabled';
 
-/** The screens that deal numbers. */
+/* The screens that deal numbers. */
 const NUMBER_SCREENS = ['Numbers', 'NumberLine'];
 
-/**
- * Every screen that can put a letter in front of a child.
- *
- * Flashcards is in it: it is browsing rather than a game, but browsing to a
- * letter somebody switched off is exactly as wrong.
- */
+/* Every screen that can put a letter in front of a child. */
 const LETTER_SCREENS = [
   'Flashcards',
   'FindLetter',
@@ -59,12 +37,10 @@ const LETTER_SCREENS = [
   'Trace',
 ];
 
-/** A letter with a word and a picture, so it can reach every screen. */
+/* A letter with a word and a picture, so it can reach every screen. */
 const VICTIM = 'be';
 
-// Twenty-one screens dealt three times each, plus reloads between settings:
-// this is a slow check by nature, so it gets a long watchdog rather than a
-// hurried one that fails on a busy machine.
+// Twenty-one screens dealt three times each.
 const { page, finish, url } = await openApp({
   name: 'content',
   open: false,
@@ -72,7 +48,7 @@ const { page, finish, url } = await openApp({
   timeoutMs: 900000,
 });
 
-/** Sets the band and reloads, so every module reads it fresh. */
+/* Sets the band and reloads, so every module reads it fresh. */
 async function band(value) {
   await page.evaluate(
     ([key, v]) => localStorage.setItem(key, String(v)),
@@ -83,7 +59,7 @@ async function band(value) {
   await page.waitForTimeout(400);
 }
 
-/** Every number the app believes is currently in play. */
+/* Every number the app believes is currently in play. */
 const inPlay = () =>
   page.evaluate(async () => {
     const content = await import('/src/lib/content.js');
@@ -92,8 +68,6 @@ const inPlay = () =>
 
 await page.goto(url, { waitUntil: 'domcontentloaded' });
 await homeIsUp(page);
-
-// --- 1. The band decides what is in play ------------------------------------
 
 step('the band narrows what is in play');
 for (const limit of [10, 20]) {
@@ -114,12 +88,6 @@ if (!wide.includes(1000) || !wide.includes(100000)) {
   fail('the hundred band leaves out the thousand or the lakh');
 } else step('  a thousand and a lakh arrive with the hundred');
 
-// --- 2. And the screens honour it -------------------------------------------
-//
-// Not the same question. `activeNumbers()` can be perfectly correct while a
-// screen imports the raw `numbers` array and deals from that, which is exactly
-// the mistake this is here to catch.
-
 step('the number screens deal only what is in play');
 for (const limit of [10, 100]) {
   await band(limit);
@@ -127,20 +95,16 @@ for (const limit of [10, 100]) {
     await startScene(page, scene);
     await page.waitForTimeout(700);
 
-    // Rounds are dealt from a pool, so one round proves little; this deals
-    // several and looks at everything that came up across all of them.
+    // Rounds are dealt from a pool.
     const seen = new Set();
     for (let round = 0; round < 6; round++) {
       const values = await page.evaluate(
         (name) => {
           const scene = window.__game.scene.getScene(name);
           const ids = new Set();
-          // Whatever the screen is holding: the quiz games keep a pool and a
-          // target, the caterpillar keeps a run and a tray.
+          // Whatever the screen is holding: the quiz games keep a pool and a target, the caterpillar keeps a run and a tray.
           for (const key of ['countable', 'run', 'tray', 'pool']) {
-            // Guarded: these are arrays on the screens that have them and
-            // something else entirely on the screens that happen to use the
-            // same word for another thing.
+            // Only inspect array-valued scene state.
             if (Array.isArray(scene[key])) for (const id of scene[key]) ids.add(id);
           }
           if (scene.target) ids.add(scene.target);
@@ -165,8 +129,6 @@ for (const limit of [10, 100]) {
     else step(`  ${scene} at ${limit}: ${seen.size} distinct, highest ${Math.max(...seen)}`);
   }
 }
-
-// --- 3. A switched-off letter reaches nothing -------------------------------
 
 step(`switching ${VICTIM} off`);
 await band(10);
@@ -198,26 +160,12 @@ for (const scene of LETTER_SCREENS) {
   await page.waitForTimeout(500);
 
   // The pools *and* what is on screen, in one visit.
-  //
-  // Dealing several rounds a screen was the first attempt, by restarting the
-  // scene between them. Two things were wrong with that: a restart re-runs
-  // create(), which re-bakes every glyph texture and fills the console with
-  // "texture key already in use" until the harness's error collector ran out
-  // of string — and it was answering the wrong question anyway. A round is
-  // dealt *from* the pool, so a pool that cannot contain the letter is the
-  // guarantee; the line-up on screen is the spot check that the pool is the
-  // thing being dealt from.
   const found = await page.evaluate(
     ([name, id]) => {
       const scene = window.__game.scene.getScene(name);
       const ids = new Set();
       const collect = (held) => {
-        // Arrays, and Maps of arrays: OddOne keeps its letters grouped by shape
-        // family in a Map, and reading only the arrays let it pass while it was
-        // still building both of its pools out of the whole alphabet. It only
-        // deals four letters a round out of thirty-eight, so a check that looks
-        // at the round rather than the pool passes about nine times in ten —
-        // which is worse than not having one.
+        // Arrays, and Maps of arrays: OddOne keeps its letters grouped by shape family in a Map, and reading only the arrays.
         if (held instanceof Map) return held.forEach(collect);
         if (!Array.isArray(held)) return;
         for (const item of held) {
@@ -232,18 +180,13 @@ for (const scene of LETTER_SCREENS) {
         'run',
         'tray',
         'letters',
-        // The spelling screens: the word being spelled, and the row of slots
-        // it is being spelled into. A word whose letters include a disabled one
-        // must not be dealt at all — the child would be asked for a letter that
-        // is not in the tray and cannot be.
+        // The spelling screens: the word being spelled, and the row of slots it is being spelled into.
         'slots',
         'cards',
         'balls',
         'byFamily',
         'lineUp',
-        // Not `families`: shape families are *named after* a letter — the ب ت
-        // ث family is called 'be' — so reading that list as letter ids reports
-        // every screen that groups by family as holding a letter it does not.
+        // Shape-family ids are names, not letter arrays.
       ]) {
         collect(scene[key]);
       }
@@ -260,12 +203,6 @@ for (const scene of LETTER_SCREENS) {
 }
 if (dealt.length) fail(`${VICTIM} is switched off and ${dealt.join(', ')} still hold it`);
 else step(`  ${LETTER_SCREENS.length} screens, none of them holding it`);
-
-// --- 4. Switching almost everything off still leaves a playable game ---------
-//
-// The rule is that fewer than three left on falls back to the whole set rather
-// than dealing a round nobody can finish. A parent who switches off thirty-six
-// letters has not asked for a matching game with two cards in it.
 
 step('switching almost everything off');
 const survivors = await page.evaluate(async () => {

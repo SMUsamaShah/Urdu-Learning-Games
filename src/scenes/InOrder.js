@@ -11,35 +11,13 @@ import { sayLetter, sayLetters } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, PLAY } from '../lib/theme.js';
 import { chooseWeighted, weightOf } from '../lib/mastery.js';
 
-/**
- * Pop them in order.
- *
- * ## Order without a line to read it off
- *
- * Sequence and Caterpillar both lay the alphabet out in a row and ask what goes
- * in a hole, so the run itself is on screen doing half the work — a child can
- * often answer by looking at the two neighbours rather than by knowing the
- * order. Here the letters are scattered, there is no row, and the only way
- * through is to actually know which comes next.
- *
- * That makes it the hardest of the three ordering screens and the right one to
- * meet last. The trail of already-popped letters builds along the bottom as
- * they go, so a child who has lost their place can see where they are — the
- * help arrives as a consequence of getting them right, rather than being on
- * screen from the start.
- *
- * ## Nothing is lost by guessing
- *
- * A wrong bubble wobbles and stays. There is no timer and no score, so tapping
- * every bubble in turn until one gives is a legitimate way to play it, and it
- * is how a child works out what "next" means in the first place.
- */
+/* Pop them in order. */
 
-/** Bubbles on screen, by how many sets have been finished. */
+/* Bubbles on screen, by how many sets have been finished. */
 const RUN_BY_ROUND = [3, 4, 4, 5, 6];
 
 const BUBBLE = 118;
-/** Where bubbles may sit: clear of the ribbon, the garden and the trail. */
+/* Where bubbles may sit: clear of the ribbon, the garden and the trail. */
 const FIELD = { left: RAIL_EDGE + 44, right: DESIGN.width - 90, top: 205, bottom: 500 };
 const TRAIL_Y = DESIGN.height - 96;
 
@@ -49,7 +27,7 @@ export default class InOrder extends Phaser.Scene {
     /** @type {string[]} */
     this.sequence = [];
     this.round = 0;
-    /** @type {string[]} the run being asked for, in order */
+    /** @type {string[]} */
     this.run = [];
     this.next = 0;
     /** @type {Phaser.GameObjects.Container[]} */
@@ -79,8 +57,6 @@ export default class InOrder extends Phaser.Scene {
     this.newRound();
   }
 
-  // ------------------------------------------------------------------ round
-
   newRound() {
     this.field.removeAll(true);
     this.trail.removeAll(true);
@@ -93,8 +69,7 @@ export default class InOrder extends Phaser.Scene {
       RUN_BY_ROUND[Math.min(this.round, RUN_BY_ROUND.length - 1)],
       this.sequence.length
     );
-    // Weighted by what is inside the window rather than by a single letter —
-    // see Caterpillar.pickStart, which does the same thing for the same reason.
+    // Weighted by what is inside the window rather than by a single letter.
     const starts = Array.from({ length: this.sequence.length - length + 1 }, (unused, i) => i);
     const start = chooseWeighted(starts, (from) => {
       let sum = 0;
@@ -103,20 +78,17 @@ export default class InOrder extends Phaser.Scene {
     });
     this.run = this.sequence.slice(start, start + length);
 
-    // Scattered on a coarse grid rather than at random points: truly random
-    // placement overlaps bubbles, and two overlapping targets are hard for a
-    // small finger to choose between.
+    // Scattered on a coarse grid rather than at random points.
     const spots = this.scatter(this.run.length);
     Phaser.Utils.Array.Shuffle([...this.run]).forEach((id, index) => {
       this.addBubble(id, spots[index], index);
     });
 
-    // Said as a run, so the order is heard before it is asked for. This is the
-    // only clue the screen gives, and it is the right one.
+    // Say the run before asking for its missing letter.
     sayLetters(this.run);
   }
 
-  /** Cells of a grid big enough for the run, shuffled and jittered. */
+  /* Cells of a grid big enough for the run, shuffled and jittered. */
   scatter(count) {
     const columns = Math.min(count, 3);
     const rows = Math.ceil(count / columns);
@@ -173,16 +145,13 @@ export default class InOrder extends Phaser.Scene {
     });
   }
 
-  // ------------------------------------------------------------------- play
-
   tap(bubble) {
     if (this.locked || bubble.popped) return;
 
     if (bubble.letterId !== this.run[this.next]) {
       wrongAnswer({ subject: { kind: 'letter', id: this.run[this.next] } });
       this.rail?.wonder();
-      // It stays. Working through the bubbles until one gives is how a child
-      // finds out what "next" means, and it must not cost them the board.
+      // It stays. Working through the bubbles until one gives is how a child finds out what "next" means.
       this.tweens.add({
         targets: bubble,
         x: bubble.x + 9,
@@ -226,12 +195,7 @@ export default class InOrder extends Phaser.Scene {
     });
   }
 
-  /**
-   * The run so far, building along the bottom right to left.
-   *
-   * This is the whole reward structure of the screen: the row that appears is
-   * the order, in order, made by them.
-   */
+  /* The run so far, building along the bottom right to left. */
   addToTrail(letterId, index) {
     const step = 104;
     const startX = PLAY.centerX + ((this.run.length - 1) * step) / 2;

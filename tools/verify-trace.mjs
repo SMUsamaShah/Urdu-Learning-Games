@@ -1,26 +1,4 @@
-/**
- * Drives the writing screen with a real pointer, in both of its modes.
- *
- * This is the one screen whose whole mechanic is input, so it cannot be checked
- * by poking scene state: the cursor, the ink and the finish condition all hang
- * off actual mouse movement. Every stroke here is a genuine mouse.down / move /
- * up against the canvas.
- *
- * Two games live here. A letter with a hand-corrected pen path is **guided** —
- * follow the line, in order. Everything else is **colouring** — fill the shape
- * in. Both have to work, and the checks below are the ones that decide whether
- * either is playable at all.
- *
- * The check that matters most is the first: that the recorded paths actually
- * cover the letters they claim to write. A path that traces half a ص and stops
- * is a guide that teaches half a letter, and nothing else here would notice —
- * it would follow, complete and celebrate exactly as if it were right.
- *
- * Waits on conditions rather than durations, for the reason in verify-games.mjs:
- * Phaser's clock runs at about half wall-clock speed under headless WebGL.
- *
- * Usage: npm run dev &  then  node tools/verify-trace.mjs [baseUrl]
- */
+/* Drives the writing screen with a real pointer, in both of its modes. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -30,30 +8,10 @@ import { CONTENT_DIR } from './audio-keys.mjs';
 const read = (name) => JSON.parse(fs.readFileSync(path.join(CONTENT_DIR, name), 'utf8'));
 const glyphs = read('glyphs.json');
 const strokes = read('strokes.json');
-/** Letters whose guide a person has confirmed. Only these are drawn as guides. */
+/* Letters whose guide a person has confirmed. */
 const guided = Object.keys(strokes.letters).filter((id) => strokes.letters[id].corrected);
 
-/**
- * Two ways a guide can be wrong, and both are measured.
- *
- * `COVERAGE` is how much of the letter's ink the strokes pass through, and it
- * catches a path that writes only part of the letter. It cannot be near 100%
- * even for a perfect guide: a centreline stroked at nib width never fills a
- * shape that is fatter than the pen, which is most of them in places — the bowl
- * of س, the sweep of ب. Measured across the ten guided letters the real range
- * is 68% (س) to 100% (ا, ر), smoothly distributed with no outlier, so this sits
- * below the floor and well above the half a half-traced letter would give.
- *
- * `INSIDE` is the other direction: how much of the path itself lands on the
- * letter. Coverage alone cannot catch a path in the wrong place — one that
- * covers the letter *and* wanders across the background scores well on coverage
- * and is plainly broken.
- *
- * Measured on the centreline's own points, not on the stroked area. The stroked
- * area answers a different question and answers it badly: the nib is 154 font
- * units wide and ا is 174, so a guide straight down the middle of ا spills most
- * of its width past the edges and scores 60% while being exactly right.
- */
+/* Two ways a guide can be wrong, and both are measured. */
 const COVERAGE = 0.6;
 const INSIDE = 0.9;
 
@@ -76,7 +34,7 @@ const state = () =>
     };
   });
 
-/** Opens a particular letter, whatever order the sequence is in. */
+/* Opens a particular letter, whatever order the sequence is in. */
 const openLetter = async (id) => {
   await page.evaluate((letterId) => {
     const s = window.__game.scene.getScene('Trace');
@@ -103,8 +61,6 @@ const geometry = () =>
 
 const toPage = (geo, gx, gy) => [geo.left + gx * geo.scale, geo.top + gy * geo.scale];
 
-// --- 1. Do the recorded paths actually cover their letters? -----------------
-
 step('checking every guide covers the letter it writes');
 const coverage = await page.evaluate(([source, paths, ids]) => {
   const measured = [];
@@ -112,8 +68,7 @@ const coverage = await page.evaluate(([source, paths, ids]) => {
     const glyph = source.letters[id].isolated;
     const [bx, by, bw, bh] = glyph.bbox;
 
-    // Rasterised at a size where a nib is a comfortable number of pixels, so a
-    // pixel count means something.
+    // Rasterised at a size where a nib is a comfortable number of pixels, so a pixel count means something.
     const scale = 300 / bh;
     const nib = source.upem * 0.075 * scale;
     const pad = Math.ceil(nib);
@@ -162,11 +117,7 @@ const coverage = await page.evaluate(([source, paths, ids]) => {
       if (b[i] > 128) hit++;
     }
 
-    // Is the path *on* the letter? Asked of the centreline's own points rather
-    // than of the stroked area, because the stroked area answers a different
-    // question: the nib is 154 font units wide and ا is 174, so a perfect guide
-    // down the middle of ا still spills most of its width past the edges. The
-    // points themselves are the path.
+    // Is the path *on* the letter?
     let samples = 0;
     let onInk = 0;
     const sampleAt = (x, y) => {
@@ -223,8 +174,6 @@ step(
       .join(', ')
 );
 
-// --- 2. Every letter is playable in one mode or the other -------------------
-
 step('checking every letter is playable');
 const unplayable = await page.evaluate(() => {
   const scene = window.__game.scene.getScene('Trace');
@@ -250,8 +199,6 @@ const unplayable = await page.evaluate(() => {
 for (const bad of unplayable) fail(`nothing to do on ${bad}`);
 if (!unplayable.length) step('every letter has either a guide or something to colour');
 
-// --- 3. Guided: following the line writes the letter ------------------------
-
 const guidedId = coverage[0].id;
 await openLetter(guidedId);
 const opened = await state();
@@ -266,7 +213,7 @@ const paths = await page.evaluate(() =>
     .guide.strokes.map((s) => ({ kind: s.kind, points: s.points.map((p) => ({ x: p.x, y: p.y })) }))
 );
 
-/** Walks one recorded stroke with a real pointer. */
+/* Walks one recorded stroke with a real pointer. */
 async function follow(stroke, offset = { x: 0, y: 0 }) {
   const at = (p) => toPage(geo, p.x + offset.x, p.y + offset.y);
   if (stroke.kind === 'dab') {
@@ -286,11 +233,6 @@ async function follow(stroke, offset = { x: 0, y: 0 }) {
   await page.waitForTimeout(160);
 }
 
-// --- 4. A wrong path advances nothing --------------------------------------
-//
-// Run before the real attempt, on a fresh letter: a guide that accepts any
-// input is not a guide, and this is the check that says so.
-
 step('guided: a line nowhere near the guide');
 await follow(paths[0], { x: 200, y: 160 });
 const strayed = await state();
@@ -299,8 +241,6 @@ if (strayed.coverage > 0) {
 } else {
   step('nothing happened, as it must');
 }
-
-// --- 5. Lifting mid-stroke keeps the ink ------------------------------------
 
 step('guided: lifting a finger halfway');
 const first = paths[0];
@@ -323,8 +263,6 @@ if (first.kind === 'drag') {
   await follow(first);
 }
 
-// --- 6. The whole letter -----------------------------------------------------
-
 for (const stroke of paths.slice(1)) await follow(stroke);
 const completed = await page
   .waitForFunction(() => window.__game.scene.getScene('Trace').locked, null, { timeout: 20000 })
@@ -344,19 +282,6 @@ const movedOn = await page
   .then(() => true)
   .catch(() => false);
 if (!movedOn) fail(`finishing ${guidedId} did not move on to the next letter`);
-
-// --- 7. Colouring still works ----------------------------------------------
-//
-// Colouring in is what the Write screen falls back to, and every one of the 38
-// letters is guided now — so there is no letter left that reaches it by simply
-// not having a path. That does not make the code dead: it is what runs after a
-// font change, when every path is thrown out at once.
-//
-// So it is reached the way the app really reaches it. A glyphs.json served with
-// a different font fingerprint makes src/lib/strokes.js refuse every guide, and
-// the mechanics below are then checked on a letter that does have one — which
-// is a better test than the old one, because it was only ever checking the
-// letters nobody had got round to.
 
 step('serving a glyphs.json baked from a different font, to reach colouring');
 await page.route('**/glyphs.json*', async (route) => {

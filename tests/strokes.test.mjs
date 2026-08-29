@@ -1,18 +1,4 @@
-/**
- * Shape checks over content/strokes.json.
- *
- * The pen paths are seeded by a machine and corrected by a person, and both can
- * leave a file that parses cleanly and is nonsense to follow: a stroke with one
- * point, a dot with fifty, a path that has drifted off its letter. None of that
- * throws at runtime — the guide simply asks a child to trace something wrong.
- *
- * What is *not* here is whether a path covers the letter it claims to write.
- * That needs a rasteriser, so it lives in tools/verify-trace.mjs where there is
- * a browser. This file is the cheap half: everything answerable from the
- * numbers alone, run on every `npm test`.
- *
- * Run: npm test
- */
+/* Shape checks over content/strokes.json. */
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,7 +13,7 @@ const strokes = read('strokes.json');
 const glyphs = read('glyphs.json');
 
 const entries = Object.entries(strokes.letters ?? {});
-/** Only corrected letters are drawn as guides; see src/lib/strokes.js. */
+/* Only corrected letters are drawn as guides; see src/lib/strokes.js. */
 const corrected = entries.filter(([, entry]) => entry.corrected);
 
 describe('stroke paths', () => {
@@ -40,11 +26,7 @@ describe('stroke paths', () => {
   });
 
   test('the paths were drawn against the font that is shipping', () => {
-    // The one check that catches a font swap. A stroke is a centreline through
-    // one typeface's outlines; against another it sits beside the letter, and
-    // the app would keep guiding a child along a line that is in the wrong
-    // place. src/lib/strokes.js turns every guide off when these disagree —
-    // this is so it never gets that far.
+    // The one check that catches a font swap.
     assert.deepEqual(
       strokes.font,
       glyphs.font,
@@ -65,8 +47,7 @@ describe('stroke paths', () => {
   test('a drag is a line and a dab is a point', () => {
     for (const [id, entry] of entries) {
       assert.ok(entry.strokes.length > 0, `${id} has no strokes at all`);
-      // Six is already a lot for one letter; more means the seeder fragmented
-      // something and nobody has been through it yet.
+      // Six is already a lot for one letter; more means the seeder fragmented something and nobody has been through it yet.
       assert.ok(entry.strokes.length <= 12, `${id} has ${entry.strokes.length} strokes`);
 
       entry.strokes.forEach((stroke, i) => {
@@ -90,8 +71,7 @@ describe('stroke paths', () => {
   });
 
   test('no stroke doubles back on the same spot', () => {
-    // Two identical points in a row make a zero-length segment, and the cursor
-    // that walks the path divides by segment length.
+    // Two identical points in a row make a zero-length segment, and the cursor that walks the path divides by segment length.
     for (const [id, entry] of entries) {
       for (const [i, stroke] of entry.strokes.entries()) {
         for (let p = 1; p < stroke.points.length; p++) {
@@ -107,10 +87,7 @@ describe('stroke paths', () => {
   });
 
   test('every point is on the letter it belongs to', () => {
-    // Inflated by a nib, because a stroke legitimately ends at the very edge of
-    // the ink and the pen is round. Anything further out is a path that has
-    // drifted off its glyph — which is exactly what a mis-drag in the studio
-    // produces, and it looks fine in the file.
+    // Inflated by a nib, because a stroke legitimately ends at the very edge of the ink and the pen is round.
     const nib = glyphs.upem * 0.075;
     for (const [id, entry] of entries) {
       const [bx, by, bw, bh] = glyphs.letters[id].isolated.bbox;
@@ -126,9 +103,7 @@ describe('stroke paths', () => {
   });
 
   test('at least one letter is ready to be traced', () => {
-    // Guided mode falls back to colouring letter by letter, so nothing breaks
-    // when a letter has no guide. Nothing breaking is also how the whole
-    // feature could quietly stop being reachable.
+    // Guided mode falls back to colouring letter by letter, so nothing breaks when a letter has no guide.
     assert.ok(corrected.length > 0, 'no letter is marked corrected, so no letter is ever guided');
   });
 });

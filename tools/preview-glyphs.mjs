@@ -1,13 +1,4 @@
-/**
- * Renders baked glyphs to a PNG contact sheet so they can be eyeballed.
- *
- * The baker cannot tell you whether the output looks like Urdu. This can.
- * Run it after any change to bake-glyphs.mjs and actually look at the result:
- * a y-flip mistake, a dropped mark glyph or a missing GPOS offset all produce
- * valid-looking JSON and obviously broken letters.
- *
- * Usage: node tools/preview-glyphs.mjs [outfile.png]
- */
+/* Renders baked glyphs to a PNG contact sheet so they can be eyeballed. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,7 +16,7 @@ const letters = read('letters.json').letters;
 const words = read('words.json').words;
 const glyphs = read('glyphs.json');
 
-/** Scales a baked glyph to fit a box, preserving aspect ratio. */
+/* Scales a baked glyph to fit a box, preserving aspect ratio. */
 function svgFor(glyph, boxW, boxH) {
   if (!glyph.d) return '';
   const [x, y, w, h] = glyph.bbox;

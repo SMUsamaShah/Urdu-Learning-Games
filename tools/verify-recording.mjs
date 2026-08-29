@@ -1,21 +1,4 @@
-/**
- * Proves the device-local recording loop works end to end, with no microphone
- * and no hands.
- *
- * The chain being tested is the whole promise made to the user:
- *
- *   record in the app  →  stored on this device  →  overrides the built-in clip
- *     →  export to a zip  →  wiped device  →  import  →  plays again
- *     →  handed to the studio  →  lands in the repo
- *
- * Every link is the real one: the real parental gate, the real MediaRecorder
- * (against Chromium's synthetic audio device), the real IndexedDB, the real zip
- * writer, and the real studio server writing a real file.
- *
- * Starts its own dev server, and removes anything it wrote.
- *
- * Usage: npm run verify:recording
- */
+/* Proves the device-local recording loop works end to end, with no microphone and no hands. */
 
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -52,8 +35,7 @@ function serve(command, args, ready) {
 
 step('starting dev server and studio');
 await serve('npx', ['vite', '--port', String(APP_PORT), '--strictPort'], 'Local');
-// The studio takes its port from the environment, so it is started directly
-// rather than through the helper above.
+// The studio takes its port from the environment, so it is started directly rather than through the helper above.
 const studio = spawn(process.execPath, ['tools/record-studio/server.mjs'], {
   cwd: ROOT,
   env: { ...process.env, PORT: String(STUDIO_PORT) },
@@ -68,27 +50,14 @@ await new Promise((resolve) => {
 const { context, page, finish } = await openApp({
   name: 'recording',
   timeoutMs: 180000,
-  // Navigated below by openHome(), after the audio probe is installed — an
-  // init script only applies to loads that come after it.
+  // Navigated below by openHome().
   open: false,
   context: { acceptDownloads: true },
   args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
 });
 await context.grantPermissions(['microphone'], { origin: APP });
 
-// Watch what the page does with audio hardware. Two things caused real,
-// user-reported stuttering and must not come back:
-//
-//   1. a second AudioContext — a second claim on the audio device
-//   2. the microphone held open while playback is happening, which moves a
-//      phone's audio path into its communications profile
-//
-// What counts is how many are *live*. A context that has been constructed and
-// then closed holds nothing — and one gets constructed whether we like it or
-// not, because importing Tone.js builds its own before any of our code can
-// intervene, which src/lib/tone-setup.js then disposes. Counting constructions
-// instead of open devices fails on that, which is a true statement about the
-// wrong thing.
+// Watch what the page does with audio hardware.
 await page.addInitScript(() => {
   window.__audioProbe = { contexts: [], streams: [] };
   const Ctor = window.AudioContext;
@@ -98,15 +67,7 @@ await page.addInitScript(() => {
       window.__audioProbe.contexts.push(this);
     }
   };
-  // Every buffer the page plays *out loud*, so a check can tell whether saving
-  // a take played it back.
-  //
-  // Where it connects is the whole distinction. The tidy-up plays the take
-  // twice without a sound coming out: once into an OfflineAudioContext to trim
-  // and level it, and once into a MediaStreamDestination, which is the only way
-  // to reach the browser's Opus encoder — see take-polish.js. Counting starts
-  // alone counts both, and reports playback on a run where nothing was audible.
-  // Only a source routed at a live, real output is a source anybody heard.
+  // Every buffer the page plays *out loud*, so a check can tell whether saving a take played it back.
   window.__audioProbe.started = 0;
   const connect = AudioBufferSourceNode.prototype.connect;
   AudioBufferSourceNode.prototype.connect = function (dest, ...rest) {
@@ -146,13 +107,11 @@ const openHome = async () => {
   await homeIsUp(page);
 };
 
-/** Settings -> Your recordings. Waits for the page rather than for a timer. */
+/* Settings -> Your recordings. */
 const openRecordings = async () => {
   await page.click('.set-root [data-page="recordings"]');
   await page.waitForSelector('.rec-root', { timeout: 20000 });
 };
-
-// ------------------------------------------------------ the parental gate
 
 await openHome();
 step('holding the grown-ups button');
@@ -162,12 +121,7 @@ await page.evaluate(() => {
 // The hold is 900ms of real game time; the gate appears once it completes.
 await page.waitForSelector('.gate', { timeout: 10000 });
 
-// The gate has to be styled the *first* time it is shown, before the recorder
-// has ever been opened. Its rules used to live in the recorder's stylesheet,
-// which is loaded by the dynamic import the gate itself decides whether to
-// make — so the first prompt was unstyled text in a corner and every one after
-// it looked right. Nobody reports a bug that fixes itself after one use, which
-// is exactly why it needs a check.
+// The gate has to be styled the *first* time it is shown, before the recorder has ever been opened.
 const gateLook = await page.evaluate(() => {
   const backdrop = document.querySelector('.gate-backdrop');
   const dialog = document.querySelector('.gate');
@@ -204,16 +158,11 @@ await page.click('.gate-ok');
 await page.waitForSelector('.set-root', { timeout: 10000 });
 step('settings open');
 
-// The recorder lives behind its own row now rather than being the whole
-// screen. Opening it is part of what this checks: a recorder nobody can reach
-// is as broken as one that does not record.
+// The recorder lives behind its own row now rather than being the whole screen.
 await openRecordings();
 step('recorder open');
 
-// And a way back out. The recorder was still styled as a full-screen overlay
-// when it became a page, so it covered the title bar it now sits under —
-// including the only arrow off the page. Nothing threw; the screen was simply
-// a dead end until the tab was reloaded.
+// And a way back out.
 step('checking the way back out of the recorder');
 const backIsReachable = await page.evaluate(() => {
   const back = document.querySelector('.set-back');
@@ -234,9 +183,7 @@ else {
   await openRecordings();
 }
 
-// A wrong answer must not open it. Checked after, so a failure here does not
-// block the rest of the run.
-// ------------------------------------------------------------- recording
+// A wrong answer must not open it.
 
 step(`recording ${CLIP.key}`);
 await page.evaluate(() => {
@@ -254,18 +201,12 @@ await page.waitForFunction(
 );
 step('clip saved to the device');
 
-// ------------------------------------------ hearing the take back, or not
-
 // The tune uses the same node type, so it would land in the count as well.
 await page.evaluate(() => window.__music.setMusicOn(false));
 
-/** Records over the same clip and reports whether anything was played back. */
+/* Records over the same clip and reports whether anything was played back. */
 async function recordAgain() {
-  // Saving used to step the selection on to the next clip, so this had to click
-  // its way back to the first one and wait for that to stick. The recorder now
-  // stays where it is, which is what the waveform editor wants, so a second
-  // take simply overwrites the same clip — but assert that rather than assume
-  // it, because everything after here expects exactly one clip on the device.
+  // Saving should keep the current selection.
   await page.waitForSelector('.rec-root .rec-row[data-i="0"][aria-selected="true"]', {
     timeout: 15000,
   });
@@ -317,9 +258,6 @@ const played = await page.evaluate((key) => window.__audio.play(key), CLIP.key);
 if (played !== true) fail(`play("${CLIP.key}") returned ${played} after recording`);
 else step('plays back from the device');
 
-
-// --------------------------------------------------- the audio hardware
-
 step('checking the microphone is handed back between takes');
 // The release is on a timer, so this waits it out rather than assuming.
 await page.waitForTimeout(4000);
@@ -347,8 +285,6 @@ if (idle.contexts !== 1) {
 const stats = await page.evaluate(() => window.__audio.audioStats());
 if (stats.device !== 1) fail(`audioStats().device is ${stats.device}, expected 1`);
 
-// --------------------------------------------------------------- export
-
 step('exporting');
 const [download] = await Promise.all([
   page.waitForEvent('download', { timeout: 20000 }),
@@ -372,8 +308,6 @@ if (archive.clips.length !== 1) {
 } else {
   step(`export contains ${CLIP.slug}.${archive.clips[0].ext}, bytes match`);
 }
-
-// ------------------------------------------------- wipe, reload, re-import
 
 step('wiping the device and reloading');
 await page.evaluate(
@@ -416,8 +350,6 @@ await page.screenshot({
   path: process.argv[2] || path.join(ROOT, 'recorder-check.png'),
 });
 
-// ------------------------------------------------- promote into the repo
-
 step('handing the export to the studio');
 const response = await fetch(`http://localhost:${STUDIO_PORT}/api/import`, {
   method: 'POST',
@@ -433,8 +365,6 @@ if (!response.ok) {
   else if (landed.source !== 'recorded') fail(`resolved as ${landed.source}`);
   else step(`studio wrote ${written.join(', ')} (${unknown.length} skipped)`);
 }
-
-// ------------------------------------------------------ the gate holds up
 
 step('checking a wrong answer does not open the recorder');
 await openHome();
@@ -458,8 +388,7 @@ await page.waitForTimeout(1400);
 if (await page.$('.gate')) fail('a quick tap opened the gate');
 else step('quick tap refused');
 
-// After everything — including a second visit to the recorder — the page must
-// still hold one context and no open microphone.
+// A second recorder visit must still leave one context and no open stream.
 const finalProbe = await audioProbe();
 if (finalProbe.contexts !== 1) {
   fail(`${finalProbe.contexts} AudioContexts after the whole run; expected 1`);

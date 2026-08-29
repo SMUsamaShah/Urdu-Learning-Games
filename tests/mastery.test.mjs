@@ -1,22 +1,4 @@
-/**
- * That a letter he keeps missing really does come up more often.
- *
- * Most of this file checks the bookkeeping — the window rolls, the weight is
- * bounded, a lucky pair of right answers does not certify a letter. Those are
- * worth having and none of them is the feature.
- *
- * **The feature is a distribution**, and the last test is the only one that
- * looks at one. A `pickWeighted` that ignored its weights entirely and called
- * `GetRandom` would pass every other assertion in this file, which is exactly
- * the failure this is here to catch: the thing silently doing nothing.
- *
- * Importable in plain node because src/lib/mastery.js touches localStorage only
- * inside a try/catch and pulls in neither Phaser nor the content store. That is
- * deliberate; see the note in tests/spelling.test.mjs about what happens when a
- * module cannot be imported here.
- *
- * Run: npm test
- */
+/* That a letter he keeps missing really does come up more often. */
 
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,7 +15,7 @@ import {
   weightOf,
 } from '../src/lib/mastery.js';
 
-/** Answers an item `times` times, all right or all wrong. */
+/* Answers an item `times` times, all right or all wrong. */
 const answer = (id, correct, times) => {
   for (let i = 0; i < times; i++) record('letter', id, correct);
 };
@@ -97,8 +79,7 @@ describe('the weight', () => {
   });
 
   test('two right answers do not weigh the same as ten', () => {
-    // The whole reason the miss rate is blended in rather than used raw: a
-    // lucky pair of taps must not retire a letter he cannot do.
+    // The whole reason the miss rate is blended in rather than used raw.
     assert.ok(
       weightFrom('11') > weightFrom('1'.repeat(WINDOW)),
       'a letter answered right twice is not yet a letter he knows'
@@ -118,9 +99,7 @@ describe('the bands a person reads', () => {
     answer('te', true, 5);
     assert.equal(bandOf('letter', 'te'), 'solid');
 
-    // Two wrong out of two. The *weight* blends this toward NEW because the
-    // evidence is thin; the band must not, or a page meant to tell a parent
-    // what to work on would file it under "getting there".
+    // Two wrong out of two.
     answer('se', false, 2);
     assert.equal(bandOf('letter', 'se'), 'missing');
 
@@ -144,8 +123,7 @@ describe('picking', () => {
   });
 
   test('drops the avoid rule rather than returning nothing', () => {
-    // What every scene was writing as `pool.length ? pool : this.pool`. A round
-    // with one letter left in play still has to deal a round.
+    // What every scene was writing as `pool.length ?
     assert.equal(pickWeighted('letter', ['alif'], { avoid: ['alif'] }), 'alif');
   });
 
@@ -175,7 +153,7 @@ describe('the distribution, which is the actual feature', () => {
   const POOL = ['alif', 'be', 'te', 'se', 'jeem'];
   const DRAWS = 20000;
 
-  /** How often each id came up over `DRAWS` picks. */
+  /* How often each id came up over `DRAWS` picks. */
   function tally() {
     const counts = Object.fromEntries(POOL.map((id) => [id, 0]));
     for (let i = 0; i < DRAWS; i++) counts[pickWeighted('letter', POOL)]++;
@@ -195,8 +173,7 @@ describe('the distribution, which is the actual feature', () => {
     for (const id of ['alif', 'be', 'te', 'jeem']) answer(id, true, WINDOW);
 
     const counts = tally();
-    // Four at weight 1 and one at weight 4: eight parts, four of them the
-    // struggling letter.
+    // Four at weight 1 and one at weight 4: eight parts, four of them the struggling letter.
     const share = counts.se / DRAWS;
     assert.ok(
       Math.abs(share - 0.5) < 0.03,

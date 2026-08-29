@@ -19,43 +19,24 @@ import { sayLetter, sayWord } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, label } from '../lib/theme.js';
 import { pickSomeWeighted } from '../lib/mastery.js';
 
-/**
- * Find the letter and the picture that go together.
- *
- * The first game here that is not "which of these is it?". Every other screen
- * puts the answer in front of the child and asks them to choose; this one asks
- * them to hold something in their head and come back to it, which is a
- * different skill and the reason it is worth being a separate game rather than
- * another skin over QuizScene.
- *
- * What it teaches is the association itself: ب goes with بکری. The letter games
- * teach a shape, the word game teaches a word, and nothing until now has made
- * the child connect the two.
- *
- * ## No fail state, again
- *
- * There is no move limit, no timer and no score. A wrong pair simply turns back
- * over. A three-year-old will turn the same two cards up four times running,
- * and that is not a mistake to be penalised, it is how they are learning where
- * things are.
- */
+/* Find the letter and the picture that go together. */
 
-/** Pairs on the board, by how many boards have been finished. */
+/* Pairs on the board, by how many boards have been finished. */
 const PAIRS_BY_ROUND = [3, 3, 4, 4, 5, 6];
 
-/** Card backs, cycled. Flat colours, so the fronts are the interesting side. */
+/* Card backs, cycled. */
 const BACKS = [0xd45f95, 0x5a6bd0, 0x2f9e5f, 0xe0821c, 0x9b5fc9, 0x1a9c96];
 
-/** How long a mismatched pair stays face up before turning back. */
+/* How long a mismatched pair stays face up before turning back. */
 const PEEK_MS = 900;
 
-/** The space the board gets: clear of the ribbon above and the garden at left. */
+/* The space the board gets: clear of the ribbon above and the garden at left. */
 const BOARD = { left: RAIL_EDGE + 44, right: DESIGN.width - 60, top: 150, bottom: DESIGN.height - 40 };
 
 export default class Memory extends Phaser.Scene {
   constructor() {
     super('Memory');
-    /** @type {string[]} letters that have both a glyph and an illustrated word */
+    /** @type {string[]} */
     this.pool = [];
     this.round = 0;
     /** @type {Phaser.GameObjects.Container[]} */
@@ -72,9 +53,7 @@ export default class Memory extends Phaser.Scene {
   }
 
   create() {
-    // Only letters that can make a pair: the game is a letter next to its
-    // picture, so a letter with no word, or a word with no picture, has nothing
-    // to be paired with and must not reach the board.
+    // Only letters that can make a pair.
     this.pool = activeLetters()
       .map((letter) => letter.id)
       .filter((id) => {
@@ -95,8 +74,6 @@ export default class Memory extends Phaser.Scene {
     this.newBoard();
   }
 
-  // ------------------------------------------------------------------ board
-
   newBoard() {
     this.board.removeAll(true);
     this.cards = [];
@@ -111,8 +88,7 @@ export default class Memory extends Phaser.Scene {
     );
     const letters = pickSomeWeighted('letter', this.pool, pairs);
 
-    // Two cards per letter: the letter itself and its word's picture. They are
-    // tagged with the same pairId, which is the whole of the matching rule.
+    // Two cards per letter: the letter itself and its word's picture.
     const deck = Phaser.Utils.Array.Shuffle(
       letters.flatMap((id) => [
         { pairId: id, kind: 'letter' },
@@ -120,8 +96,7 @@ export default class Memory extends Phaser.Scene {
       ])
     );
 
-    // Worked out once for the board rather than per card, so every card is
-    // laid out against the same grid by construction.
+    // Worked out once for the board rather than per card, so every card is laid out against the same grid by construction.
     const grid = this.layout(deck.length);
     for (const [index, spec] of deck.entries()) {
       const card = this.makeCard(spec, index, deck.length, grid);
@@ -130,19 +105,11 @@ export default class Memory extends Phaser.Scene {
     }
   }
 
-  /**
-   * Where the cards go.
-   *
-   * Laid out to fill the space left of the garden and below the ribbon, in as
-   * few rows as fit. Cards are sized from the grid rather than fixed, so a
-   * six-pair board has smaller cards rather than running off the screen.
-   */
+  /* Where the cards go. */
   layout(count) {
     const gap = 18;
     let best = null;
-    // Whichever number of rows makes the cards biggest. Six cards in one row of
-    // six are small and thin; in two rows of three they are as large as the
-    // space allows, and a bigger card is an easier target for a small finger.
+    // Whichever number of rows makes the cards biggest.
     for (let rows = 1; rows <= 3; rows++) {
       const columns = Math.ceil(count / rows);
       const size = Math.min(
@@ -167,8 +134,7 @@ export default class Memory extends Phaser.Scene {
     const originY = (BOARD.top + BOARD.bottom) / 2 - boardH / 2;
 
     const card = this.add.container(
-      // Short rows are centred rather than left-aligned, so a board of five
-      // does not look like a board of six with one missing.
+      // Short rows are centred rather than left-aligned, so a board of five does not look like a board of six with one missing.
       originX + (boardW - rowW) / 2 + indexInRow * (size + gap) + size / 2,
       originY + row * (size + gap) + size / 2
     );
@@ -212,9 +178,7 @@ export default class Memory extends Phaser.Scene {
     card.size = size;
 
     if (spec.kind === 'letter') {
-      // One em for every letter, so a card cannot be recognised by how big its
-      // writing is — in a memory game that would be a way to win without
-      // remembering anything.
+      // One em for every letter.
       const fit = fitEmAlone(allLetterGlyphs('isolated'), size - 40, size - 44);
       face.add(
         addGlyph(
@@ -244,15 +208,7 @@ export default class Memory extends Phaser.Scene {
     return card;
   }
 
-  // ------------------------------------------------------------------ play
-
-  /**
-   * Turns a card over.
-   *
-   * A flip is a scale through zero on the x axis with the swap at the middle,
-   * which is the cheapest thing that reads as a card turning rather than as a
-   * picture appearing.
-   */
+  /* Turns a card over. */
   flip(card, faceUp) {
     card.faceUp = faceUp;
     this.tweens.add({
@@ -278,9 +234,7 @@ export default class Memory extends Phaser.Scene {
     this.flip(card, true);
     this.faceUp.push(card);
 
-    // Say what was turned over. This is the part that makes the game teach
-    // rather than just exercise memory: the child hears "bay" and then "bakri"
-    // and has to notice they belong together.
+    // Say what was turned over.
     if (card.kind === 'letter') sayLetter(card.pairId, { word: false });
     else sayWord(wordForLetter(card.pairId).id);
 
@@ -295,7 +249,7 @@ export default class Memory extends Phaser.Scene {
       return;
     }
 
-    // Not a pair. Both go back, after long enough to have seen them.
+    // Not a pair.
     this.locked = true;
     this.rail?.wonder();
     this.time.delayedCall(PEEK_MS, () => {
@@ -306,12 +260,7 @@ export default class Memory extends Phaser.Scene {
   }
 
   pairFound(first, second) {
-    // No subject, so nothing is recorded against the letter. Turning up two
-    // cards that match is a feat of *memory* — he is recalling where a shape
-    // was, not deciding what it is — and a screen that only ever reports
-    // successes would quietly talk down the weight of a letter he cannot read
-    // at all. The rule for the whole app: record where being wrong is possible
-    // and means something, and nowhere else. See src/lib/mastery.js.
+    // No subject, so nothing is recorded against the letter.
     rightAnswer();
     sfx.sparkle();
     this.matched++;
@@ -319,8 +268,7 @@ export default class Memory extends Phaser.Scene {
     for (const card of [first, second]) {
       card.done = true;
       card.disableInteractive();
-      // A green frame, so a found pair is visibly finished rather than just
-      // still face up.
+      // A green frame, so a found pair is visibly finished rather than just still face up.
       card.plate.lineStyle(6, COLORS.correct, 1);
       card.plate.strokeRoundedRect(
         -card.size / 2,
@@ -338,18 +286,12 @@ export default class Memory extends Phaser.Scene {
     sayLetter(first.pairId);
 
     if (this.matched < this.cards.length / 2) {
-      // Unlocked immediately, not after the celebration finishes. A found pair
-      // takes both its cards out of play, so there is nothing left to get
-      // confused by — and a child who has already spotted the next pair must
-      // not tap it and have nothing happen.
+      // Unlocked immediately, not after the celebration finishes.
       this.locked = false;
       return;
     }
 
-    // Board finished. A whole activity completed, so it gets the big one.
-    // A beat of build-up before the celebration. The pause is doing work: a
-    // reward that lands the instant the last pair is turned is over before it
-    // has been noticed.
+    // Board finished.
     finished();
     this.time.delayedCall(700, () => {
       wellDone(this, this.stage, { duration: 2600 });

@@ -1,9 +1,4 @@
-/**
- * The export archive has to be a real zip, not something only this code can
- * open. The whole point of the format is that a parent can unzip it, refine a
- * clip in an audio editor, re-zip it and have it still work — so these tests
- * check against the system zip tools, not just against the reader in this repo.
- */
+/* The export archive has to be a real zip, not something only this code can open. */
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -78,8 +73,7 @@ describe('zip writer', () => {
         path.join(dir, 'export.zip')
       );
 
-      // -t verifies every CRC. A wrong checksum or offset fails here even
-      // though this repo's own reader, which does not check CRCs, would pass.
+      // -t verifies every CRC.
       const result = execFileSync('unzip', ['-t', file], { encoding: 'utf8' });
       assert.match(result, /No errors detected/);
 
@@ -99,9 +93,7 @@ describe('zip writer', () => {
     'reads a DEFLATE archive produced by the system zip',
     { skip: systemZip ? false : 'no zip/unzip' },
     async () => {
-      // This is the edited-and-re-zipped case: a parent unzips an export,
-      // trims a clip, and re-zips the folder with an ordinary tool, which will
-      // compress. Import has to keep working.
+      // This is the edited-and-re-zipped case.
       const dir = tmpdir();
       fs.mkdirSync(path.join(dir, 'recorded'));
       // Repetitive content so zip definitely chooses DEFLATE over STORE.
@@ -171,8 +163,7 @@ describe('clip archive', () => {
     assert.ok(names.includes('README.txt'));
     assert.ok(names.includes('urdu-clips.json'));
 
-    // The path inside the archive must match the repo layout, or promoting a
-    // clip would need renaming.
+    // The path inside the archive must match the repo layout, or promoting a clip would need renaming.
     assert.ok(names.includes('recorded/letter-be-name.webm'));
 
     const meta = JSON.parse(

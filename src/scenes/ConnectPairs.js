@@ -19,41 +19,13 @@ import { sayLetter } from '../lib/say.js';
 import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
 import { pickSomeWeighted } from '../lib/mastery.js';
 
-/**
- * Draw a line from each letter to its picture.
- *
- * ## Why this and Pairs and Shapes are three games, not one
- *
- * All three are about matching, and they ask for three different things:
- *
- *   - **Pairs (Memory)** hides the cards. The work is remembering where a
- *     thing was.
- *   - **Shapes (JoinForms)** shows everything and pairs a letter with itself
- *     wearing another face. The work is seeing through the disguise.
- *   - **This** shows everything and pairs a letter with its *meaning*. The
- *     work is knowing what ب gives you, with nothing hidden and nothing to
- *     see through.
- *
- * With nothing hidden and no disguise, it is the easiest of the three, and it
- * is the one to meet first.
- *
- * ## Drawn, not tapped
- *
- * The line follows the finger from the letter to the picture and stays there
- * when it lands. Tapping twice would do the same job — Shapes does exactly
- * that — but the drawn line is the point here: at the end of the round the
- * screen shows every pairing at once as a set of threads, which is a picture of
- * what was learned rather than a score.
- *
- * A line let go anywhere but on a picture simply vanishes. Nothing is wrong,
- * nothing is counted, and the letter is still there to try again.
- */
+/* Draw a line from each letter to its picture. */
 
-/** Pairs on the board, by how many boards have been finished. */
+/* Pairs on the board, by how many boards have been finished. */
 const PAIRS_BY_ROUND = [3, 3, 4, 4, 5];
 
 const CARD = 116;
-/** The two columns: letters on the right, pictures on the left. */
+/* The two columns: letters on the right, pictures on the left. */
 const RIGHT_X = DESIGN.width - 190;
 const LEFT_X = 470;
 const BAND = { top: 210, bottom: DESIGN.height - 70 };
@@ -61,11 +33,11 @@ const BAND = { top: 210, bottom: DESIGN.height - 70 };
 export default class ConnectPairs extends Phaser.Scene {
   constructor() {
     super('ConnectPairs');
-    /** @type {string[]} letters with an illustrated word */
+    /** @type {string[]} */
     this.pool = [];
     this.round = 0;
     this.joined = 0;
-    /** The letter card the finger is currently dragging from. */
+    /* The letter card the finger is currently dragging from. */
     this.from = null;
     this.locked = false;
   }
@@ -91,8 +63,7 @@ export default class ConnectPairs extends Phaser.Scene {
     this.banner = this.stage.banner;
     this.rail = this.stage.rail;
 
-    // Threads under the cards, and the line being drawn above them so it is
-    // visible while it crosses one.
+    // Threads under the cards, and the line being drawn above them so it is visible while it crosses one.
     this.threads = this.add.graphics().setDepth(-1);
     this.drawing = this.add.graphics().setDepth(25);
     this.board = this.add.container(0, 0);
@@ -102,8 +73,6 @@ export default class ConnectPairs extends Phaser.Scene {
 
     this.newBoard();
   }
-
-  // ------------------------------------------------------------------ board
 
   newBoard() {
     this.board.removeAll(true);
@@ -126,12 +95,7 @@ export default class ConnectPairs extends Phaser.Scene {
     const spread = (n, i) =>
       BAND.top + ((BAND.bottom - BAND.top) * (i + 0.5)) / n;
 
-    // Each column shuffled separately, and then the pictures shuffled again
-    // until no picture sits opposite its own letter. Two independent shuffles
-    // is the obvious way to write this and it is not enough: with three pairs
-    // they land in the same order one board in six, and that board can be
-    // solved by drawing three straight lines across without looking at
-    // anything. A derangement costs a couple of retries and removes the case.
+    // Each column shuffled separately, and then the pictures shuffled again until no picture sits opposite its own letter.
     const left = Phaser.Utils.Array.Shuffle([...ids]);
     const right = Phaser.Utils.Array.Shuffle([...ids]);
     if (count > 1) {
@@ -209,14 +173,11 @@ export default class ConnectPairs extends Phaser.Scene {
     return card;
   }
 
-  // ------------------------------------------------------------------- play
-
   begin(card) {
     if (this.locked || card.joined) return;
     this.from = card;
     sfx.tap();
-    // Named as it is picked up. Hearing "bay" while looking for the goat is the
-    // whole lesson, and it is free here because nothing is hidden.
+    // Named as it is picked up.
     sayLetter(card.letterId, { word: false });
   }
 
@@ -240,8 +201,7 @@ export default class ConnectPairs extends Phaser.Scene {
         Math.abs(pointer.worldY - card.y) < CARD * 0.8
     );
 
-    // Let go in mid-air, or on a picture already joined. The line simply is not
-    // there any more; nothing is marked and nothing is counted.
+    // Let go in mid-air, or on a picture already joined.
     if (!onto) return;
 
     if (onto.letterId !== from.letterId) {
@@ -272,8 +232,7 @@ export default class ConnectPairs extends Phaser.Scene {
     rightAnswer({ kind: 'letter', id: from.letterId });
     sfx.sparkle();
 
-    // The thread stays. By the end the board is a picture of every pairing at
-    // once, which is worth more than a number.
+    // The thread stays.
     this.threads.lineStyle(7, from.colour, 0.55);
     this.threads.lineBetween(from.x, from.y, onto.x, onto.y);
 

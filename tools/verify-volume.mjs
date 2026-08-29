@@ -1,29 +1,8 @@
-/**
- * How loud the app is, measured rather than asserted.
- *
- * "The main screen is too quiet" is a claim about a number, so it is checked as
- * one. The tune used to render at peak −33 dBFS and an RMS of −52, which is
- * inaudible under any room; everything below exists to make sure it stays where
- * it was moved to and that the volume control actually reaches it.
- *
- * The interesting check is the routing one. Four separate things reach the
- * speakers — the tune, the effects, the flourishes and the recorded voice — and
- * each used to connect straight to the destination. A module that forgets to go
- * through the master is silent from every angle except this one: it plays
- * perfectly, it just cannot be turned down.
- *
- * Usage: npm run dev &  then  node tools/verify-volume.mjs [baseUrl]
- */
+/* How loud the app is, measured rather than asserted. */
 
 import { fail, homeIsUp, openApp, step } from './harness.mjs';
 
-/**
- * Where the tune should land, in dBFS, rendered offline.
- *
- * A band rather than a number: the render is a real synthesiser with a reverb
- * and a limiter in it, and pinning it to a decimal would fail on a rounding
- * change. The floor is the point — anything near the old −33 is inaudible.
- */
+/* Where the tune should land, in dBFS, rendered offline. */
 const MUSIC_PEAK = { min: -22, max: -10 };
 
 const { page, finish, url } = await openApp({ name: 'volume', open: false, waitForHome: false });
@@ -35,8 +14,6 @@ await homeIsUp(page);
 // Nothing makes a sound until the page has been touched.
 await page.mouse.click(400, 300);
 await page.waitForTimeout(600);
-
-// --- 1. The tune is loud enough to hear -------------------------------------
 
 step('rendering the tune');
 const music = await page.evaluate(async () => {
@@ -60,18 +37,7 @@ if (db(music.peak) < MUSIC_PEAK.min) {
   fail(`the tune peaks at ${db(music.peak).toFixed(1)} dBFS — loud enough to be fatiguing`);
 }
 
-// --- 2. Everything goes through the master ----------------------------------
-//
-// Three separate measurements on purpose. One tap point would pass with two of
-// the three still wired straight to the speakers.
-
-/**
- * Listens on the master, which is where every source is supposed to arrive.
- *
- * Deliberately not the destination: an analyser on `ctx.destination` hears
- * everything whatever the routing, so it cannot tell a source that respects the
- * volume from one that does not.
- */
+/* Listens on the master, which is where every source is supposed to arrive. */
 await page.evaluate(() => {
   const ctx = window.__game.sound.context;
   const analyser = ctx.createAnalyser();
@@ -124,21 +90,14 @@ const silentAt = (what, ms = 900) =>
     [what, ms]
   );
 
-// The flourishes are a sampled instrument that loads on demand, and until it is
-// up every call falls back to the synthesised chime — which goes through the
-// effects chain, making the check below a second copy of the effects one rather
-// than a test of the sampler's own routing.
+// The flourishes are a sampled instrument that loads on demand.
 step('waiting for the flourish sampler');
 const sampled = await page.evaluate(async () => {
   window.__flourish.prepareFlourishes();
   await new Promise((r) => setTimeout(r, 4000));
   return window.__flourish.flourishVoiceReady();
 });
-// Said out loud rather than glossed over. The sampled voice needs Tone to
-// render a reverb impulse, which does not complete in this headless build, so
-// here the flourish case measures the fallback. It is still worth running —
-// that path has to respect the volume too — but the sampler's own routing is
-// not covered by it, and pretending otherwise would be worse than saying so.
+// Said out loud rather than glossed over.
 step(
   sampled
     ? '  the sampled voice is up, so the flourish case measures the sampler'
@@ -156,14 +115,11 @@ for (const source of ['music', 'sfx', 'flourish']) {
 
   step(`  ${db(loud).toFixed(1)} dBFS → ${db(quiet).toFixed(1)} dBFS`);
   if (loud < 0.001) fail(`${source} made no sound at all, so this proves nothing`);
-  // Not exactly zero: the limiter's release and a reverb tail are still
-  // draining when the gain lands, so the floor is "essentially gone".
+  // Allow for limiter release and reverb tail.
   else if (quiet > loud * 0.05) {
     fail(`${source} still plays at volume 0 — it is not routed through the master`);
   }
 }
-
-// --- 3. The setting sticks --------------------------------------------------
 
 step('the slider moves the gain, and the setting survives a reload');
 await page.evaluate(() => window.__volume.setVolume(0.42));
@@ -182,8 +138,6 @@ if (Math.abs(afterReload - 0.42) > 0.001) {
 } else {
   step('  0.42 came back after a reload');
 }
-
-// --- 4. And the settings screen shows it ------------------------------------
 
 step('the slider is on the settings screen');
 await page.evaluate(() => window.__volume.setVolume(0.8));

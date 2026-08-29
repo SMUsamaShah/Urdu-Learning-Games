@@ -1,16 +1,4 @@
-/**
- * Local server for the recording studio.
- *
- * Recording ~120 clips needs the files to land straight in the repo. The
- * File System Access API could do it without a server but is Chrome-only, and
- * downloading 120 blobs by hand is not a workflow. So: a tiny server that
- * accepts a POST per clip and writes it into public/audio/recorded/.
- *
- * Deliberately dependency-free and bound to localhost — it writes files to
- * disk, so it must not be reachable from anywhere else.
- *
- * Usage: npm run record
- */
+/* Local server for the recording studio. */
 
 import fs from 'node:fs';
 import http from 'node:http';
@@ -36,12 +24,7 @@ const STATIC = {
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
 };
 
-/**
- * Modules shared with the app, served so the studio and the in-app recorder run
- * the same microphone code rather than two copies that drift apart.
- * Allow-listed by name: this serves files from src/, so a path from the URL must
- * never reach the filesystem.
- */
+/* Modules shared with the app. */
 const SHARED_LIB = new Set([
   'recorder.js',
   'clip-list.js',
@@ -61,7 +44,7 @@ const AUDIO_MIME = {
 
 fs.mkdirSync(RECORDED_DIR, { recursive: true });
 
-/** Rejects anything that is not a slug we generated ourselves. */
+/* Rejects anything that is not a slug we generated ourselves. */
 function isSafeSlug(slug) {
   return /^[A-Za-z0-9._-]+$/.test(slug) && !slug.includes('..');
 }
@@ -94,7 +77,7 @@ function readBody(req) {
   });
 }
 
-/** Deletes any existing recording for a slug, whatever extension it used. */
+/* Deletes any existing recording for a slug, whatever extension it used. */
 function removeRecording(slug) {
   let removed = 0;
   for (const ext of AUDIO_EXTENSIONS) {
@@ -117,8 +100,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, fs.readFileSync(path.join(HERE, file)), type);
     }
 
-    // Browsers request this unprompted; answering avoids a spurious 404 in the
-    // console that would otherwise fail the verification run.
+    // Browsers request this unprompted.
     if (route === '/favicon.ico') return send(res, 204, '');
 
     if (req.method === 'GET' && route.startsWith('/lib/')) {
@@ -132,8 +114,7 @@ const server = http.createServer(async (req, res) => {
       );
     }
 
-    // The studio renders its prompts from the same baked outlines the game
-    // uses, so what you read is exactly what the child will see.
+    // The studio renders its prompts from the same baked outlines the game uses.
     if (req.method === 'GET' && route === '/glyphs.json') {
       return send(
         res,
@@ -164,15 +145,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, fs.readFileSync(file), AUDIO_MIME[ext] || 'application/octet-stream');
     }
 
-    /**
-     * Promotes an export from a phone into the repo.
-     *
-     * Recordings made in the app live on that device. This is the bridge: hand
-     * the exported zip to the studio and the clips land in
-     * public/audio/recorded/, ready to refine and commit as the voice everyone
-     * gets. Doing it here rather than by hand means no unzipping, no renaming
-     * and no chance of a file ending up in the wrong place.
-     */
+    /* Promotes an export from a phone into the repo. */
     if (req.method === 'POST' && route === '/api/import') {
       const body = await readBody(req);
       if (body.length === 0) return send(res, 400, 'empty body');
@@ -190,8 +163,7 @@ const server = http.createServer(async (req, res) => {
           unknown.push(`${clip.slug}.${clip.ext}`);
           continue;
         }
-        // Drop any previous take so a re-record in a different container does
-        // not leave two files that both resolve for the same clip.
+        // Remove other container formats for the same clip.
         removeRecording(clip.slug);
         const name = `${clip.slug}.${ext}`;
         fs.writeFileSync(
@@ -224,8 +196,7 @@ const server = http.createServer(async (req, res) => {
         const body = await readBody(req);
         if (body.length === 0) return send(res, 400, 'empty body');
 
-        // Drop any previous take so a re-record in a different container does
-        // not leave two files that both resolve for the same clip.
+        // Remove other container formats for the same clip.
         removeRecording(slug);
         const name = `${slug}.${ext}`;
         fs.writeFileSync(path.join(RECORDED_DIR, name), body);

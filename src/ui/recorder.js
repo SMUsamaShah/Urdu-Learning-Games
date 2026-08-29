@@ -1,30 +1,4 @@
-/**
- * The recording studio: record the app's voice, and move recordings around.
- *
- * Recordings live on this device (see clip-store.js) and override whatever the
- * app shipped with, so a child hears their own parent. They leave the device
- * only as an explicit export.
- *
- * ## A page, not a screen
- *
- * This builds a detached element and hands it back. It used to mount its own
- * full-screen overlay and carry the app's settings along the top of it, which
- * is how a tune picker and a frame-rate checkbox ended up sitting above a list
- * of a hundred and twenty clips. The settings screen owns the chrome now — see
- * src/ui/settings.js — and this owns recording and nothing else.
- *
- * Its own toolbar keeps only what is about recordings: export and import. They
- * are not general settings; they are what you do with the clips in the list
- * below them.
- *
- * Deliberately plain DOM over the Phaser canvas: a scrolling list of 120 rows, a
- * file picker and a download are all free here and laborious on a canvas, and
- * this screen is for the adult, not the child.
- *
- * The microphone needs a secure context. That means localhost or HTTPS — the
- * deployed site qualifies, a http://192.168.x.x dev server does not, and the
- * mic will simply never open there.
- */
+/* The recording studio: record the app's voice, and move recordings around. */
 
 import './recorder.css';
 import { letters, numbers, words, glyphForClip } from '../lib/content.js';
@@ -124,13 +98,7 @@ function encodeWavBuffer(buffer) {
   return new Blob([bytes], { type: 'audio/wav' });
 }
 
-/**
- * Builds the recording page.
- *
- * @returns {{el: HTMLElement, dispose: () => void}} the page, and what to call
- *   when it is taken off screen — which must happen, because this holds a
- *   microphone and a keyboard listener.
- */
+/** Builds the recording page. */
 export function buildRecorderPage() {
   const clips = expectedClips({ letters, numbers, words });
   const bySlug = new Map(clips.map((c) => [c.slug, c]));
@@ -161,8 +129,6 @@ export function buildRecorderPage() {
       })
     : null;
 
-  // ------------------------------------------------------------- structure
-
   const root = el(`
     <div class="rec-root">
       <div class="rec-head">
@@ -188,8 +154,6 @@ export function buildRecorderPage() {
   const statusEl = root.querySelector('.rec-status');
   const progressEl = root.querySelector('.rec-progress');
   const fileInput = root.querySelector('input[type=file]');
-
-  // ------------------------------------------------------------- rendering
 
   function setMeter(peak) {
     const fill = stageEl.querySelector('.rec-meter-fill');
@@ -581,8 +545,6 @@ export function buildRecorderPage() {
     await renderStatus();
   }
 
-  // -------------------------------------------------------------- actions
-
   function select(i) {
     if (recorder?.isRecording()) return;
     lastNote = '';
@@ -733,8 +695,6 @@ export function buildRecorderPage() {
     }
   }
 
-  // --------------------------------------------------------------- events
-
   root.addEventListener('click', async (event) => {
     const target = event.target.closest(
       '[data-act], [data-play], [data-del], [data-analysis], .rec-row'
@@ -778,7 +738,6 @@ export function buildRecorderPage() {
         if (target.classList.contains('rec-row')) select(Number(target.dataset.i));
     }
   });
-
 
   stageEl.addEventListener('pointerdown', (event) => {
     const canvas = event.target.closest('.rec-wave');
@@ -848,14 +807,7 @@ export function buildRecorderPage() {
   }
 
   let disposed = false;
-  /**
-   * Hands the microphone back and stops listening for keys.
-   *
-   * Must be called when this page leaves the screen — which is the whole reason
-   * the page is returned with a teardown rather than just an element. A
-   * microphone left open moves a phone's audio path into its communications
-   * profile, and everything played afterwards stutters.
-   */
+  /** Releases the microphone and keyboard listener. */
   function dispose() {
     if (disposed) return;
     disposed = true;

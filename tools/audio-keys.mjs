@@ -1,11 +1,4 @@
-/**
- * Node-side helpers for locating audio clips on disk.
- *
- * The list of clips the app needs lives in src/lib/clip-list.js, shared with the
- * browser so the in-app recorder and the build pipeline cannot disagree about
- * what a clip is called. This module is the filesystem half: read content, find
- * files, and say where a clip resolves.
- */
+/* Node-side helpers for locating audio clips on disk. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -28,8 +21,7 @@ export function readContent(name) {
   return JSON.parse(fs.readFileSync(path.join(CONTENT_DIR, name), 'utf8'));
 }
 
-/**
- * Every clip the app wants, in recording order.
+/** Every clip the app wants, in recording order.
  * @returns {import('../src/lib/clip-list.js').Clip[]}
  */
 export function expectedClips() {
@@ -40,14 +32,7 @@ export function expectedClips() {
   });
 }
 
-/**
- * Where a clip's audio actually lives, or null.
- *
- * A hand recording always beats a generated one. That ordering is the entire
- * override mechanism: drop a file into public/audio/recorded/ and it wins, with
- * no code or config change. The app extends the same chain one layer further,
- * with a device recording in IndexedDB beating both — see src/lib/audio.js.
- *
+/** Where a clip's audio actually lives, or null.
  * @returns {{path: string, source: 'recorded'|'tts'}|null}
  */
 export function resolveClip(slug) {

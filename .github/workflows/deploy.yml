@@ -1,18 +1,10 @@
 # Builds the app and publishes it to GitHub Pages.
-#
-# This is not optional infrastructure: the source tree cannot be served
-# directly. index.html loads /src/main.js, which imports "phaser" as a bare
-# module specifier, and no browser can resolve that without a bundler. Pages set
-# to "Deploy from a branch" serves the raw files, and the app fails to boot.
-#
-# This workflow only takes effect once the repository is switched to
-# Settings -> Pages -> Build and deployment -> Source -> "GitHub Actions".
 
 name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, master, claude/urdu-learning-web-app-hq1yxc, codex/improve-audio-recording-studio-features]
+    branches: [main, master, claude/urdu-learning-web-app-hq1yxc, codex/improve-audio-recording-studio-features, codex/artwork-followup]
   workflow_dispatch:
 
 permissions:
@@ -29,15 +21,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # No browser here. Nothing this job deploys needs one, and pulling 150 MB
-      # of Chromium into every Pages build to exercise an asset-generation tool
-      # is a bad trade — those tools only ever run locally, by a person who then
-      # looks at the pictures they made.
-      #
-      # Tests that need a browser must gate on hasBrowser() from
-      # tools/browser.mjs and skip out loud. Throwing from a setup hook instead
-      # cancels the subtests, which reads as a red build with three tests
-      # mysteriously missing rather than as "no browser here".
+      # No browser here.
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@v4
@@ -53,8 +37,7 @@ jobs:
         run: npm run bake
 
       - name: Check committed glyphs are up to date
-        # Catches a content/*.json edit committed without re-baking, which would
-        # otherwise ship an app whose glyphs disagree with its own data.
+        # Catches a content/*.json edit committed without re-baking.
         run: git diff --exit-code content/glyphs.json
 
       - name: Check audio manifest is up to date
@@ -65,10 +48,7 @@ jobs:
       - run: npm run build
 
       - name: Run integrity tests
-        # After the build, not before: the service-worker tests read dist/ and
-        # skip without it, and the precache assertions are the ones that catch
-        # an asset that works online and is silent offline. A failure here still
-        # blocks the deploy, since the upload step runs after it.
+        # Run after the build so service-worker checks can inspect dist/.
         run: npm test
 
       - uses: actions/configure-pages@v5

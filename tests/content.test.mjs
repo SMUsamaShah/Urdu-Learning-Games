@@ -1,14 +1,4 @@
-/**
- * Integrity checks over content/.
- *
- * These exist because the mistakes this project is most likely to make are
- * quiet ones: a letter given the wrong joining behaviour still produces valid
- * JSON and a plausible-looking screen, it just teaches a form of the letter
- * that does not exist. Every assertion here corresponds to something that
- * would otherwise only be caught by an Urdu-reading human noticing.
- *
- * Run: npm test   (requires `npm run bake` to have run first)
- */
+/* Integrity checks over content/. */
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -49,9 +39,7 @@ describe('letters', () => {
   });
 
   test('the non-joiners are exactly the ones Urdu says they are', () => {
-    // ا د ڈ ذ ر ڑ ز ژ و ے connect only to the letter before them, and ء
-    // connects to nothing. Anything else here means a letter would be taught
-    // with initial and medial forms it does not have.
+    // ا د ڈ ذ ر ڑ ز ژ و ے connect only to the letter before them, and ء connects to nothing.
     const expected = [
       'alif', 'dal', 'Dal', 'zal', 're', 'Re', 'ze', 'zhe', 'wao', 'bari-ye',
     ].sort();
@@ -63,9 +51,7 @@ describe('letters', () => {
   });
 
   test('a letter name is never just the letter itself', () => {
-    // The name (bay) and the character (ب) are different things, and the name
-    // is what gets spoken. A name equal to the char means the field was filled
-    // in by copying rather than by knowing.
+    // The name (bay) and the character (ب) are different things, and the name is what gets spoken.
     for (const letter of letters) {
       assert.notEqual(letter.name, letter.char, `${letter.id} name equals char`);
       assert.ok(letter.sound, `${letter.id} has no sound`);
@@ -90,9 +76,7 @@ describe('words', () => {
   });
 
   test('letterIndex actually points at its letter inside the word', () => {
-    // The check that matters most. R, do-chashmi-he and choti-ye never begin a
-    // word, so their letterIndex is non-zero, and an app that assumed index 0
-    // would silently highlight the wrong character.
+    // The check that matters most.
     const byId = new Map(letters.map((l) => [l.id, l]));
     for (const word of words) {
       const letter = byId.get(word.letter);
@@ -128,17 +112,11 @@ describe('words', () => {
 });
 
 describe('words taken apart', () => {
-  /**
-   * The Letters screen spells each word out — ب ک ر ی under بکری — by looking
-   * every character up in letters.json. Two things can go wrong quietly.
-   */
+  /* The Letters screen spells each word out — ب ک ر ی under بکری — by looking every character up in letters.json. */
   const lettersByChar = new Map(letters.map((l) => [l.char, l]));
 
   test('the taught letter really is at the index the word claims', () => {
-    // letterIndex says where in the word the letter being taught sits, and the
-    // spelled-out row tints that cell. Off by one and the row confidently
-    // colours the wrong letter, which is the only outcome worse than not
-    // showing the row at all.
+    // letterIndex says where in the word the letter being taught sits, and the spelled-out row tints that cell.
     for (const word of words) {
       const letter = letters.find((l) => l.id === word.letter);
       const at = [...word.word][word.letterIndex];
@@ -151,12 +129,7 @@ describe('words taken apart', () => {
   });
 
   test('exactly one word cannot be taken apart, and it is چائے', () => {
-    // چائے is written with ئ — hamza carried on a ی — which is not one of the
-    // thirty-eight letters and has no glyph of its own, so that word declines
-    // the row rather than showing itself with a letter missing. Asserted by
-    // name because a *second* word turning up here means either a new word was
-    // added with a character the alphabet does not have, or آ finally arrived
-    // and this list should shrink.
+    // چائے is written with ئ.
     const unbreakable = words
       .filter((word) => [...word.word].some((char) => !lettersByChar.has(char)))
       .map((word) => word.id);
@@ -165,17 +138,7 @@ describe('words taken apart', () => {
 });
 
 describe('word clusters', () => {
-  /**
-   * How many of the words let the taught letter be coloured on its own.
-   *
-   * Asserted exactly rather than as "at least one". AlQalam Taj is a ligature
-   * face and this number is a property of *that font* — پتنگ is a single glyph
-   * for four letters and cannot be picked apart. If a font change quietly took
-   * it from nine to three, the Letters screen would go on working and simply
-   * stop teaching the thing it was built to teach, which is exactly the kind of
-   * silent loss this file exists to catch. Re-measure and change the number
-   * deliberately.
-   */
+  /* How many of the words let the taught letter be coloured on its own. */
   const SEPARABLE = 9;
 
   test('every word has clusters covering it exactly once', () => {
@@ -225,7 +188,7 @@ describe('word clusters', () => {
 });
 
 describe('numbers', () => {
-  /** 0–100, then a thousand and a lakh. */
+  /* 0–100, then a thousand and a lakh. */
   const EXPECTED = [...Array.from({ length: 101 }, (unused, i) => i), 1000, 100000];
 
   test('every value is there exactly once, in order', () => {
@@ -238,9 +201,6 @@ describe('numbers', () => {
 
   test('digits use the Urdu block, not the Arabic one', () => {
     // ۴ ۶ ۷ (U+06F4/6/7) are drawn differently from ٤ ٦ ٧ (U+0664/6/7).
-    // Picking the wrong block gives digits an Urdu reader will not recognise,
-    // and the two blocks are indistinguishable in most editors — which is why
-    // this is checked rather than eyeballed.
     for (const n of numbers) {
       const digits = [...n.char];
       assert.equal(
@@ -255,9 +215,7 @@ describe('numbers', () => {
   });
 
   test('every name and every romanisation is its own', () => {
-    // The check that catches a copy-paste in ninety hand-written words: Urdu
-    // builds none of 11–99 out of its parts, so two numbers sharing a name is
-    // always a mistake rather than a language feature.
+    // The check that catches a copy-paste in ninety hand-written words.
     const names = numbers.map((n) => n.name);
     const romans = numbers.map((n) => n.roman);
     const twice = (list) => list.filter((v, i) => list.indexOf(v) !== i);
@@ -312,8 +270,7 @@ describe('baked glyphs', () => {
   });
 
   test('no glyph is empty', () => {
-    // An empty path means the font had no outline for it, which renders as a
-    // blank box in game rather than throwing.
+    // An empty path means the font had no outline for it, which renders as a blank box in game rather than throwing.
     const check = (glyph, label) => {
       assert.ok(glyph, `${label} is missing`);
       assert.ok(glyph.d.length > 0, `${label} has an empty outline`);
@@ -330,8 +287,7 @@ describe('baked glyphs', () => {
   });
 
   test('positional forms of a joining letter are actually different shapes', () => {
-    // If the shaper silently failed, every form would come back as the isolated
-    // glyph and the forms row would teach nothing.
+    // If the shaper silently failed, every form would come back as the isolated glyph and the forms row would teach nothing.
     for (const letter of letters.filter((l) => l.joins === 'both')) {
       const forms = glyphs.letters[letter.id];
       const paths = new Set(Object.values(forms).map((g) => g.d));
@@ -343,25 +299,7 @@ describe('baked glyphs', () => {
   });
 
   test('words are shaped, not letters set side by side', () => {
-    // The failure this guards against is a word baked as its letters in a row:
-    // isolated forms, no joins, no ligatures, no slope. That is what an Urdu
-    // word looks like when the shaper has been bypassed, and it is wrong in a
-    // way a child would learn from.
-    //
-    // Measured on the advance rather than the height. Height was the obvious
-    // test and it is a fact about one typeface, not about Nastaliq: it read
-    // "taller than 0.6 em", which Noto's proportions passed and AlQalam Taj's
-    // fail while stacking perfectly well — درخت is 0.59 em tall in it.
-    //
-    // Advance is the honest measure because joining always draws a word in
-    // narrower than its letters standing apart, whichever way the font gets
-    // its slope. Noto stacks single glyphs with GPOS offsets and AlQalam Taj
-    // substitutes one ligature for the whole word; both come out far under
-    // this bound, and letters in a row could not.
-    // Only where a join is actually required. Half the alphabet joins to the
-    // right only, so وردی — و ر د ی, none of which connects forwards — really
-    // is four separate shapes in a row, and asserting otherwise would be
-    // asserting something false about Urdu.
+    // The failure this guards against is a word baked as its letters in a row.
     const byChar = new Map(letters.map((l) => [l.char, l.id]));
     const byId = new Map(letters.map((l) => [l.id, l]));
     let checked = 0;
@@ -370,11 +308,7 @@ describe('baked glyphs', () => {
       const joins = ids.slice(0, -1).filter((id) => byId.get(id).joins === 'both').length;
       if (!joins) continue;
 
-      // Per join rather than as a fraction of the word: ظروف is four letters
-      // with only one join in it (ظ→ر; ر and و do not connect forwards), so it
-      // legitimately compresses by 8% where مچھلی compresses by 60%. Every
-      // join in the set buys at least a sixth of an em; a tenth is the bound,
-      // and letters simply concatenated would buy nothing at all.
+      // Per join rather than as a fraction of the word.
       const apart = ids.reduce((total, id) => total + glyphs.letters[id].isolated.advance, 0);
       const joined = glyphs.words[word.id].advance;
       assert.ok(

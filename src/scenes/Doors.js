@@ -15,25 +15,7 @@ import { COLORS, familyColor, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
 import { pickWeighted } from '../lib/mastery.js';
 
-/**
- * Knock on the right door.
- *
- * The same question FindLetter asks, behind a different door — and that is not
- * a criticism of it. Ten of the fifteen games in the reference apps are one of
- * about four questions in a new costume, and they are right: a three-year-old
- * who has stopped tapping tiles will keep playing for twenty minutes to see who
- * is behind the door, and every one of those minutes is another repetition of
- * the letter.
- *
- * What is behind it is the thing that makes this worth building rather than
- * recolouring FindLetter's tiles. Getting it right opens the door and the
- * letter's word walks out — بکری for ب — so the reward is not a sparkle, it is
- * the answer to "and what does that letter give you?". StartsWith asks that
- * question directly; this one answers it as a prize.
- *
- * Only letters whose word has a picture come up, because a door that opens on
- * nothing is a worse reward than no door.
- */
+/* Knock on the right door. */
 
 const DOOR = { width: 176, height: 232 };
 
@@ -44,14 +26,11 @@ export default class Doors extends QuizScene {
     this.instructionRoman = 'Which door?';
     this.tileSize = DOOR.width;
     this.tileHeight = DOOR.height;
-    // Doors stand upright. A tilted one reads as falling over rather than as
-    // hand-placed, which is what the tilt is for everywhere else.
+    // Doors stand upright.
     this.tileTilt = 0;
     this.tileGap = 46;
     this.choicesY = 500;
-    // Higher and shorter than the usual prompt: the barn's roof comes to a
-    // point above the doors, and a full-size card at the standard height sits
-    // straight through it.
+    // Higher and shorter than the usual prompt.
     this.promptY = 212;
     /** @type {string[]} */
     this.pool = [];
@@ -69,24 +48,15 @@ export default class Doors extends QuizScene {
         const word = wordForLetter(id);
         return letterGlyph(id) && word && hasWordImage(word.id);
       });
-    // One em for every letter in the app, so a door cannot be picked by which
-    // letter happens to be drawn biggest.
+    // One em for every letter in the app, so a door cannot be picked by which letter happens to be drawn biggest.
     this.doorFit = fitEmAlone(allLetterGlyphs('isolated'), DOOR.width - 70, DOOR.height - 130);
     this.promptFit = fitEmAlone(allLetterGlyphs('isolated'), 132, 96);
 
-    // Behind the doors and in front of the scenery. Doors have to be set into
-    // something: three of them hanging in mid-air is not a building a child can
-    // knock on, it is three coloured rectangles.
+    // Behind the doors and in front of the scenery.
     this.barn = this.add.graphics().setDepth(-1);
   }
 
-  /**
-   * The barn the doors are set into, drawn to fit the line-up.
-   *
-   * Redrawn each round rather than laid out once, because the number of doors
-   * grows with the streak — a wall sized for four with two doors in it has a
-   * blank half, and one sized for two cannot hold four.
-   */
+  /* The barn the doors are set into, drawn to fit the line-up. */
   buildChoices(ids) {
     this.drawBarn(ids.length);
     super.buildChoices(ids);
@@ -120,8 +90,7 @@ export default class Doors extends QuizScene {
     g.lineStyle(3, 0xd9c39c, 1);
     g.strokeRect(left, top + 16, width, bottom - top - 16);
 
-    // A course of bricks along the bottom, so the wall meets the ground rather
-    // than stopping in mid-air the way the doors used to.
+    // A course of bricks along the bottom.
     g.fillStyle(0xc98d63, 1);
     g.fillRect(left, bottom - 18, width, 18);
   }
@@ -159,19 +128,12 @@ export default class Doors extends QuizScene {
     if (hasClip(clipKeys.letterName(target))) layer.add(this.speakerIcon(142));
   }
 
-  /**
-   * A door, drawn into the tile.
-   *
-   * The tile underneath is still a plain rounded card — that is what carries the
-   * tap and the squash — and the door is painted over it. Cheaper than a custom
-   * button shape, and the shadow and press animation come for free.
-   */
+  /* A door, drawn into the tile. */
   decorateTile(tile, letterId, size) {
     const colour = familyColor(lettersById.get(letterId).shapeFamily);
     const height = DOOR.height;
     const door = this.add.graphics();
-    // The frame, then the leaf inset inside it, so the door reads as set into
-    // a wall rather than as a coloured rectangle.
+    // The frame, then the leaf inset inside it, so the door reads as set into a wall rather than as a coloured rectangle.
     door.fillStyle(0xf2e4c9, 1);
     door.fillRoundedRect(-size / 2, -height / 2, size, height, 14);
     door.fillStyle(colour, 1);
@@ -196,7 +158,7 @@ export default class Doors extends QuizScene {
     );
   }
 
-  /** The tile is the door frame, so it must not be tinted like a card. */
+  /* The tile is the door frame, so it must not be tinted like a card. */
   tileColor() {
     return COLORS.panelLight;
   }
@@ -205,13 +167,7 @@ export default class Doors extends QuizScene {
     sayLetter(this.target, { word: false });
   }
 
-  /**
-   * Opens the door and lets the word out.
-   *
-   * The picture starts inside the doorway and small, then walks forward. It is
-   * the whole point of the game, so it happens where the child is already
-   * looking rather than somewhere else on the screen.
-   */
+  /* Opens the door and lets the word out. */
   onCorrect(letterId) {
     const tile = this.choicesLayer.list.find((t) => t.choiceId === letterId);
     const word = wordForLetter(letterId);

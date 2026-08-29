@@ -1,29 +1,15 @@
 import { letterGlyph } from './content.js';
 
-/**
- * Which games exist. Nothing about where they go.
- *
- * Plain data, and *only* data. There used to be three castes in here — eight
- * `featured` on the front page, three in a `spelling` group behind their own
- * tile, and everything else behind a "more games" tile — and the distinction
- * was invisible to a child and had stopped meaning much to anybody. It is one
- * flat list now, and which games appear and in what order is a preference:
- * src/lib/menu.js owns the order, src/lib/enabled.js owns the on and off.
- *
- * The order below is still the order a fresh device gets, so it is worth
- * keeping as a sensible learning path rather than shuffling it about.
- */
+/* Which games exist. */
 
-/** Games ready to play. Unfinished games are simply absent rather than greyed
- *  out: a tile that does nothing when tapped is worse than no tile. */
+/* Games ready to play. */
 export const GAMES = [
   {
     scene: 'Flashcards',
     ui: 'letters',
     roman: 'Letters',
     color: 0x3f7fd4,
-    // Tiles are illustrated with a real Urdu letter rather than an emoji. The
-    // obvious pick, 🔤, is a picture of the Latin alphabet.
+    // Tiles are illustrated with a real Urdu letter rather than an emoji.
     icon: { letter: 'be', form: 'isolated' },
   },
   {
@@ -80,8 +66,7 @@ export const GAMES = [
     ui: 'forms',
     roman: 'Shapes',
     color: 0x8a6ad0,
-    // The initial form, because the tile is advertising the thing the game is
-    // about: a letter wearing a face the flashcards never showed.
+    // Use the initial form because the tile advertises the letter shape.
     icon: { letter: 'be', form: 'initial' },
   },
   {
@@ -189,11 +174,6 @@ export const GAMES = [
     color: 0xd4913f,
     icon: { letter: 'lam', form: 'isolated' },
   },
-  // --- Spelling: the first games here that are about *words* rather than
-  // letters. See src/lib/spelling.js for why spelling is a different job in
-  // Urdu than it is in English. They sat behind a tile of their own until the
-  // menu became one ordered list; where they come is a matter for
-  // Settings -> Games now, like every other game.
   {
     scene: 'FillLetter',
     ui: 'missing',
@@ -217,28 +197,15 @@ export const GAMES = [
   },
 ];
 
-/**
- * What a game's drawing is filed under in tile-faces.js.
- *
- * The scene key. `art` survives as an override because a tile's picture and its
- * scene are not the same fact, and one of them may want renaming without the
- * other.
- */
+/* What a game's drawing is filed under in tile-faces.js. */
 export function artName(game) {
   return game.art ?? game.scene;
 }
 
-/** A game by its scene key, or undefined. */
+/* A game by its scene key, or undefined. */
 export const gameFor = (scene) => GAMES.find((game) => game.scene === scene);
 
-/**
- * Every letter a tile asks for, resolved.
- *
- * A tile whose `icon.letter` is not a real id draws its name with a hole above
- * it and says nothing — `sad` and `he` sat there for weeks before a screenshot
- * caught them (the ids are `suad` and `choti-he`). The menu shouts about it at
- * runtime; this is the same question asked from a test.
- */
+/* Every letter a tile asks for, resolved. */
 export function missingIcons() {
   return GAMES.filter((game) => game.icon && !letterGlyph(game.icon.letter, game.icon.form)).map(
     (game) => `${game.ui}: ${game.icon.letter} ${game.icon.form}`

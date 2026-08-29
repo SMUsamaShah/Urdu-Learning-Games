@@ -1,34 +1,4 @@
-/**
- * The settings screen, behind the parental gate.
- *
- * ## Why it is a list of rows and not a panel of controls
- *
- * Everything an adult can change used to live in a single strip along the top
- * of the recording screen: a tune picker, a frame-rate checkbox, and buttons
- * for sound check, updates, export and import, all in a row above a list of a
- * hundred and twenty clips. Each control was individually reasonable and the
- * whole was unreadable — nothing said which of them belonged together, and the
- * recorder, by far the biggest thing here, looked like one setting among seven.
- *
- * This follows the shape the reference apps use, which is worth copying because
- * it is the shape every phone's own settings uses and so needs no learning:
- *
- *   - One scrolling list of rows, grouped under quiet headings.
- *   - A row is a **label** and one of three things on the right: a **switch**
- *     for something on or off, a **value and a chevron** for something with a
- *     choice behind it, or a **chevron** for a page.
- *   - No icons, no explanatory paragraph under each row. A settings list where
- *     every row explains itself is a list nobody reads. Where a note is
- *     genuinely needed it goes on the page, not the row.
- *   - Anything bigger than a switch gets its own page, reached and left by one
- *     obvious arrow.
- *
- * The recorder is the one page not built here: it owns a microphone, a clip
- * store and a zip writer, and is loaded on demand — see openPage().
- *
- * Plain DOM over the Phaser canvas, like the recorder: this is adult-facing and
- * wants real switches, scrolling and a file picker.
- */
+/* The settings screen, behind the parental gate. */
 
 import './settings.css';
 import { setShowFps, showFps } from '../lib/fps.js';
@@ -121,8 +91,6 @@ export function openSettings({ onClose } = {}) {
     bodyEl.replaceChildren();
   }
 
-  // ------------------------------------------------------------------ rows
-
   /** `label ————— [switch]` */
   const switchRow = (act, label, on) => `
     <label class="set-row">
@@ -161,8 +129,6 @@ export function openSettings({ onClose } = {}) {
 
   const group = (heading, rows) =>
     `<div class="set-group">${escapeHtml(heading)}</div><div class="set-card">${rows.join('')}</div>`;
-
-  // ------------------------------------------------------------------ list
 
   function showList() {
     clearBody();
@@ -212,37 +178,20 @@ export function openSettings({ onClose } = {}) {
     countRecordings();
   }
 
-  /**
-   * How many letters a child can be guided through, out of the alphabet.
-   *
-   * Synchronous, unlike the recordings count: the device's corrections were
-   * loaded at startup, so this is already in memory.
-   */
+  /* Returns guided-letter progress for Settings. */
   function traceSummary() {
     if (!strokesMatchFont()) return 'Unavailable';
     return `${guidedLetters().length} of ${letters.length}`;
   }
 
-  /**
-   * How far the child has got, for the row above the reset.
-   *
-   * Worded without naming a tree, a glass or a bar: which of those is on screen
-   * is the row above this one, and a summary that contradicts it is worse than
-   * one that is slightly abstract.
-   */
+  /* How far the child has got, for the row above the reset. */
   function progressSummary() {
     const { level, step, steps } = progressState();
     const done = level === 1 ? '1 filled' : `${level} filled`;
     return `${done} · ${step} of ${steps} to the next`;
   }
 
-  /**
-   * Wipes the total.
-   *
-   * Confirmed first, and worded as what it does rather than as "are you sure".
-   * This is the only destructive thing on the screen and the only one a parent
-   * could plausibly hit by accident while looking for the tune.
-   */
+  /* Wipes the total. */
   function resetProgress() {
     if (!window.confirm('Start again from nothing? This clears all progress on this device.')) {
       return;
@@ -252,14 +201,7 @@ export function openSettings({ onClose } = {}) {
     if (row) row.textContent = progressSummary();
   }
 
-  /**
-   * Forget the record, without touching the running total.
-   *
-   * Two separate things and two separate resets on purpose. "He has watered the
-   * plant this far" and "these are the letters he finds hard" are not the same
-   * fact, and a second child on the same tablet usually wants the second one
-   * gone and not necessarily the first.
-   */
+  /* Forget the record, without touching the running total. */
   function resetDoing() {
     if (!window.confirm('Forget what he has answered? The games go back to dealing every letter evenly.')) {
       return;
@@ -270,7 +212,7 @@ export function openSettings({ onClose } = {}) {
     sfx.correct();
   }
 
-  /** Back to the authored order, with every game switched on. */
+  /* Back to the authored order, with every game switched on. */
   function resetGames() {
     if (!window.confirm('Put the games back in the order they came in, and switch them all on?')) {
       return;
@@ -281,7 +223,7 @@ export function openSettings({ onClose } = {}) {
     sfx.correct();
   }
 
-  /** Puts today's used minutes back to nothing. */
+  /* Puts today's used minutes back to nothing. */
   function forgetSoFar() {
     if (!limitMinutes()) return;
     if (!window.confirm("Forget the time he has used today?")) return;
@@ -303,8 +245,6 @@ export function openSettings({ onClose } = {}) {
     }
   }
 
-  // ----------------------------------------------------------------- pages
-
   const PAGE_TITLES = {
     tune: 'Tune',
     indicator: 'Shown as',
@@ -321,8 +261,7 @@ export function openSettings({ onClose } = {}) {
   };
 
   async function openPage(id) {
-    // A page is a screen, so it gets its own history entry and the arrow out of
-    // it is the phone's back button. See src/lib/history.js.
+    // A page is a screen, so it gets its own history entry and the arrow out of it is the phone's back button.
     pushScreen(`settings:${id}`, () => showList());
     clearBody();
     current = id;
@@ -339,9 +278,7 @@ export function openSettings({ onClose } = {}) {
     if (id === 'check') return void openSoundCheck();
 
     if (id === 'recordings') {
-      // Loaded here rather than with the rest: the recorder pulls in its own
-      // stylesheet, the zip archive and the take-polishing code, none of which
-      // somebody who came to change the music should have to download.
+      // Loaded here rather than with the rest.
       const holder = el('<div class="set-page set-loading">Loading…</div>');
       bodyEl.append(holder);
       const { buildRecorderPage } = await import('./recorder.js');
@@ -354,8 +291,7 @@ export function openSettings({ onClose } = {}) {
     }
 
     if (id === 'traces') {
-      // Same reasoning as the recorder: an SVG editor and its stylesheet are
-      // not something somebody who came to change the tune should download.
+      // Load the editor only when the tracing page opens.
       const holder = el('<div class="set-page set-loading">Loading…</div>');
       bodyEl.append(holder);
       const { buildTracesPage } = await import('./traces.js');
@@ -369,13 +305,7 @@ export function openSettings({ onClose } = {}) {
   const indicatorName = (id) =>
     indicatorNames().find((i) => i.id === id)?.name ?? id;
 
-  /**
-   * What stands in the rail down the left of every game.
-   *
-   * A list, like the tunes, and for the same reason: it is a thing to look at
-   * rather than a setting to get right, and the difference between them is the
-   * whole point of offering more than one.
-   */
+  /* What stands in the rail down the left of every game. */
   function indicatorPage() {
     return el(`
       <div class="set-list">
@@ -397,18 +327,13 @@ export function openSettings({ onClose } = {}) {
       </div>`);
   }
 
-  /**
-   * `28 of 38` for the row on the list, or nothing when none is switched off.
-   *
-   * Silent by default on purpose: a row saying "38 of 38" on every fresh device
-   * invites a parent to go and look at a page where there is nothing to do.
-   */
+  /* `28 of 38` for the row on the list, or nothing when none is switched off. */
   function switchedSummary(kind, total) {
     const off = disabledCount(kind);
     return off ? `${total - off} of ${total}` : '';
   }
 
-  /** The rows of one picking page, shown so the child's word is what is read. */
+  /* The rows of one picking page, shown so the child's word is what is read. */
   const PICK = {
     letter: {
       items: () => letters,
@@ -427,25 +352,8 @@ export function openSettings({ onClose } = {}) {
     },
   };
 
-  /**
-   * Turn any one letter, word or number off.
-   *
-   * The whole list every time, not the active one: this is the page where you
-   * put something back, so hiding what is off would make that impossible. The
-   * band on the numbers page is a separate control and this page ignores it —
-   * a number switched off individually stays off if the band later widens.
-   *
-   * Each row shows the thing itself rather than its name. A parent picking
-   * letters for the week is looking for ب, and `letterGlyph` draws exactly what
-   * the games draw, so there is no chance of the list and the game disagreeing.
-   */
-  /**
-   * The four things a letter can be, in the order a person cares about them.
-   *
-   * Deliberately about the letters and not about him. "ٹ, missing it" is a note
-   * on a letter; "he is bad at ٹ" is a report card on a three-year-old, and
-   * nobody needs one of those written about them at three.
-   */
+  /* Turn any one letter, word or number off. */
+  /* The four things a letter can be, in the order a person cares about them. */
   const BANDS_DOING = [
     { id: 'missing', label: 'Missing it' },
     { id: 'getting-there', label: 'Getting there' },
@@ -453,26 +361,14 @@ export function openSettings({ onClose } = {}) {
     { id: 'new', label: 'Not met yet' },
   ];
 
-  /** `12 solid` for the menu row, or nothing at all before he has played. */
+  /* `12 solid` for the menu row, or nothing at all before he has played. */
   function doingSummary() {
     const solid = letters.filter((item) => bandOf('letter', item.id) === 'solid').length;
     const met = letters.filter((item) => bandOf('letter', item.id) !== 'new').length;
     return met ? `${solid} of ${met} solid` : 'Nothing yet';
   }
 
-  /**
-   * What the app has worked out about each letter, and what it does with it.
-   *
-   * The weighting is otherwise invisible: games quietly deal a struggling
-   * letter about four times as often as a mastered one and nothing on any
-   * screen says so. This is the page that makes it legible, and it is the page
-   * that answers the only question a parent actually has, which is what to
-   * practise away from the tablet.
-   *
-   * Letters only. Numbers and words are weighted the same way and are recorded
-   * the same way, but a wall of a hundred numerals is not something anybody
-   * reads, and the alphabet is what this app is for.
-   */
+  /* What the app has worked out about each letter, and what it does with it. */
   function doingPage() {
     const grouped = BANDS_DOING.map((band) => {
       const items = letters.filter((item) => bandOf('letter', item.id) === band.id);
@@ -481,9 +377,7 @@ export function openSettings({ onClose } = {}) {
         .map((item) => {
           const glyph = glyphForClip({ kind: 'letter', id: item.id, form: 'isolated' });
           const history = historyOf('letter', item.id);
-          // The record itself, in words, as the chip's title: five of the last
-          // six. It is the one number that explains the shading, and burying it
-          // in a tooltip keeps the page a picture rather than a spreadsheet.
+          // The record itself, in words, as the chip's title: five of the last six.
           const right = [...history].filter((mark) => mark === '1').length;
           const detail = history.length
             ? `${item.roman}: ${right} of the last ${history.length} right`
@@ -520,7 +414,7 @@ export function openSettings({ onClose } = {}) {
 
   const limitSummary = () => (limitMinutes() ? `${limitMinutes()} minutes` : 'No limit');
 
-  /** `12 of 20 min`, so the row says what is left as well as what is gone. */
+  /* `12 of 20 min`, so the row says what is left as well as what is gone. */
   function spentSummary() {
     const used = minutes(spentMs());
     const limit = limitMinutes();
@@ -528,15 +422,7 @@ export function openSettings({ onClose } = {}) {
     return `${used} of ${limit} min`;
   }
 
-  /**
-   * How long he gets in a day.
-   *
-   * Here rather than in Android's App Timer because that cannot see this app:
-   * installed from Chrome it is a WebAPK, which renders inside Chrome's own
-   * process, so Digital Wellbeing charges the time to Chrome and the timer set
-   * on this app never counts down. The full story is at the top of
-   * src/lib/allowance.js.
-   */
+  /* How long he gets in a day. */
   function limitPage() {
     return el(`
       <div class="set-list">
@@ -564,7 +450,7 @@ export function openSettings({ onClose } = {}) {
       </div>`);
   }
 
-  /** `19 of 27 · 2 pages` for the menu row. */
+  /* `19 of 27 · 2 pages` for the menu row. */
   function gamesSummary() {
     const all = orderedGames();
     const on = all.filter((game) => isEnabled('game', game.scene)).length;
@@ -572,36 +458,20 @@ export function openSettings({ onClose } = {}) {
     return `${on} of ${all.length} · ${pages} page${pages === 1 ? '' : 's'}`;
   }
 
-  /**
-   * Which games the menu shows, in what order.
-   *
-   * The two halves of one question, so they are one list rather than two pages:
-   * a switch decides whether a game exists at all, and where it sits in the
-   * list decides which page of the menu it lands on. Splitting them would mean
-   * ordering a list without being able to see what was switched off in it.
-   *
-   * Re-rendered wholesale after any change. The page marks depend on how many
-   * *enabled* rows precede them, so flipping one switch a third of the way down
-   * moves every mark below it — patching that by hand would be more code than
-   * drawing the list again, and this list is twenty-seven rows.
-   */
+  /* Which games the menu shows, in what order. */
   function gamesPage() {
     const all = orderedGames();
     let onSoFar = 0;
     const rows = all
       .map((game, index) => {
         const on = isEnabled('game', game.scene);
-        // The mark goes *before* the row that opens a page, and is counted off
-        // the enabled rows only: a switched-off game takes up no room on the
-        // menu, so it must take up none in this counting either.
+        // The mark goes *before* the row that opens a page.
         const mark =
           on && onSoFar > 0 && onSoFar % PER_PAGE === 0
             ? `<div class="set-page-mark" data-mark>Page ${onSoFar / PER_PAGE + 1}</div>`
             : '';
         if (on) onSoFar++;
-        // This is the same illustration the child recognises on the menu. Keep
-        // a glyph fallback for a newly-added game whose tile art has not been
-        // generated yet, rather than leaving an unexplained blank in Settings.
+        // This is the same illustration the child recognises on the menu.
         const picture = tileArtUrl(game);
         const glyph = picture
           ? null
@@ -646,19 +516,7 @@ export function openSettings({ onClose } = {}) {
     return list;
   }
 
-  /**
-   * Drag a row by its handle to move it.
-   *
-   * Pointer events rather than HTML5 drag-and-drop, which does not fire on
-   * touch at all — this page is read on a phone more often than anywhere else.
-   *
-   * The rows slide out of the way live so the gap under the finger is where the
-   * row will land. The page marks are hidden for the duration instead: they
-   * belong to positions rather than to rows, so a mark that stayed put while
-   * rows moved through it would be pointing at the wrong place, and one that
-   * moved with a row would be lying about which page that row is on. They are
-   * drawn again, correctly, when the list re-renders on drop.
-   */
+  /* Drag a row by its handle to move it. */
   function attachReorder(card) {
     card.addEventListener('pointerdown', (event) => {
       const grip = event.target.closest('[data-grip]');
@@ -684,8 +542,7 @@ export function openSettings({ onClose } = {}) {
         to = Math.max(0, Math.min(rows.length - 1, from + Math.round(dy / step)));
         rows.forEach((other, index) => {
           if (other === row) return;
-          // Everything between the row's old place and its new one shuffles by
-          // exactly one slot, in whichever direction closes the gap.
+          // Everything between the row's old place and its new one shuffles by exactly one slot.
           const shift =
             index > from && index <= to ? -step : index < from && index >= to ? step : 0;
           other.style.transform = shift ? `translateY(${shift}px)` : '';
@@ -744,15 +601,7 @@ export function openSettings({ onClose } = {}) {
       </div>`);
   }
 
-  /**
-   * How far the counting goes.
-   *
-   * `content/numbers.json` holds 0–100 plus a thousand and a lakh. All of it at
-   * once is not a harder version of the same app, it is a different one: ۹۹
-   * turning up in a three-year-old's matching game teaches nothing and is
-   * mostly frightening. Ten is the default and is what the app did before the
-   * rest of the numbers existed.
-   */
+  /* How far the counting goes. */
   function numbersPage() {
     return el(`
       <div class="set-list">
@@ -774,13 +623,7 @@ export function openSettings({ onClose } = {}) {
       </div>`);
   }
 
-  /**
-   * The five pieces, as a list with a tick on the chosen one.
-   *
-   * A list rather than a drop-down because this is the one setting somebody is
-   * likely to browse — each tune has a character worth reading before picking,
-   * and a native select on a phone hides four of the five behind a tap.
-   */
+  /* The five pieces, as a list with a tick on the chosen one. */
   function tunePage() {
     const page = el(`
       <div class="set-list">
@@ -825,16 +668,7 @@ export function openSettings({ onClose } = {}) {
     disposePage = () => stopAll();
   }
 
-  // --------------------------------------------------------------- actions
-
-  /**
-   * Switches the background tune.
-   *
-   * Each tune has its own sampled instrument, so this is a fetch, a decode and
-   * a reverb render rather than a change of notes — a visible moment on a cold
-   * cache, and a control that appears to do nothing for two seconds is one
-   * people press twice. The whole list is held while it works.
-   */
+  /* Switches the background tune. */
   async function chooseTune(id) {
     const note = root.querySelector('[data-role="tune-note"]');
     const rows = [...root.querySelectorAll('[data-tune]')];
@@ -865,10 +699,7 @@ export function openSettings({ onClose } = {}) {
     value.textContent = 'Checking…';
     const said = {
       checked: 'Checked',
-      // Offline is this app's normal state, so this has to be distinguishable
-      // from "checked, nothing new". Reporting the second when the first
-      // happened is how somebody concludes they are on the latest build when
-      // nobody ever asked the server.
+      // Offline is this app's normal state, so this has to be distinguishable from "checked, nothing new".
       offline: 'Offline — could not check',
       failed: 'Check failed',
       unsupported: 'Not the installed app',
@@ -918,13 +749,9 @@ export function openSettings({ onClose } = {}) {
     const page = event.target.closest('[data-page]');
     if (page) return void openPage(page.dataset.page);
 
-    // Switch rows are labels wrapping a checkbox; their clicks are handled by
-    // the change listener below, and reading data-act here would fire twice.
+    // Switch rows are labels wrapping a checkbox.
     const act = event.target.closest('button[data-act]')?.dataset.act;
-    // Both go through the history rather than closing anything themselves: the
-    // × shuts the whole screen from whatever depth it is at, the arrow steps
-    // out one, and the phone's back button does the same as the arrow because
-    // it is the same path.
+    // Both go through the history rather than closing anything themselves.
     if (act === 'close') return goBackTo('settings');
     if (act === 'back') return goBack();
     if (act === 'update') return checkUpdate();
@@ -934,8 +761,7 @@ export function openSettings({ onClose } = {}) {
     if (act === 'forget-today') return forgetSoFar();
     if (act?.startsWith('all-')) {
       enableAll(act.slice(4));
-      // Redrawn rather than each box ticked by hand: the page is a list of up
-      // to a hundred and three switches and rebuilding it is one line.
+      // Redrawn rather than each box ticked by hand.
       clearBody();
       bodyEl.append(pickPage(act.slice(4)));
       sfx.correct();
@@ -949,9 +775,7 @@ export function openSettings({ onClose } = {}) {
       const [kind, id] = pick.split(':');
       setEnabled(kind, id, event.target.checked);
       sfx.tap();
-      // The games list draws page marks from how many enabled rows come before
-      // each one, so one switch moves every mark below it. Cheaper to draw the
-      // twenty-seven rows again than to work out which marks moved.
+      // The games list draws page marks from how many enabled rows come before each one.
       if (kind === 'game') {
         clearBody();
         bodyEl.append(gamesPage());
@@ -962,31 +786,22 @@ export function openSettings({ onClose } = {}) {
     const act = event.target.dataset?.act;
     if (act === 'fps') return setShowFps(event.target.checked);
     if (act === 'music') return setMusicOn(event.target.checked);
-    // `change` fires when the drag ends, so this is the moment to let somebody
-    // hear what they picked. A level you can only judge by looking at a slider
-    // is one you have to guess at.
+    // `change` fires when the drag ends, so this is the moment to let somebody hear what they picked.
     if (act === 'volume') return sfx.correct();
   });
 
-  // Live while dragging, not only on release: the tune is playing underneath
-  // and the whole point is to hear it move.
+  // Live while dragging, not only on release: the tune is playing underneath and the whole point is to hear it move.
   root.addEventListener('input', (event) => {
     if (event.target.dataset?.act === 'volume') setVolume(event.target.value / 100);
   });
 
-  /**
-   * One level out: a page returns to the list, the list closes the screen.
-   *
-   * Closing outright from inside the recorder would lose somebody's place in a
-   * list of a hundred and twenty clips, which is why this is not just close().
-   */
+  /* One level out: a page returns to the list, the list closes the screen. */
   function back() {
     goBack();
   }
 
   function onKey(event) {
-    // Never steal typing. The recorder has no text field, but a later page
-    // might, and the gate before this screen certainly does.
+    // Never steal typing.
     if (event.target.tagName === 'INPUT' && event.target.type !== 'checkbox') return;
     if (event.key !== 'Escape') return;
     event.preventDefault();
@@ -1002,20 +817,16 @@ export function openSettings({ onClose } = {}) {
     stopAll();
     root.remove();
     releaseInput();
-    // His clock starts again on the way out. See the note in allowance.js:
-    // twenty minutes spent fixing a stroke path is not twenty minutes of his.
+    // His clock starts again on the way out.
     resumeAllowance();
     onClose?.();
   }
 
   document.addEventListener('keydown', onKey);
-  // Nothing in here is his time, and none of these taps is a tap on the game
-  // underneath — which needs saying out loud, because Phaser hears `pointerup`
-  // on the window whatever is covering the canvas. See src/lib/game-input.js.
+  // Nothing in here is his time.
   pauseAllowance();
   const releaseInput = holdGameInput();
-  // Into the stage, not the body, so Settings turns with the app. See
-  // src/lib/turn.js.
+  // Into the stage, not the body, so Settings turns with the app.
   stageElement().appendChild(root);
   showList();
 

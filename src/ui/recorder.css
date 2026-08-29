@@ -1,16 +1,4 @@
-/*
- * The recording page: record, export, import.
- *
- * Plain DOM above the canvas rather than drawn in Phaser. It needs a scrolling
- * list of 120 rows, a number input and a file picker, all of which are free here
- * and laborious on a canvas. It is adult-facing, so it does not have to match the
- * game's visual language, only its palette.
- *
- * A page inside the settings screen, not an overlay of its own. It used to be
- * `position: fixed; inset: 0`, which once it became a page meant it covered the
- * title bar above it — including the arrow back out, so the only way to leave
- * was to reload.
- */
+/* The recording page: record, export, import. */
 
 .rec-root {
   --bg: #fdf3e3;
@@ -25,19 +13,15 @@
   color: var(--ink);
   display: flex;
   flex-direction: column;
-  /* Fills the settings body, and scrolls its list inside itself rather than
-     making the whole screen scroll. */
+  /* Fills the settings body, and scrolls its list inside itself rather than making the whole screen scroll. */
   min-height: 100%;
   background: var(--bg);
 }
 
-/* ------------------------------------------------------------------ header */
-
 .rec-head {
   display: flex;
   align-items: center;
-  /* Wraps rather than overflows. This row carries a title, a tune picker and
-     five buttons, which does not fit across a phone held upright. */
+  /* Wraps rather than overflows. */
   flex-wrap: wrap;
   gap: 10px 16px;
   padding: 14px 18px;
@@ -61,8 +45,6 @@
   flex: 1;
 }
 
-/* ------------------------------------------------------------------ status */
-
 .rec-status {
   padding: 10px 18px;
   background: var(--panel-2);
@@ -81,8 +63,6 @@
 .rec-warn {
   color: var(--accent);
 }
-
-/* -------------------------------------------------------------------- body */
 
 .rec-body {
   flex: 1;
@@ -177,8 +157,6 @@
   background: rgba(63, 127, 212, 0.16);
   color: #3f6fb4;
 }
-
-/* ------------------------------------------------------------------- stage */
 
 .rec-stage {
   width: 380px;
@@ -281,8 +259,6 @@
   margin: 8px 0 0;
 }
 
-/* ----------------------------------------------------------------- buttons */
-
 .rec-btn {
   font: inherit;
   color: var(--ink);
@@ -351,8 +327,6 @@
   }
 }
 
-/* --------------------------------------------------- microphone settings */
-
 .rec-mic {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -378,8 +352,6 @@
   font-size: 13px;
   color: #767f9c;
 }
-
-/* -------------------------------------------------------- the sound check */
 
 .rec-check {
   border: 1px solid #c9cee0;
@@ -421,8 +393,7 @@
   justify-self: start;
 }
 
-/* Monospace and preserved newlines: this block exists to be read carefully or
-   copied into a bug report, not to look tidy. */
+/* Monospace and preserved newlines: this block exists to be read carefully or copied into a bug report, not to look tidy. */
 .rec-check-facts {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
@@ -469,11 +440,7 @@
   max-width: 420px;
 }
 
-/* ------------------------------------------------- the toolbar's checkbox */
-
-/* Sits with Export and Import because it belongs to the sitting rather than to
-   the take: whether to hear each clip back is a decision made once, at the
-   start of an hour of recording, not per clip. */
+/* Sits with Export and Import because it belongs to the sitting rather than to the take. */
 .rec-check {
   display: flex;
   align-items: center;

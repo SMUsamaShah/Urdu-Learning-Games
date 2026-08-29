@@ -1,55 +1,19 @@
-/**
- * What the app actually says out loud when a child taps faster than it can
- * fetch a clip.
- *
- * The repo ships no recordings — every clip is made on a phone and lives in
- * that phone's IndexedDB — so every other check runs in silence and cannot see
- * a speech bug at all. This one invents a full set of clips, serves them over
- * intercepted routes with a controllable delay, and records every buffer the
- * app actually starts. Each clip gets its own distinctive duration, so a
- * started source can be named.
- *
- * ## What it is looking for
- *
- * A tap on a letter is a fetch (or an IndexedDB read) and a decode before any
- * sound comes out. On a phone that is long enough for a three-year-old to have
- * tapped twice more, and the ordering that falls out of that gap is the whole
- * subject here:
- *
- *   1. **A clip that lost the race must never speak.** Tap ب while ا is still
- *      loading and ا has to be dropped, not played on top a moment later.
- *   2. **A sequence stops when a newer one starts.** "bay … bakri" is two
- *      clips with a gap between them, and a tap during that gap used to leave
- *      the word to arrive over the top of whatever was tapped.
- *   3. **Every tap on a live card in Shapes names the letter under it.** Only
- *      picking a card up ever spoke: putting one down, and getting a pair
- *      wrong, were both silent, so tapping around the board produced a letter
- *      on some tiles and nothing on others with nothing to explain the
- *      difference.
- *
- * Usage: npm run dev &  then  node tools/verify-speech.mjs [baseUrl]
- */
+/* What the app actually says out loud when a child taps faster than it can fetch a clip. */
 
 import { fail, homeIsUp, openApp, startScene, step } from './harness.mjs';
 import { readContent } from './audio-keys.mjs';
 
 const APP = process.argv[2] || process.env.APP_URL || 'http://localhost:5173';
 
-// ------------------------------------------------------------- fake clips
-
 const RATE = 48000;
-/**
- * Durations, spaced far enough apart to survive resampling into whatever rate
- * the audio context is running at. This is how a started source gets a name:
- * nothing else in the app happens to be 0.5017 seconds long.
- */
+/* Durations, spaced far enough apart to survive resampling into whatever rate the audio context is running at. */
 const BASE_MS = 500;
 const SPACING_MS = 17;
 
 const letters = readContent('letters.json').letters;
 const words = readContent('words.json').words;
 
-/** key -> {slug, ms} */
+/* key -> {slug, ms} */
 const CLIPS = new Map();
 let n = 0;
 for (const letter of letters) {
@@ -65,7 +29,7 @@ for (const word of words) {
   });
 }
 
-/** A quiet sine, as a 16-bit mono WAV. Real audio, so decodeAudioData is real. */
+/* A quiet sine, as a 16-bit mono WAV. */
 function wav(ms) {
   const frames = Math.round((ms / 1000) * RATE);
   const buffer = Buffer.alloc(44 + frames * 2);
@@ -95,29 +59,20 @@ const manifest = {
   counts: { expected: CLIPS.size, recorded: CLIPS.size, tts: 0, missing: 0 },
 };
 
-/** Slugs to answer slowly, so a load can be made to lose a race on purpose. */
+/* Slugs to answer slowly, so a load can be made to lose a race on purpose. */
 const slow = new Set();
 const SLOW_MS = 600;
-
-// ------------------------------------------------------------------- setup
 
 const { context, newPage, finish } = await openApp({
   name: 'speech',
   open: false,
   args: [
-    // A headless run has no gesture to unlock audio with, and every check here
-    // is about what comes out of the speakers.
+    // A headless run has no gesture to unlock audio with, and every check here is about what comes out of the speakers.
     '--autoplay-policy=no-user-gesture-required',
   ],
 });
 
-/**
- * Every buffer the app starts, by duration.
- *
- * Patched before any app code runs, so nothing is missed. Music and the
- * flourish sampler go through the same node type, which is why the readings
- * are matched back to a known duration rather than counted.
- */
+/* Every buffer the app starts, by duration. */
 await context.addInitScript(() => {
   window.__started = [];
   const start = AudioBufferSourceNode.prototype.start;
@@ -151,16 +106,9 @@ if (seen.recorded !== CLIPS.size) {
 }
 step(`${seen.recorded} clips visible to the app`);
 
-// ------------------------------------------------------------- the readings
-
 const reset = () => page.evaluate(() => (window.__started = []));
 
-/**
- * Which of the invented clips have started since the last reset, in order.
- *
- * Matched by duration within a millisecond and a half, which is under half the
- * spacing between two clips and well over the frame or two a resample moves it.
- */
+/* Which of the invented clips have started since the last reset, in order. */
 async function spoken() {
   const started = await page.evaluate(() => window.__started);
   const out = [];
@@ -175,7 +123,7 @@ async function spoken() {
 const say = (keys, gap = 400) =>
   page.evaluate(([k, g]) => void window.__audio.playSequence(k, g), [keys, gap]);
 
-/** Loads a clip into the app's cache, so a later play has nothing to wait for. */
+/* Loads a clip into the app's cache, so a later play has nothing to wait for. */
 async function warm(keys) {
   await page.evaluate(async (k) => {
     for (const key of k) await window.__audio.play(key);
@@ -204,7 +152,7 @@ await page.waitForTimeout(SLOW_MS + 600);
 }
 slow.clear();
 
-// 2 -------------------------------------------- a sequence that was replaced
+// 2. Verify the replacement sequence.
 
 step('a sequence must not finish over the top of a newer one');
 await warm(['letter/alif/name', 'word/angoor', 'letter/pe/name']);
@@ -247,7 +195,7 @@ const cards = await page.evaluate(() =>
   }))
 );
 
-/** A real press at a card's position, not an emitted event. */
+/* A real press at a card's position, not an emitted event. */
 async function tap(card) {
   await page.mouse.move(geo.left + card.x * geo.scale, geo.top + card.y * geo.scale);
   await page.mouse.down();
@@ -277,7 +225,7 @@ if (!held || !wrong || !right) {
     fail(`tapping the wrong card (${wrong.letterId}) said nothing`);
   } else step('  a wrong pair still says the letter that was tapped');
 
-  // The board is back to nothing held. Pick one up, put it down again.
+  // The board is back to nothing held.
   await tap(held);
   await reset();
   await tap(held);

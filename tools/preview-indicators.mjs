@@ -1,33 +1,4 @@
-/**
- * Draws every indicator, at every stage, onto one sheet to be looked at.
- *
- * Nothing here asserts. Whether a plant looks like a plant, or a glass like a
- * glass, is a question only a person can answer, and the alternative is playing
- * a game to level nine to find out what level nine looks like. Same reasoning
- * as preview-glyphs.mjs and preview-music.mjs.
- *
- * Two sheets per indicator: the fill from empty to full, and the same full
- * frame in each of the six level colours.
- *
- * ## A frame drawn in pieces is the sheet, not the indicator
- *
- * The pot plant that used to be the first indicator baked one large canvas per
- * step of growth, and in headless Chromium the tall ones sometimes came out
- * torn — a canopy split in two and shifted, half a pot. It followed the height
- * of the canvas rather than how many were built: the short ones were always
- * whole. Six frames to a sheet instead of twelve, staggering the work, and
- * building every label before any of the frames each moved it without curing
- * it.
- *
- * Nothing on these sheets bakes a canvas that big any more — the vine is
- * assembled from small pieces — and it has not been seen since. If it comes
- * back, read a torn frame here as noise and run it again; it is a property of
- * this renderer under this harness, and the same pieces drawn one screen at a
- * time, which is all the app ever does, are whole every time. Do not go
- * changing a drawing to chase it.
- *
- * Usage: npm run dev &  then  node tools/preview-indicators.mjs [outdir] [baseUrl]
- */
+/* Draws every indicator, at every stage, onto one sheet to be looked at. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -38,18 +9,12 @@ fs.mkdirSync(OUT, { recursive: true });
 
 const { page, finish } = await openApp({
   name: 'indicator preview',
-  // Named, because argument one is the output directory here and openApp would
-  // otherwise read it as the address of the app.
+  // Named, because argument one is the output directory here and openApp would otherwise read it as the address of the app.
   url: process.argv[3] || process.env.APP_URL || 'http://localhost:5173',
   context: { deviceScaleFactor: 2 },
 });
 
-/**
- * Lays a row of indicators out in a scene of its own.
- *
- * Built through the real modules rather than a copy of their maths, so what is
- * on the sheet is what the rail puts on screen.
- */
+/* Lays a row of indicators out in a scene of its own. */
 async function sheet(file, plan) {
   await page.evaluate(async (spec) => {
     const indicators = await import('/src/lib/indicators/index.js');
@@ -63,13 +28,6 @@ async function sheet(file, plan) {
         create() {
           this.cameras.main.setBackgroundColor('#f6ecd8');
           // Every indicator first, and every label afterwards.
-          //
-          // Labels first, then the frames. A Phaser Text carries a canvas
-          // texture of its own, and building one after a frame has been baked
-          // used to leave that frame drawn in pieces here, reliably enough to
-          // reproduce; sheets with no labels at all never showed it. Making all
-          // the text before any of the frames is what made it come out whole.
-          // See the note at the top.
           for (const item of spec.items) {
             this.add
               .text(item.x, item.y + 10, item.label, {
@@ -98,19 +56,10 @@ async function sheet(file, plan) {
   step(`wrote ${to}`);
 }
 
-/**
- * The rail's own box, read from the app rather than typed here.
- *
- * It used to be 380 tall on this sheet, which is exactly how an indicator that
- * filled two thirds of the real rail passed a look at it. The sheet is the only
- * place the shape of the thing is judged, so it has to be the shape — and that
- * means it cannot be a pair of numbers that stay behind when the rail changes
- * width.
- */
+/* The rail's own box, read from the app rather than typed here. */
 const RAIL_BOX = await page.evaluate(async () => {
   const { RAIL, DESIGN } = await import('/src/lib/theme.js');
-  // Matching TOP and FOOT in src/lib/rail.js: the home button's corner, and a
-  // little air at the bottom.
+  // Matching TOP and FOOT in src/lib/rail.js: the home button's corner, and a little air at the bottom.
   return { width: RAIL.width, height: DESIGN.height - 132 - 18 };
 });
 
@@ -134,10 +83,7 @@ for (const id of ['vine', 'tree', 'climber', 'bar', 'glass']) {
     })),
   });
 
-  // Full, sampled across the twenty levels a run cycles through. Six columns
-  // and twenty levels, so it steps rather than counts: the point of the sheet
-  // is what level 20 looks like, and drawing 1 to 6 would show a third of the
-  // cycle and none of the crowding that twenty flowers on a cane might cause.
+  // Full, sampled across the twenty levels a run cycles through.
   await sheet(`indicator-${id}-levels.png`, {
     indicator: id,
     items: [0, 3, 7, 11, 15, 19].map((level, i) => ({

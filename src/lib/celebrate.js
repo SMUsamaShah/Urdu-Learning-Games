@@ -1,42 +1,11 @@
-/**
- * The reward for getting something right.
- *
- * A tick and a beep is enough to tell an adult they were correct. A
- * three-year-old is not playing for information, they are playing for the
- * moment something bursts — so getting an answer right throws confetti and
- * bounces a star up the screen, and that is the actual reason to play again.
- *
- * Two sizes, and keeping them apart is the point:
- *
- *   - `confetti`, `dance` and `flyStar` belong to one right answer. They happen
- *     at the thing that was tapped.
- *   - `paperFall` belongs to finishing something — a run of five, a completed
- *     letter — and happens to the whole screen. Firing it on every answer would
- *     turn it into wallpaper inside a minute, and there would then be nothing
- *     left to mark actually finishing.
- *
- * Procedural, like everything else here: no sprite sheets to download and
- * nothing to cache.
- */
+/* The reward for getting something right. */
 
 import Phaser from 'phaser';
 import { COLORS } from './theme.js';
 
 const CONFETTI = [0xffc93c, 0xff6b6b, 0x4ecdc4, 0x9b5fc9, 0x63b04b, 0xff9f45];
 
-/**
- * One texture for every piece of paper in the app.
- *
- * The obvious way to draw confetti is a Graphics object per piece, and it is a
- * quiet performance trap: each Graphics is its own draw call, so a full-screen
- * celebration was breaking the batch sixty-odd times a frame. That is a lot of
- * work to hand a cheap phone at the exact moment it is also decoding and
- * playing a voice clip, and a starved audio thread drops samples.
- *
- * Tinted Images sharing one texture batch into a single call instead. Drawn to
- * a canvas texture rather than a RenderTexture, which renders nothing at all in
- * this build — see src/scenes/Trace.js.
- */
+/* One texture for every piece of paper in the app. */
 const PIECE = 'celebrate:piece';
 const DOT = 'celebrate:dot';
 
@@ -59,7 +28,7 @@ function ensurePieces(scene) {
   }
 }
 
-/** One piece of paper: a tinted image, so the whole burst is one draw call. */
+/* One piece of paper: a tinted image, so the whole burst is one draw call. */
 function piece(scene, round, colour, size, depth) {
   return scene.add
     .image(0, 0, round ? DOT : PIECE)
@@ -68,9 +37,7 @@ function piece(scene, round, colour, size, depth) {
     .setDepth(depth);
 }
 
-/**
- * Confetti burst.
- *
+/** Confetti burst.
  * @param {Phaser.Scene} scene
  * @param {number} x
  * @param {number} y
@@ -98,8 +65,7 @@ export function confetti(scene, x, y, options = {}) {
     scene.tweens.add({
       targets: bit,
       x: x + Math.cos(angle) * distance,
-      // Falls below where it was thrown, so the burst has gravity to it
-      // instead of expanding like a ring.
+      // Falls below where it was thrown, so the burst has gravity to it instead of expanding like a ring.
       y: y + Math.sin(angle) * distance + Phaser.Math.Between(60, 190),
       rotation: Phaser.Math.FloatBetween(-6, 6),
       alpha: 0,
@@ -110,12 +76,7 @@ export function confetti(scene, x, y, options = {}) {
   }
 }
 
-/**
- * A star that pops out of the answer and flies to the score.
- *
- * Connects "I got it right" to "my row of stars grew", which is otherwise two
- * unrelated things happening in different corners of the screen.
- */
+/* A star that pops out of the answer and flies to the score. */
 export function flyStar(scene, from, to, onArrive) {
   const star = scene.add
     .text(from.x, from.y, '★', { fontSize: '64px', color: COLORS.accentCss })
@@ -144,15 +105,7 @@ export function flyStar(scene, from, to, onArrive) {
   });
 }
 
-/**
- * Paper falling across the whole screen, for finishing something.
- *
- * Distinct from `confetti`, which bursts out of the thing that was tapped. This
- * one is not attached to anything: it happens to the screen, and that is what
- * makes completing a round feel bigger than getting one answer right. It is the
- * single most copied moment in these apps and a three-year-old will finish a
- * whole activity to see it again.
- */
+/* Paper falling across the whole screen, for finishing something. */
 export function paperFall(scene, options = {}) {
   const { count = 44, duration = 2600, depth = 70 } = options;
   const { width, height } = scene.scale.gameSize;
@@ -170,11 +123,7 @@ export function paperFall(scene, options = {}) {
     const x = Phaser.Math.Between(0, width);
     bit.setPosition(x, Phaser.Math.Between(-260, -20));
 
-    // Drift sideways on its own timing, so pieces separate on the way down
-    // instead of falling as a sheet. Repeats forever, so it has to be stopped
-    // by hand: destroying a game object does not stop tweens pointed at it, and
-    // a celebration every five answers would leave a growing pile of them
-    // running against objects that no longer exist.
+    // Drift sideways on its own timing, so pieces separate on the way down instead of falling as a sheet.
     const drift = scene.tweens.add({
       targets: bit,
       x: x + Phaser.Math.Between(-90, 90),
@@ -198,13 +147,7 @@ export function paperFall(scene, options = {}) {
   }
 }
 
-/**
- * The wiggle a letter does when it has been got right.
- *
- * The reference apps make the letter itself perform, and that matters: it puts
- * the reward on the thing being taught rather than beside it, so the shape the
- * child just recognised is the shape that dances.
- */
+/* The wiggle a letter does when it has been got right. */
 export function dance(scene, target, options = {}) {
   const { scale = target.scale ?? 1 } = options;
   scene.tweens.add({

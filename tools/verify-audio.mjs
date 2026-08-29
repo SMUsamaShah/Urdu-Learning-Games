@@ -1,15 +1,4 @@
-/**
- * Proves the whole audio chain works, end to end, with no microphone.
- *
- * Records a clip through the studio using Chromium's synthetic audio device,
- * rebuilds the manifest, then loads the actual game and asserts it fetched,
- * decoded and played that clip. Every link is the real one.
- *
- * Cleans up the synthetic take and restores the manifest afterwards, so running
- * this never leaves a fake recording in the repo.
- *
- * Usage: npm run dev &  then  node tools/verify-audio.mjs [baseUrl]
- */
+/* Proves the whole audio chain works, end to end, with no microphone. */
 
 import { execFileSync } from 'node:child_process';
 import { spawn } from 'node:child_process';
@@ -46,8 +35,6 @@ const cleanup = () => {
 process.on('exit', cleanup);
 for (const s of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(s, () => process.exit(1));
 
-// ---------------------------------------------------------------- record
-
 step('starting studio server');
 const server = spawn(process.execPath, ['tools/record-studio/server.mjs'], {
   cwd: ROOT,
@@ -66,8 +53,7 @@ const { newPage, finish } = await openApp({
   args: [
     '--use-fake-device-for-media-stream',
     '--use-fake-ui-for-media-stream',
-    // Lets the game start audio without a real user gesture, which a headless
-    // run cannot produce. Only affects this check, never the shipped app.
+    // Lets the game start audio without a real user gesture, which a headless run cannot produce.
     '--autoplay-policy=no-user-gesture-required',
   ],
 });
@@ -98,11 +84,8 @@ step(`wrote public/${resolved.path}`);
 step('rebuilding manifest');
 console.log('  ' + rebuildManifest());
 
-// ---------------------------------------------------------------- play
-
 step('loading the app');
-// domcontentloaded, not networkidle: the dev server keeps an HMR socket open,
-// so the network never goes idle and this timed out on every run.
+// Use domcontentloaded because the dev server keeps an HMR socket open.
 const page = await newPage();
 await page.goto(APP, { waitUntil: 'domcontentloaded' });
 await homeIsUp(page);
@@ -115,8 +98,7 @@ const known = await page.evaluate((key) => window.__audio.hasClip(key), CLIP.key
 if (!known) fail(`hasClip("${CLIP.key}") is false`);
 
 step('playing the clip');
-// play() resolves true only after fetch + decodeAudioData + the source
-// actually reaching its end, so a true here means real audio came out.
+// play() resolves true only after fetch + decodeAudioData + the source actually reaching its end.
 const played = await page.evaluate(
   (key) => window.__audio.play(key),
   CLIP.key

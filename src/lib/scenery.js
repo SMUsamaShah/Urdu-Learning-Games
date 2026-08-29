@@ -1,34 +1,4 @@
-/**
- * The world the games sit in: sky, sun, clouds, hills, flowers, birds.
- *
- * A flat background is the single thing that made this app look like a tool
- * rather than a toy. Preschool apps put their games somewhere — a park, a
- * meadow — and that backdrop does most of the work of feeling playful before
- * any character or animation is involved.
- *
- * Everything here is drawn procedurally rather than loaded. That is not
- * cleverness for its own sake: the app has to work offline on a phone, and a
- * couple of hundred lines of arcs cost nothing next to a set of background
- * images at several screen sizes. It also means the scenery recolours by
- * changing numbers rather than by redrawing art.
- *
- * ## Baked, not drawn every frame
- *
- * The static half of the scene — sun, hills, ground, grass, flowers — is
- * rasterised once into a single canvas texture and then drawn as one Image.
- * This matters more than it sounds. A Phaser Graphics object re-tessellates its
- * geometry on the CPU **every frame**, whether or not anything about it has
- * changed, so the old version paid for four hundred ellipses sixty times a
- * second to show a picture that never moved. Baking makes it one texture upload
- * and one quad, which is what let the detail below — the flowers, the tufts,
- * the second row of hills — be added at all.
- *
- * What moves stays separate: clouds and birds are Images on tweens, which cost
- * nothing per frame beyond their transform.
- *
- * Drawn at a large negative depth so scenes can keep adding things normally
- * without thinking about layering.
- */
+/* The world the games sit in: sky, sun, clouds, hills, flowers, birds. */
 
 import { addBackdrop } from './backdrops.js';
 import { DESIGN } from './theme.js';
@@ -45,25 +15,19 @@ const SKY = {
   cloud: '#ffffff',
 };
 
-/** Where the grass starts, as a fraction of the design height. */
+/* Where the grass starts, as a fraction of the design height. */
 const HORIZON = 0.74;
 
-/** Flower colours. Small, scattered, and the only saturated thing out here. */
+/* Flower colours. */
 const PETALS = ['#ff6b6b', '#ffd93d', '#ff9ff3', '#ffffff', '#c77dff'];
 
-/**
- * A deterministic pseudo-random number in [0, 1).
- *
- * The scenery has to look scattered but be identical every time it is drawn:
- * the texture is cached across scenes, so a Math.random() meadow would rearrange
- * itself whenever the cache was missed and make screenshot comparisons useless.
- */
+/* A deterministic pseudo-random number in [0, 1). */
 function scatter(seed) {
   const x = Math.sin(seed * 12.9898) * 43758.5453;
   return x - Math.floor(x);
 }
 
-/** One cloud: overlapping circles, so it reads as a cloud and not a pill. */
+/* One cloud: overlapping circles, so it reads as a cloud and not a pill. */
 function drawCloud(ctx, cx, cy, scale) {
   ctx.fillStyle = SKY.cloud;
   const blobs = [
@@ -81,7 +45,7 @@ function drawCloud(ctx, cx, cy, scale) {
   ctx.fillRect(cx - 44 * scale, cy, 88 * scale, 18 * scale);
 }
 
-/** A cloud on its own transparent texture, so it can be moved as one Image. */
+/* A cloud on its own transparent texture, so it can be moved as one Image. */
 function cloudTexture(scene) {
   const key = 'scenery:cloud';
   if (scene.textures.exists(key)) return key;
@@ -93,12 +57,7 @@ function cloudTexture(scene) {
   return key;
 }
 
-/**
- * A bird: two arcs, which is all a bird is at this size.
- *
- * Drawn rather than an emoji because an emoji is a different art style on every
- * platform, and the one thing this scenery has to be is consistent.
- */
+/* A bird: two arcs, which is all a bird is at this size. */
 function birdTexture(scene) {
   const key = 'scenery:bird';
   if (scene.textures.exists(key)) return key;
@@ -123,7 +82,7 @@ function birdTexture(scene) {
   return key;
 }
 
-/** A tuft of grass, a few blades from one point. */
+/* A tuft of grass, a few blades from one point. */
 function drawTuft(ctx, x, y, scale, colour) {
   ctx.strokeStyle = colour;
   ctx.lineWidth = 2.5 * scale;
@@ -141,7 +100,7 @@ function drawTuft(ctx, x, y, scale, colour) {
   }
 }
 
-/** A flower: five petals and a middle, the way a child draws one. */
+/* A flower: five petals and a middle, the way a child draws one. */
 function drawFlower(ctx, x, y, scale, colour) {
   ctx.strokeStyle = '#4c8f3a';
   ctx.lineWidth = 2 * scale;
@@ -169,12 +128,7 @@ function drawFlower(ctx, x, y, scale, colour) {
   ctx.fill();
 }
 
-/**
- * The whole static backdrop, rasterised once.
- *
- * Keyed on whether the hills are wanted, because the two versions are different
- * pictures and the busy screens ask for sky alone.
- */
+/* The whole static backdrop, rasterised once. */
 function backdropTexture(scene, hills) {
   const key = `scenery:backdrop:${hills ? 'hills' : 'sky'}`;
   if (scene.textures.exists(key)) return key;
@@ -189,9 +143,7 @@ function backdropTexture(scene, hills) {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
 
-  // Sun, tucked into a corner where no game puts anything important. Two discs
-  // rather than a gradient: a hard edge inside a soft halo reads as a cartoon
-  // sun, and a smooth falloff reads as a lens flare.
+  // Sun, tucked into a corner where no game puts anything important.
   ctx.fillStyle = SKY.sun;
   ctx.globalAlpha = 0.5;
   ctx.beginPath();
@@ -215,8 +167,7 @@ function backdropTexture(scene, hills) {
     ctx.fill();
   };
 
-  // Overlapping ellipses rather than one arc, so the skyline has a few rolls in
-  // it instead of being a single dome.
+  // Overlapping ellipses rather than one arc, so the skyline has a few rolls in it instead of being a single dome.
   ctx.fillStyle = SKY.hillBack;
   for (const [cx, cy, rx, ry] of [
     [140, y + 30, 300, 120],
@@ -238,15 +189,6 @@ function backdropTexture(scene, hills) {
   ctx.fillRect(0, y + 118, width, height - y);
 
   // Grass and flowers across the front hill.
-  //
-  // The band is measured from where that hill actually is — the tops of its
-  // ellipses down to the sand — rather than from the horizon line, which is
-  // where the *back* hill starts. Getting that wrong crushes the whole meadow
-  // into the last twenty pixels of the screen, half of it behind the ground.
-  //
-  // Scattered from a fixed seed, thinned towards the middle where the games put
-  // their answers, and thinned again low down where the footer sits: decoration
-  // behind something a child is reading is just noise.
   const grassTop = y + 20;
   const grassBottom = height - 62;
   for (let i = 0; i < 120; i++) {
@@ -257,8 +199,7 @@ function backdropTexture(scene, hills) {
     const middle = Math.abs(x - width / 2) < 320;
     if (middle && gy > grassTop + 40 && scatter(i * 7.7) < 0.7) continue;
 
-    // Bigger further down the slope, which is the only perspective cue a flat
-    // drawing like this gets.
+    // Bigger further down the slope, which is the only perspective cue a flat drawing like this gets.
     const scale = 0.75 + depth * 0.9;
     drawTuft(ctx, x, gy, scale, depth > 0.55 ? SKY.hillShade : SKY.hillBack);
 
@@ -282,14 +223,10 @@ function backdropTexture(scene, hills) {
   return key;
 }
 
-/**
- * Paints the backdrop into a scene.
- *
+/** Paints the backdrop into a scene.
  * @param {Phaser.Scene} scene
  * @param {object} [options]
  * @param {boolean} [options.hills=true] Some screens are busy at the bottom
- *   (the flashcard letter strip, the balloon field) and read better with sky
- *   alone.
  * @param {boolean} [options.clouds=true]
  * @param {boolean} [options.birds=true]
  * @returns {Phaser.GameObjects.Container}
@@ -299,7 +236,6 @@ export function addScenery(scene, options = {}) {
   const layer = scene.add.container(0, 0).setDepth(-100);
 
   // The painted one where this screen has its own, the drawn one otherwise.
-  // See backdrops.js — every scene must look finished either way.
   const painted = addBackdrop(scene, DESIGN.width, DESIGN.height);
   layer.add(
     painted ??
@@ -309,14 +245,9 @@ export function addScenery(scene, options = {}) {
         .setDisplaySize(DESIGN.width, DESIGN.height)
   );
 
-  // Drawn clouds only over the drawn sky. A painted backdrop has its own, and
-  // two sets in two styles at once looks like a mistake rather than weather.
-  // The birds stay either way: they are small, they cross occasionally, and a
-  // screen where nothing at all moves reads as switched off.
+  // Drawn clouds only over the drawn sky.
   if (options.clouds ?? !painted) {
-    // Each cloud drifts on its own slow loop. Movement in the background is
-    // what makes a screen feel alive while nothing is being tapped, and slow
-    // enough that it never pulls attention off the game.
+    // Each cloud drifts on its own slow loop.
     const key = cloudTexture(scene);
     for (const [x, y, scale, seconds] of [
       [280, 130, 1, 78],
@@ -344,10 +275,7 @@ export function addScenery(scene, options = {}) {
   }
 
   if (birds) {
-    // A pair of birds crossing now and then, rather than always there. Constant
-    // background motion stops registering within about a minute; something that
-    // happens occasionally keeps being noticed, and being noticed is the entire
-    // job of scenery.
+    // A pair of birds crossing now and then, rather than always there.
     const key = birdTexture(scene);
     const flock = [];
     for (let i = 0; i < 2; i++) {

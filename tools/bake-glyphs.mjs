@@ -1,24 +1,4 @@
-/**
- * Bakes every Urdu glyph the app needs into SVG path data at build time.
- *
- * Why this exists
- * ---------------
- * Phaser renders text by calling canvas `fillText` on a hidden DOM canvas and
- * uploading the result as a texture. For Nastaliq that is fragile: the output
- * depends on the platform text shaper, it races font loading, and it hands back
- * pixels rather than geometry. Tracing needs geometry.
- *
- * The glyph inventory here is finite and small, so we shape everything once with
- * HarfBuzz and ship the resulting outlines as JSON. At runtime the app only ever
- * draws paths, never text. Rendering becomes identical on every device and the
- * tracing screen gets the outline it needs for free.
- *
- * HarfBuzz does both halves of the job: `shape()` picks the right positional
- * glyphs and `glyphToJson()` returns their outlines, so the glyph ids and the
- * outlines can never disagree.
- *
- * Usage: npm run bake
- */
+/* Bakes every Urdu glyph the app needs into SVG path data at build time. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -30,21 +10,13 @@ import { FONT_WOFF2, fontFingerprint } from './font.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT = path.join(ROOT, 'content');
 
-/**
- * Everything lands in one file. The whole inventory is ~220 KB raw and ~75 KB
- * over the wire, so a single request beats 169 of them, and it gives the
- * service worker exactly one asset to cache for offline play.
- */
+/* Everything lands in one file. */
 const OUT_FILE = path.join(CONTENT, 'glyphs.json');
 
-/** Zero-width joiner. Forces a letter into a joined positional form. */
+/* Zero-width joiner. */
 const ZWJ = '‍';
 
-/**
- * The four Arabic positional forms, expressed as the string to shape.
- * Wrapping a letter in ZWJ is the standard way to ask a shaper for a specific
- * form without inventing a neighbouring letter that would change the result.
- */
+/* The four Arabic positional forms, expressed as the string to shape. */
 const FORMS = {
   isolated: (c) => c,
   initial: (c) => c + ZWJ,
@@ -52,11 +24,7 @@ const FORMS = {
   final: (c) => ZWJ + c,
 };
 
-/**
- * Which positional forms exist, keyed by the letter's `joins` value.
- * Asking a shaper for a form a letter does not have just returns the isolated
- * glyph again, so baking them anyway would ship silent duplicates.
- */
+/* Which positional forms exist, keyed by the letter's `joins` value. */
 const FORMS_BY_JOINING = {
   both: ['isolated', 'initial', 'medial', 'final'],
   right: ['isolated', 'final'],
@@ -65,10 +33,10 @@ const FORMS_BY_JOINING = {
 
 /**
  * @typedef {object} BakedGlyph
- * @property {string} d      SVG path data, y-down, in font units.
+ * @property {string} d SVG path data, y-down, in font units.
  * @property {number[]} bbox [x, y, width, height] of the inked area.
  * @property {number} advance Total advance width of the run.
- * @property {number} upem   Font units per em, so the runtime can scale.
+ * @property {number} upem Font units per em, so the runtime can scale.
  */
 
 async function loadFont() {
@@ -82,28 +50,7 @@ async function loadFont() {
   return { face, font: new hb.Font(face) };
 }
 
-/**
- * Shapes a string and flattens the whole glyph run into one path.
- *
- * Two details matter and both are easy to miss:
- *
- * 1. Dots are separate mark glyphs. Shaping `be` returns two glyphs, the base
- *    shape and `OneDotBelowNS`, and the dot is placed by GPOS offsets. Ignoring
- *    xOffset/yOffset drops every dot onto the origin, which turns the entire
- *    be-family into the same letter.
- *
- * 2. Nastaliq has a sloped baseline, and fonts get it two different ways.
- *    Noto Nastaliq builds a word out of one glyph per letter and stacks them
- *    with large GPOS yOffsets — مچھلی is seven glyphs there, and ignoring
- *    yOffset/yAdvance would lay it out flat and wrong. AlQalam Taj, which is
- *    what this app ships, is a ligature face in the InPage tradition: the same
- *    word is a *single* glyph with the whole slope drawn into its outline, and
- *    every yOffset is zero. Both are handled by the same code below, which is
- *    the point of doing this through HarfBuzz rather than by hand.
- *
- * HarfBuzz emits outlines y-up in font units; SVG and canvas are y-down, so the
- * sign of every y is flipped on the way out.
- *
+/** Shapes a string and flattens the whole glyph run into one path.
  * @param {hb.Font} font
  * @param {string} text
  * @returns {BakedGlyph}
@@ -120,8 +67,7 @@ function bakeRun(font, text) {
   let cursorX = 0;
   let cursorY = 0;
   const parts = [];
-  /** One entry per output glyph: which source characters it covers, and its
-   *  own outline. See the note on clusters below. */
+  /* One entry per output glyph: which source characters it covers, and its own outline. */
   const pieces = [];
   let minX = Infinity;
   let minY = Infinity;
@@ -133,8 +79,7 @@ function bakeRun(font, text) {
     const commands = font.glyphToJson(infos[i].codepoint);
     const mine = [];
 
-    // ZWJ and other zero-ink glyphs shape to empty outlines. They still carry
-    // advances, so skip the path but let the cursor move.
+    // ZWJ and other zero-ink glyphs shape to empty outlines.
     if (commands.length > 0) {
       const originX = cursorX + pos.xOffset;
       const originY = cursorY + pos.yOffset;
@@ -182,28 +127,7 @@ function bakeRun(font, text) {
   };
 }
 
-/**
- * Which source characters each output glyph covers, and that glyph's outline.
- *
- * HarfBuzz gives every output glyph a *cluster*: the lowest index, in the
- * original string, of the characters that went into it. It does not say where a
- * cluster ends — the next one's start is the only clue, and the last one runs
- * to the end of the text. That is what this works out.
- *
- * It matters because AlQalam Taj is a ligature face. In a font that keeps one
- * glyph per letter, every cluster spans one character and any letter can be
- * picked out of a word. Here پتنگ shapes to a *single* glyph covering all four,
- * so its cluster is `{from: 0, to: 4}` and there is no way to colour the ت
- * inside it short of cutting the outline, which is not a thing to do to a
- * typeface. Of the 37 words in the app the taught letter has its own glyph in
- * 10; those 10 can be coloured and the rest are drawn plain. Callers decide
- * that by looking at `from`/`to`, which is why both are recorded rather than
- * just the start.
- *
- * Written for a right-to-left run, where the glyphs come out in visual order
- * and the clusters therefore *descend*. Sorting by `cluster` before pairing
- * each with the next is what makes the direction stop mattering.
- */
+/* Which source characters each output glyph covers, and that glyph's outline. */
 function clustersOf(pieces, length) {
   const byStart = new Map();
   for (const piece of pieces) {
@@ -219,7 +143,7 @@ function clustersOf(pieces, length) {
   }));
 }
 
-/** Two decimals is well below one screen pixel at any size we render. */
+/* Two decimals is well below one screen pixel at any size we render. */
 function round(n) {
   return Math.round(n * 100) / 100;
 }
@@ -252,9 +176,6 @@ async function main() {
     out.upem ||= baked.upem;
     written++;
     // upem is identical for every glyph; hoist it and drop the per-glyph copy.
-    // Clusters are dropped too unless somebody asked: only the words need them,
-    // and carrying a second copy of every outline for the other 330 glyphs
-    // would about double the file for nothing.
     const { upem, clusters: pieces, ...rest } = baked;
     return clusters ? { ...rest, clusters: pieces } : rest;
   };
@@ -273,9 +194,7 @@ async function main() {
       out.letters[letter.id][form] = record(baked, `${letter.id}.${form}`);
     }
 
-    // The letter's spoken name (بے) as its own glyph. Distinct from the letter
-    // itself (ب), and needed wherever the name is shown rather than the shape —
-    // the recording studio prompts with it.
+    // The letter's spoken name (بے) as its own glyph.
     out.names[letter.id] = record(bakeRun(font, letter.name), `name:${letter.id}`);
   }
 
@@ -283,17 +202,13 @@ async function main() {
     out.numbers[number.id] = record(bakeRun(font, number.char), number.id);
   }
 
-  // Words are shaped whole. Nastaliq applies contextual substitution across the
-  // entire word, so a word assembled from individually baked letters would not
-  // be readable Urdu.
+  // Words are shaped whole.
   for (const word of words) {
-    // With clusters: the Letters screen colours the taught letter inside its
-    // word where the face leaves it separable. See clustersOf().
+    // With clusters: the Letters screen colours the taught letter inside its word where the face leaves it separable.
     out.words[word.id] = record(bakeRun(font, word.word), word.id, { clusters: true });
   }
 
-  // Menu labels go through the same pipeline as gameplay glyphs, so no Urdu in
-  // the app ever depends on the platform text shaper.
+  // Menu labels go through the same pipeline as gameplay glyphs.
   for (const string of strings) {
     out.ui[string.id] = record(bakeRun(font, string.text), `ui:${string.id}`);
   }

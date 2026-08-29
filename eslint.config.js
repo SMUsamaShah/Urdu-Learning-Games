@@ -1,22 +1,8 @@
-/**
- * The two rules worth having, and nothing else.
- *
- * This is not here to argue about semicolons. It is here because a refactor
- * that tidied an import list left `stopAll()` called with nothing importing it,
- * and the only thing that noticed was a headless browser run of the tracing
- * game — three minutes of Playwright to find a name that is not defined. That
- * is the wrong tool for that job by two orders of magnitude.
- *
- * So: `no-undef` and `no-unused-vars`, on every source file, in `npm test`,
- * plus `no-new-func` because a test already carries a disable comment for it
- * and a disable comment for a rule nobody enabled documents nothing. Style is
- * left alone deliberately: a lint run that also has opinions about formatting
- * is one people learn to skim.
- */
+/* The two rules worth having, and nothing else. */
 
 import js from '@eslint/js';
 
-/** Browser globals the app uses. Node's are added for tools/ and tests/ below. */
+/* Browser globals the app uses. */
 const BROWSER = {
   window: 'readonly',
   document: 'readonly',
@@ -103,10 +89,7 @@ const NODE = {
 const rules = {
   'no-undef': 'error',
   'no-new-func': 'error',
-  // Arguments are exempt: a subclass hook that ignores a parameter its siblings
-  // use still has to declare it, and QuizScene is full of those. Rest siblings
-  // too — `const { upem, ...rest } = baked` is how you drop a key, and the
-  // named half being unused is the entire point.
+  // Arguments are exempt.
   'no-unused-vars': [
     'error',
     { args: 'none', caughtErrors: 'none', ignoreRestSiblings: true },
@@ -122,8 +105,7 @@ export default [
     rules,
   },
   {
-    // The recording studio is a browser page served by a Node script, so both
-    // sets of globals are in play depending on the file.
+    // The recording studio is a browser page served by a Node script.
     files: ['tools/**/*.{js,mjs}', 'tests/**/*.mjs', '*.js'],
     languageOptions: {
       ecmaVersion: 2024,

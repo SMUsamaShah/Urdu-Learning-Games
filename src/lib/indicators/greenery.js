@@ -1,44 +1,8 @@
 import { ellipse, hsl, levelHue, makeCanvas, publish, readable } from './canvas.js';
 
-/**
- * The parts a growing thing in the rail is built from.
- *
- * ## Parts, not frames
- *
- * The pot plant this replaced baked a whole 200×400 picture for every step of
- * growth — sixty-six possible frames at about three quarters of a megabyte
- * each, with a cache that had to throw them away as fast as it made them. It
- * was also, at every one of those sixty-six sizes, the wrong shape: it drew
- * itself at a fixed 648 pixels and then shrank to fit a rail 570 tall and 200
- * wide, so a full-grown tree reached less than half way up and an empty pot at
- * the foot of a floor-to-ceiling panel was what a child saw before they had
- * done anything.
- *
- * So nothing here is a frame. Each of these is one small fixed piece — a length
- * of stem, one leaf, a flower, the cane they climb — baked once and then
- * *assembled*. Growth is one more sprite appearing, which costs nothing, and
- * the structure they are assembled on is drawn to the height of the box it was
- * given rather than to a number typed in here.
- *
- * ## Two sides from one drawing
- *
- * Every piece that has a handedness is drawn facing right and flipped with
- * `setFlipX` for the other side. Six varieties times two sides would otherwise
- * be twelve textures where six will do, and — more usefully — the two sides
- * cannot drift apart.
- */
+/* The parts a growing thing in the rail is built from. */
 
-/**
- * Twenty names, in the order they are planted.
- *
- * Names only — every colour below is generated, so a name cannot be relied on
- * to describe its flower. They are all things that really do come in most
- * colours, which is what makes that survivable: a cyan tulip and a magenta
- * dahlia are both fanciful rather than wrong, where a "bluebell" that came out
- * orange would just be a mistake. Six colours were authored by hand first, and
- * one of the six — a white jasmine — turned out to be invisible on the rail's
- * cream panel, which is the argument for not hand-authoring twenty.
- */
+/* Twenty names, in the order they are planted. */
 const NAMES = [
   'rose', 'tulip', 'dahlia', 'aster', 'zinnia',
   'cosmos', 'poppy', 'iris', 'lily', 'hibiscus',
@@ -46,13 +10,7 @@ const NAMES = [
   'primrose', 'gladiolus', 'ranunculus', 'sweetpea', 'chrysanth',
 ];
 
-/**
- * Four greens, cycled under the flowers.
- *
- * So two consecutive levels differ in leaf as well as in flower. Four rather
- * than twenty because a vine is a green thing: twenty greens would either be
- * indistinguishable or would include some that are not a plausible leaf.
- */
+/* Four greens, cycled under the flowers. */
 const GREENS = [
   { leaf: '#54a83f', shade: '#3d8730' },
   { leaf: '#4f9f4a', shade: '#3a7c37' },
@@ -60,29 +18,16 @@ const GREENS = [
   { leaf: '#3f9e56', shade: '#2f7f42' },
 ];
 
-/**
- * What is growing, cycling by level.
- *
- * Twenty, which is about two months of daily playing. It was six, and six meant
- * a child on their seventh level was shown a plant they had already grown —
- * the app ran out of new things to say after a week, which is the flattening
- * that the ring before it had and the whole reason the ring was replaced.
- *
- * The flower hue comes from `levelHue` so this and the bar and the glass move
- * through the same wheel in the same order: whatever is in the rail, level nine
- * is the same colour of thing.
- */
+/* What is growing, cycling by level. */
 export const VARIETIES = NAMES.map((id, i) => ({
   id,
   ...GREENS[i % GREENS.length],
   flower: readable(levelHue(i)),
-  // The petal highlight: same hue, much lighter. It sits inside the petal
-  // rather than on the panel, so it does not need to clear the panel's
-  // contrast — only the flower it is drawn on.
+  // The petal highlight: same hue, much lighter.
   gloss: hsl(levelHue(i), 0.8, 0.8),
 }));
 
-/** Which one is growing at a given level. Negative levels cannot happen, but. */
+/* Which one is growing at a given level. */
 export function varietyFor(level) {
   const n = VARIETIES.length;
   return VARIETIES[((Math.floor(level) % n) + n) % n];
@@ -98,36 +43,22 @@ const CANE_NODE = '#7d5c32';
 const BARK = '#8a5f39';
 const BARK_LIGHT = '#a1734a';
 
-/** The pot's drawing, in design pixels, measured up from its base. */
+/* The pot's drawing, in design pixels, measured up from its base. */
 export const POT = { topWidth: 92, baseWidth: 66, height: 50, rim: 12 };
 
-/** One length of stem, before it is stretched to the height of a cell. */
+/* One length of stem, before it is stretched to the height of a cell. */
 export const STEM = { width: 68, height: 100, bow: 22 };
 
-/** One leaf, at the size it is drawn. Measured from where it joins the stem. */
+/* One leaf, at the size it is drawn. */
 export const LEAF = { reach: 58, drop: 18, lift: 24 };
 
-/**
- * Where the leaf texture's join sits inside its own frame, as an origin.
- *
- * The drawing is translated so the stem joint is the origin, which puts it at
- * (10, lift + 8) of a frame that is `reach + 20` by `lift + drop + 16`. A
- * sprite has to be told that, or the leaf hangs off the vine by its corner —
- * and flipping it for the other side then swings it somewhere else again.
- */
+/* Where the leaf texture's join sits inside its own frame, as an origin. */
 export const LEAF_ORIGIN = {
   x: 10 / (LEAF.reach + 20),
   y: (LEAF.lift + 8) / (LEAF.lift + LEAF.drop + 16),
 };
 
-// ------------------------------------------------------------------ the foot
-
-/**
- * The pot, with soil in it.
- *
- * Origin is the bottom centre, which is where every other piece measures from
- * too — everything in the rail grows upwards, so that is the useful corner.
- */
+/* The pot, with soil in it. */
 export function potTexture(scene) {
   const key = 'greenery:pot';
   if (scene.textures.exists(key)) return key;
@@ -138,8 +69,7 @@ export function potTexture(scene) {
   const { topWidth, baseWidth, rim } = POT;
   const top = -POT.height;
 
-  // Soil first, so the rim is drawn over its front edge and the pot reads as
-  // something with a depth rather than a shape with a stripe on it.
+  // Soil first, so the rim is drawn over its front edge and the pot reads as something with a depth rather than a shape.
   ellipse(ctx, 0, top - rim + 5, topWidth / 2 - 5, 9, SOIL);
 
   ctx.fillStyle = CLAY;
@@ -151,8 +81,7 @@ export function potTexture(scene) {
   ctx.closePath();
   ctx.fill();
 
-  // A flat shaded side rather than a gradient: at this size one hard edge says
-  // "round" more clearly than a soft ramp, and it costs nothing.
+  // A flat shaded side rather than a gradient.
   ctx.fillStyle = CLAY_DARK;
   ctx.beginPath();
   ctx.moveTo(topWidth / 2 - 18, top);
@@ -170,12 +99,7 @@ export function potTexture(scene) {
   return publish(scene, key, canvas);
 }
 
-/**
- * A strip of grass across the foot of the rail.
- *
- * Without it the pot stands on the bottom edge of a panel, which reads as the
- * drawing having been cut off rather than as a pot standing on the ground.
- */
+/* A strip of grass across the foot of the rail. */
 export function groundTexture(scene, width) {
   const key = `greenery:ground:${Math.round(width)}`;
   if (scene.textures.exists(key)) return key;
@@ -185,16 +109,7 @@ export function groundTexture(scene, width) {
   return publish(scene, key, canvas);
 }
 
-// ------------------------------------------------------------------ the cane
-
-/**
- * The cane the vine climbs, floor to ceiling.
- *
- * This is the piece that fixes the fault the plant had. It is drawn to the
- * height it is given and it is there before a single answer has been given, so
- * the rail always reads as a thing with a top to get to. What progress changes
- * is what is *on* the cane, never how much of the strip has anything in it.
- */
+/* The cane the vine climbs, floor to ceiling. */
 export function caneTexture(scene, height) {
   const key = `greenery:cane:${Math.round(height)}`;
   if (scene.textures.exists(key)) return key;
@@ -203,8 +118,7 @@ export function caneTexture(scene, height) {
   const { canvas, ctx } = makeCanvas(width, height, width / 2, height);
   const half = 9;
 
-  // Tapering slightly towards the top, which is most of what makes a straight
-  // stick read as a cane rather than as a ruled line.
+  // Tapering slightly towards the top.
   ctx.fillStyle = CANE;
   ctx.beginPath();
   ctx.moveTo(-half, 0);
@@ -217,7 +131,7 @@ export function caneTexture(scene, height) {
   ctx.fillStyle = CANE_DARK;
   ctx.fillRect(half - 5, -height, 5, height);
 
-  // Nodes, evenly up it. Bamboo without them is a dowel.
+  // Space nodes evenly along the stem.
   ctx.strokeStyle = CANE_NODE;
   ctx.lineWidth = 2.5;
   const gap = 92;
@@ -234,16 +148,7 @@ export function caneTexture(scene, height) {
   return publish(scene, key, canvas);
 }
 
-/**
- * A bare tree, drawn to the height it is given: trunk, two pairs of branches.
- *
- * The tree's answer to "fill the rail before anything has been earned" — a
- * tree in winter is still a tree, and leafing it out one clump at a time is a
- * better unit of progress than a canopy that inflates.
- *
- * Bark is one colour for every variety. Six kinds of leaf and flower are worth
- * having; six kinds of brown are not.
- */
+/* A bare tree, drawn to the height it is given: trunk, two pairs of branches. */
 export function trunkTexture(scene, height, spread) {
   const key = `greenery:trunk:${Math.round(height)}:${Math.round(spread)}`;
   if (scene.textures.exists(key)) return key;
@@ -296,28 +201,13 @@ export function trunkTexture(scene, height, spread) {
   return publish(scene, key, canvas);
 }
 
-// ----------------------------------------------------------------- the vine
-
-/**
- * One length of stem: out to one side and back, so a run of them twines.
- *
- * Stroked rather than built as a filled ribbon. A ribbon needs the outline
- * offset along a curve, which is twenty lines of arithmetic to arrive at what
- * a round-capped stroke already is.
- *
- * Drawn at a fixed height and stretched vertically to whatever a cell is
- * worth — the number of steps in a level runs from five to twelve, so a cell
- * is anywhere from a fifth to a twelfth of the climb. Stretching only the
- * vertical is invisible on a smooth curve, where scaling both would make late
- * levels a thin weed.
- */
+/* One length of stem: out to one side and back, so a run of them twines. */
 export function stemTexture(scene, variety) {
   const key = `greenery:stem:${variety.id}`;
   if (scene.textures.exists(key)) return key;
 
   const { canvas, ctx } = makeCanvas(STEM.width, STEM.height, STEM.width / 2, STEM.height);
-  // The apex of a quadratic sits half way to its control point, so the control
-  // is twice the bow.
+  // The apex of a quadratic sits half way to its control point, so the control is twice the bow.
   const control = STEM.bow * 2;
 
   ctx.lineCap = 'round';
@@ -338,7 +228,7 @@ export function stemTexture(scene, variety) {
   return publish(scene, key, canvas);
 }
 
-/** One leaf, joined at the origin and reaching right and a little upwards. */
+/* One leaf, joined at the origin and reaching right and a little upwards. */
 export function leafTexture(scene, variety) {
   const key = `greenery:leaf:${variety.id}`;
   if (scene.textures.exists(key)) return key;
@@ -354,8 +244,7 @@ export function leafTexture(scene, variety) {
   ctx.quadraticCurveTo(LEAF.reach * 0.46, LEAF.drop, 0, 0);
   ctx.fill();
 
-  // The underside, along the lower edge, and the midrib. Two strokes are the
-  // difference between a leaf and a green blob at this size.
+  // The underside, along the lower edge, and the midrib.
   ctx.fillStyle = variety.shade;
   ctx.beginPath();
   ctx.moveTo(0, 0);
@@ -373,15 +262,14 @@ export function leafTexture(scene, variety) {
   return publish(scene, key, canvas);
 }
 
-/** The growing tip: a closed bud, showing what colour it is going to open. */
+/* The growing tip: a closed bud, showing what colour it is going to open. */
 export function budTexture(scene, variety) {
   const key = `greenery:bud:${variety.id}`;
   if (scene.textures.exists(key)) return key;
 
   const { canvas, ctx } = makeCanvas(40, 52, 20, 52);
 
-  // Two little leaves at the base, so a bud at step zero is a seedling rather
-  // than a bead sitting on the soil.
+  // Two little leaves at the base, so a bud at step zero is a seedling rather than a bead sitting on the soil.
   ctx.fillStyle = variety.shade;
   ctx.beginPath();
   ctx.ellipse(-9, -10, 11, 6, -0.5, 0, Math.PI * 2);
@@ -404,11 +292,8 @@ export function budTexture(scene, variety) {
   return publish(scene, key, canvas);
 }
 
-/**
- * An open flower, centred on the origin.
- *
+/** An open flower, centred on the origin.
  * @param {number} size across, so the same drawing serves the one that opens
- *   at the top of the cane and the smaller ones pinned up it afterwards
  */
 export function flowerTexture(scene, variety, size) {
   const key = `greenery:flower:${variety.id}:${Math.round(size)}`;
@@ -439,7 +324,7 @@ export function flowerTexture(scene, variety, size) {
   return publish(scene, key, canvas);
 }
 
-/** A round fruit with a highlight, for the tree. Centred on the origin. */
+/* A round fruit with a highlight, for the tree. */
 export function fruitTexture(scene, variety, size) {
   const key = `greenery:fruit:${variety.id}:${Math.round(size)}`;
   if (scene.textures.exists(key)) return key;
@@ -449,7 +334,7 @@ export function fruitTexture(scene, variety, size) {
   return publish(scene, key, canvas);
 }
 
-/** A clump of leaves, for the tree's canopy. Centred on the origin. */
+/* A clump of leaves, for the tree's canopy. */
 export function clumpTexture(scene, variety, size) {
   const key = `greenery:clump:${variety.id}:${Math.round(size)}`;
   if (scene.textures.exists(key)) return key;
@@ -460,16 +345,7 @@ export function clumpTexture(scene, variety, size) {
   return publish(scene, key, canvas);
 }
 
-// -------------------------------------------------------------- the climber
-
-/**
- * A ladybird, facing up the cane. Centred on the origin.
- *
- * A ladybird rather than the app's spider. The spider is four drawn poses and
- * none of them is climbing; a procedural one next to a drawn one reads as a
- * different animal altogether. This is two ellipses and six legs and cannot
- * clash with anything.
- */
+/* A ladybird, facing up the cane. */
 export function ladybirdTexture(scene) {
   const key = 'greenery:ladybird';
   if (scene.textures.exists(key)) return key;
@@ -494,8 +370,7 @@ export function ladybirdTexture(scene) {
   }
 
   ellipse(ctx, 0, 1, 14, 13, '#d93b34');
-  // The head at the top, because it is climbing, and the wing seam down the
-  // middle so the shell is two halves rather than a red circle.
+  // The head at the top.
   ellipse(ctx, 0, -11, 8, 7, '#2b2f36');
   ctx.strokeStyle = '#2b2f36';
   ctx.lineWidth = 2.5;

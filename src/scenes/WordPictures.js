@@ -8,20 +8,9 @@ import { COLORS, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
 import { pickWeighted } from '../lib/mastery.js';
 
-/**
- * Which picture is this word?
- *
- * The first game here that a child can win without knowing any letters, and
- * that is the point: it teaches whole words by shape, the way a reader
- * recognises "the" long before they sound it out. Every word in the app was
- * chosen to teach a letter and is a concrete noun, so each one can be drawn.
- *
- * Distractors are drawn from any illustrated word rather than by similarity —
- * the discrimination being practised is word-to-meaning, and confusable
- * pictures would only add a second puzzle on top of it.
- */
+/* Which picture is this word? */
 
-/** The plate the word is written on. */
+/* The plate the word is written on. */
 const PLATE = { width: 380, height: 132 };
 
 export default class WordPictures extends QuizScene {
@@ -30,9 +19,7 @@ export default class WordPictures extends QuizScene {
     this.instruction = 'find-picture';
     this.instructionRoman = 'Find the picture';
     this.subjectKind = 'word';
-    // Cards here rather than a shape: the answers are pictures with their
-    // backgrounds cut away, and a picture needs a plain plate behind it to read
-    // against. This is the reference apps' memory game, which uses cards too.
+    // Cards here rather than a shape.
     this.tileSize = 200;
     this.tileGap = 30;
     this.choicesY = 505;
@@ -42,16 +29,14 @@ export default class WordPictures extends QuizScene {
 
   preload() {
     super.preload();
-    // Small WebPs, and Phaser skips any texture it already holds, so coming
-    // back to this screen or stepping across to Numbers costs nothing.
+    // Phaser reuses WebP textures that are already loaded.
     queueWordImages(this);
   }
 
   onCreated() {
     const shown = inPlay.words();
     this.pool = illustratedWords().filter((id) => wordsById.has(id) && shown.has(id));
-    // Measured once, from every word in the app rather than from the ones this
-    // round happens to use, so the writing does not change size between rounds.
+    // Fit against every word so the prompt size stays stable between rounds.
     this.promptFit = fitEmAlone(allWordGlyphs(), PLATE.width - 40, PLATE.height - 16);
     this.fallbackFit = fitEmAlone(allWordGlyphs(), this.tileSize - 40, this.tileSize - 64);
   }
@@ -71,19 +56,13 @@ export default class WordPictures extends QuizScene {
     const word = wordsById.get(target);
     const spoken = hasClip(clipKeys.word(target));
 
-    // The word itself is always shown, even when it is also spoken. Unlike the
-    // letter games there is nothing to give away — the answer is a picture, so
-    // seeing the word is the whole exercise rather than a shortcut past it.
+    // The word itself is always shown, even when it is also spoken.
     const plate = this.add.graphics();
     plate.fillStyle(COLORS.card, 1);
     plate.fillRoundedRect(-PLATE.width / 2, -PLATE.height / 2, PLATE.width, PLATE.height, 26);
     layer.add(plate);
 
     // Every word at one em, so the writing stays the same size round to round.
-    // Fitted to a height instead, بھالو came out twice the size of خرگوش — the
-    // ب is a short, wide shape and the خ a tall stacked one — which on a screen
-    // the child sees one word after another reads as the app changing its mind
-    // rather than as two words.
     const glyph = wordGlyph(target);
     if (glyph) {
       layer.add(
@@ -98,12 +77,7 @@ export default class WordPictures extends QuizScene {
     if (spoken) layer.add(this.speakerIcon(232, 52));
   }
 
-  /**
-   * The pictures have their backgrounds cut away, so the tile shows through.
-   * They are drawn with heavy dark outlines and read well on the app's own
-   * panel colour, which keeps the screen looking like the rest of the app
-   * rather than like a sheet of stickers.
-   */
+  /* The pictures have their backgrounds cut away, so the tile shows through. */
   tileColor() {
     return COLORS.card;
   }

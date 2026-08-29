@@ -19,45 +19,20 @@ import { sayLetter, sayWord } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, label } from '../lib/theme.js';
 import { pickWeighted } from '../lib/mastery.js';
 
-/**
- * Catch the letter that starts the word.
- *
- * ## The same pairing as StartsWith, asked the other way round
- *
- * StartsWith shows a letter and asks which picture begins with it. This shows
- * the picture and asks which letter it begins with, and that is not the same
- * exercise: going letter-to-word is remembering an example you were taught,
- * going word-to-letter is working out a sound and finding a shape for it. The
- * second is the one that turns into spelling.
- *
- * ## And the answers swim
- *
- * Fish cross the pond, so the choice is made against a moving target — the same
- * reason Balloons exists alongside FindLetter. The difference from Balloons is
- * the direction and the pace: fish cross sideways and steadily, and a child can
- * wait for one to come round again, where a balloon leaves the top for good.
- * Nothing is ever lost by waiting.
- */
+/* Catch the letter that starts the word. */
 
-/** Time for a fish to cross the pond, by streak. Never fast. */
+/* Time for a fish to cross the pond, by streak. */
 const CROSS_MS = [13000, 12000, 11000, 10000];
 const FISH = 5;
-/**
- * The water fish are allowed into.
- *
- * Kept below the ribbon and clear of the bottom edge. The backdrop is
- * underwater from top to bottom precisely so this band can be generous — an
- * earlier version painted a pond with a horizon in it, and half the fish swam
- * through the sky.
- */
+/* The water fish are allowed into. */
 const POND = { top: 300, bottom: DESIGN.height - 90, left: -140, right: DESIGN.width + 140 };
 
 export default class Fishing extends Phaser.Scene {
   constructor() {
     super('Fishing');
-    /** @type {string[]} letters that have an illustrated word beginning with them */
+    /** @type {string[]} */
     this.pool = [];
-    /** letterId -> wordId */
+    /* letterId -> wordId */
     this.wordFor = new Map();
     this.streak = 0;
     /** @type {string|null} */
@@ -75,13 +50,10 @@ export default class Fishing extends Phaser.Scene {
   create() {
     const lettersInPlay = inPlay.letters();
     for (const word of activeWords()) {
-      // Only words the letter actually begins — the same rule as StartsWith,
-      // and for the same reason: ڑ, ھ and ی never start a word.
+      // Only words the letter actually begins.
       if (word.letterIndex !== 0) continue;
       if (!word.letter || !letterGlyph(word.letter) || !hasWordImage(word.id)) continue;
-      // The word being in play is not enough: this pairs a *letter* with a
-      // picture, so a letter switched off individually has to drop out even
-      // where the word teaching it is still on.
+      // The word being in play is not enough.
       if (!lettersInPlay.has(word.letter)) continue;
       if (!this.wordFor.has(word.letter)) this.wordFor.set(word.letter, word.id);
     }
@@ -98,14 +70,11 @@ export default class Fishing extends Phaser.Scene {
     this.rail = this.stage.rail;
 
     this.fishFit = fitEmAlone(allLetterGlyphs('isolated'), 92, 76);
-    // The word being asked about, in the corner where every screen here puts
-    // its question.
+    // The word being asked about, in the corner where every screen here puts its question.
     this.promptLayer = this.add.container(RAIL_EDGE + 96, 190).setDepth(21);
 
     this.newRound();
   }
-
-  // ------------------------------------------------------------------ round
 
   newRound() {
     this.locked = false;
@@ -118,8 +87,7 @@ export default class Fishing extends Phaser.Scene {
     this.updateStreak();
     this.speak();
 
-    // The pond starts full and spread across it, rather than making a child
-    // watch an empty pond while the first fish swims in.
+    // The pond starts full and spread across it, rather than making a child watch an empty pond while the first fish swims in.
     const others = Phaser.Utils.Array.Shuffle(
       this.pool.filter((id) => id !== this.target)
     ).slice(0, FISH - 1);
@@ -129,7 +97,7 @@ export default class Fishing extends Phaser.Scene {
     });
   }
 
-  /** The picture of the word, tappable to hear it again. */
+  /* The picture of the word, tappable to hear it again. */
   buildPrompt() {
     this.promptLayer.removeAll(true);
     const wordId = this.wordFor.get(this.target);
@@ -155,15 +123,13 @@ export default class Fishing extends Phaser.Scene {
     this.promptLayer.add(card);
   }
 
-  /** The word, never the letter: naming the letter would be the answer. */
+  /* The word, never the letter: naming the letter would be the answer. */
   speak() {
     sayWord(this.wordFor.get(this.target));
   }
 
   updateStreak() {
   }
-
-  // ------------------------------------------------------------------- fish
 
   launch(letterId, startX) {
     const letter = lettersById.get(letterId);
@@ -175,8 +141,7 @@ export default class Fishing extends Phaser.Scene {
     fish.letterId = letterId;
 
     const body = this.add.graphics();
-    // A rounded body with a triangular tail, drawn towards -x; the container is
-    // flipped by scaleX for the ones swimming the other way.
+    // A rounded body with a triangular tail.
     body.fillStyle(COLORS.shadow, 0.16);
     body.fillEllipse(4, 8, 132, 84);
     body.fillStyle(colour, 1);
@@ -211,13 +176,7 @@ export default class Fishing extends Phaser.Scene {
     return fish;
   }
 
-  /**
-   * Sends a fish across, and round again from the other side.
-   *
-   * Recycled rather than removed: the answer must never leave the pond. A child
-   * who was still looking at the picture when the right fish swam off would be
-   * stuck with a round they cannot win.
-   */
+  /* Sends a fish across, and round again from the other side. */
   swim(fish, rightwards) {
     const speed = CROSS_MS[Math.min(this.streak, CROSS_MS.length - 1)];
     const to = rightwards ? POND.right : POND.left;
@@ -248,8 +207,7 @@ export default class Fishing extends Phaser.Scene {
     if (fish.letterId !== this.target) {
       wrongAnswer({ subject: { kind: 'letter', id: this.target } });
       this.rail?.wonder();
-      // It wriggles and swims on. Nothing is lost — the streak is only broken
-      // by giving up, and there is no way to give up here.
+      // It wriggles and swims on.
       this.tweens.add({
         targets: fish,
         y: fish.y + 14,

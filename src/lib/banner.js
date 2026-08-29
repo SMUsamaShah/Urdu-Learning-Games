@@ -1,15 +1,4 @@
-/**
- * The instruction ribbon across the top of a game.
- *
- * Every preschool app of this kind puts the one thing you are supposed to do
- * on a ribbon at the top, in the same place, on every screen. It is worth
- * copying for a reason that is not decorative: this app's audience cannot read,
- * so the instruction is really being read by whoever handed over the phone, and
- * a parent needs to find it in one glance without hunting.
- *
- * The Urdu goes through the baked outlines like all the other Urdu in the app —
- * see src/lib/glyph.js for why none of it is Phaser.Text.
- */
+/* The instruction ribbon across the top of a game. */
 
 import { uiGlyph, uiGlyphs } from './content.js';
 import { addGlyph, fitEmAlone, glyphMetrics } from './glyph.js';
@@ -18,15 +7,7 @@ import { COLORS, label, PLAY } from './theme.js';
 const RIBBON = 0x2f7fd6;
 const RIBBON_DARK = 0x1d5aa8;
 
-/**
- * Every instruction the ribbon can show.
- *
- * Listed rather than discovered, because the text has to be measured before any
- * of it is drawn: all seven are set at one em so a child sees the same size of
- * writing on every screen, and the em that fits is decided by the most demanding
- * of them. A scene passing an id that is not here still renders, just not to
- * scale — tests/ui-strings.test.mjs keeps the list honest.
- */
+/* Every instruction the ribbon can show. */
 export const INSTRUCTIONS = [
   'pop-balloon',
   'match-pairs',
@@ -54,12 +35,7 @@ export const INSTRUCTIONS = [
   'build-word',
   'fill-letter-word',
   'join-word',
-  // And the praise, because the ribbon is where it is shown: wellDone() swaps
-  // the instruction for one of these. Listed out rather than spread in from
-  // praise.js so that a phrase added there and forgotten here is caught — see
-  // tests/praise.test.mjs. Measuring all eight alongside the instructions costs
-  // the instructions 0.7% of their em, which is the price of بالکل ٹھیک never
-  // running off the end of the ribbon.
+  // And the praise, because the ribbon is where it is shown: wellDone() swaps the instruction for one of these.
   'well-done',
   'bohat-achay',
   'kamal',
@@ -70,30 +46,11 @@ export const INSTRUCTIONS = [
   'aafreen',
 ];
 
-/**
- * The box the writing is fitted into, and the ribbon's minimum height.
- *
- * The ribbon grows to fit its text rather than the text shrinking to fit the
- * ribbon, because Nastaliq is not a horizontal script: "کتنے ہیں؟" stacks its
- * two words almost two ems above the baseline while "جوڑے ملاؤ" barely reaches
- * one, so a bar sized for the short one crops the tall one and a bar sized for
- * the tall one leaves the short one swimming.
- *
- * What must NOT vary is the size of the letters themselves, which is the whole
- * point of measuring the set: fitting each instruction to a fixed bar instead
- * drew لکھو at nearly twice the size of کتنے ہیں؟, on screens a child moves
- * between one after the other.
- */
+/* The box the writing is fitted into, and the ribbon's minimum height. */
 const TEXT_BOX = { width: 460, height: 104 };
 const MIN_HEIGHT = 78;
 
-/**
- * A ribbon tail, as one polygon including its notch.
- *
- * Drawn as a single shape rather than a rectangle with a triangle punched out
- * of it, because there is scenery behind the ribbon and punching a hole would
- * mean knowing what colour to fill it with.
- */
+/* A ribbon tail, as one polygon including its notch. */
 function tail(g, side, innerX, height, middle) {
   const out = innerX + side * 52;
   const notch = innerX + side * 34;
@@ -110,9 +67,7 @@ function tail(g, side, innerX, height, middle) {
   );
 }
 
-/**
- * Adds the ribbon and returns it, so a scene can swap the text between rounds.
- *
+/** Adds the ribbon and returns it, so a scene can swap the text between rounds.
  * @param {Phaser.Scene} scene
  * @param {object} config
  * @param {string} config.ui id of a string in content/ui.json
@@ -137,16 +92,10 @@ export function addBanner(scene, config) {
 
     const glyph = uiGlyph(ui);
     const metrics = glyph ? glyphMetrics(glyph, em) : { width: 0, height: 0 };
-    // Sized to its contents in both directions. There is no shared baseline
-    // here, unlike the menu tiles: each instruction is alone on its own screen,
-    // so the ribbon around it is the reference the eye uses and centring the
-    // writing in that ribbon is what looks deliberate.
+    // Sized to its contents in both directions.
     const width = Math.max(300, Math.min(660, metrics.width + 150));
     const height = Math.max(MIN_HEIGHT, metrics.height + (roman ? 44 : 26));
-    // Grows downwards from a fixed top edge rather than outwards from its
-    // centre. The ribbon is the topmost thing on every game screen, so a taller
-    // instruction growing both ways runs off the top of the canvas — کتنے ہیں؟
-    // is half again as tall as the rest and did exactly that.
+    // Grows downwards from a fixed top edge rather than outwards from its centre.
     const top = -MIN_HEIGHT / 2;
     const middle = top + height / 2;
 
@@ -164,10 +113,7 @@ export function addBanner(scene, config) {
     plate.strokeRoundedRect(-width / 2, top, width, height, 22);
 
     if (glyph) {
-      // No outline on the letters here, unlike everywhere else in the app. The
-      // outline exists so a letter survives sitting on a colour that varies;
-      // this one sits on a single flat blue, and an outline heavy enough to see
-      // simply fills in the thin strokes of Nastaliq until the word reads black.
+      // No outline on the letters here, unlike everywhere else in the app.
       const item = addGlyph(
         scene,
         0,
@@ -191,8 +137,7 @@ export function addBanner(scene, config) {
 
   banner.setInstruction(config.ui, config.roman);
 
-  // Drops in rather than appearing. It is the first thing on screen each time a
-  // game opens, and movement is what makes a child look at it.
+  // Drops in rather than appearing.
   banner.setY(y - 110);
   scene.tweens.add({ targets: banner, y, duration: 420, ease: 'Back.easeOut' });
 

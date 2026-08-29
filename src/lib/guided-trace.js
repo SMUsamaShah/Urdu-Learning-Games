@@ -3,51 +3,15 @@ import { advanceAlong, nibWidth, pointAt, strokesFor } from './strokes.js';
 import { hop } from './liveliness.js';
 import * as sfx from './sfx.js';
 
-/**
- * Following the pen: start here, go this way, then this stroke next.
- *
- * ## The ink is the path, not the finger
- *
- * The obvious build draws what the child actually drew. It is wrong, and it is
- * wrong in a way that shows up the moment a three-year-old touches it: their
- * line wobbles, so careful tracing and scribbling produce the same mess, and
- * the letter they end up looking at is not the letter. Every tracing app worth
- * copying snaps.
- *
- * So the finger does not draw. It *advances a cursor* along a path that was
- * already correct, and the ink is that path stroked up to the cursor. The
- * child's job is to stay near the line; the ink moving is the feedback, and
- * what they finish with is a properly written letter.
- *
- * ## Forwards only
- *
- * The cursor never goes backwards. A small hand wanders back over ground it has
- * covered constantly, and a nearest-point search over the whole path would drag
- * the ink back every time — punishing a wobble, which is the opposite of what
- * this screen is for. Off the path, nothing happens at all: no ink, no sparkles,
- * no telling-off. See `advanceAlong` in strokes.js.
- *
- * ## Dots are dabbed
- *
- * A dot is not a journey. Asking a child to trace one is asking them to do
- * something meaningless carefully, so a `dab` stroke is finished by touching
- * near it.
- */
+/* Following the pen: start here, go this way, then this stroke next. */
 
-/** How far from the start dot counts as starting, as a multiple of the nib. */
+/* How far from the start dot counts as starting, as a multiple of the nib. */
 const START_NEAR = 1.9;
-/** How far off the line the finger may stray before the ink stops. */
+/* How far off the line the finger may stray before the ink stops. */
 const OFF_PATH = 1.5;
-/**
- * How far ahead of the cursor a finger may reach in one move.
- *
- * Generous, because a fast finger between two pointer events really does jump a
- * long way, and the alternative is the ink falling behind a child who is doing
- * it right. Not unlimited: without a bound, touching the far end of the stroke
- * would complete it.
- */
+/* How far ahead of the cursor a finger may reach in one move. */
 const LOOK_AHEAD = 6;
-/** Close enough to the end. Nobody lands exactly on the last point. */
+/* Close enough to the end. */
 const FINISH = 0.97;
 
 /**
@@ -69,17 +33,15 @@ export function createGuide(scene, config) {
   const nib = nibWidth(scale);
   const guide = {
     strokes,
-    /** Which stroke is being written. */
+    /* Which stroke is being written. */
     index: 0,
-    /** How far along it, in display pixels. */
+    /* How far along it, in display pixels. */
     cursor: 0,
     drawing: false,
     done: false,
   };
 
-  // The ink, on its own canvas texture rather than a Graphics: it is added to
-  // continuously and never rebuilt, which is exactly what a canvas is for and
-  // exactly what a Graphics is worst at.
+  // Keep drawn ink on a persistent canvas texture.
   const width = Math.ceil(bbox[2] * scale + nib * 2);
   const height = Math.ceil(bbox[3] * scale + nib * 2);
   const key = `guide-ink:${letterId}`;
@@ -93,12 +55,10 @@ export function createGuide(scene, config) {
   ctx.lineWidth = nib;
 
   const image = scene.add.image(origin.x - nib, origin.y - nib, key).setOrigin(0, 0);
-  // Canvas coordinates are offset from screen coordinates by the padding left
-  // for the nib, and by where the glyph sits. One place, so nothing else has to
-  // remember it.
+  // Canvas coordinates are offset from screen coordinates by the padding left for the nib, and by where the glyph sits.
   const toCanvas = (point) => ({ x: point.x - origin.x + nib, y: point.y - origin.y + nib });
 
-  /** The start dot and its arrow, redrawn whenever the stroke changes. */
+  /* The start dot and its arrow, redrawn whenever the stroke changes. */
   const marker = scene.add.container(0, 0);
 
   const current = () => guide.strokes[guide.index];
@@ -123,8 +83,7 @@ export function createGuide(scene, config) {
     });
 
     if (stroke.kind === 'dab') return;
-    // An arrow a little way along, which is the only thing on screen that says
-    // which way this stroke goes.
+    // An arrow a little way along, which is the only thing on screen that says which way this stroke goes.
     const ahead = pointAt(stroke.points, Math.min(stroke.length, guide.cursor + nib * 2.2));
     const angle = Phaser.Math.Angle.Between(at.x, at.y, ahead.x, ahead.y);
     const arrow = scene.add
@@ -133,7 +92,7 @@ export function createGuide(scene, config) {
     marker.add(arrow);
   }
 
-  /** Strokes the current path from `from` to `to`, in display pixels along it. */
+  /* Strokes the current path from `from` to `to`, in display pixels along it. */
   function paint(from, to) {
     const stroke = current();
     if (stroke.kind === 'dab') {
@@ -145,8 +104,7 @@ export function createGuide(scene, config) {
       return;
     }
 
-    // Walked in short steps rather than segment by segment, so the ink ends
-    // exactly where the cursor is instead of at the next corner.
+    // Walked in short steps rather than segment by segment.
     const step = Math.max(1.5, nib * 0.25);
     ctx.beginPath();
     let first = true;
@@ -180,15 +138,13 @@ export function createGuide(scene, config) {
     hop(scene, marker, { height: nib * 0.5 });
   }
 
-  // The start dot has to be there before the first touch, or the screen opens
-  // saying "follow the line" with nothing to say where the line begins.
+  // The start dot has to be there before the first touch.
   drawMarker();
 
-  // Reading state through getters rather than handing `guide` out: the caller
-  // must never be able to move the cursor without the ink following it.
+  // Reading state through getters rather than handing `guide` out.
   return {
     strokes,
-    /** 0 to 1 across the whole letter, counting the stroke in progress. */
+    /* 0 to 1 across the whole letter, counting the stroke in progress. */
     get progress() {
       if (guide.done) return 1;
       const per = 1 / guide.strokes.length;
@@ -205,18 +161,16 @@ export function createGuide(scene, config) {
     get cursor() {
       return guide.cursor;
     },
-    /** Where the child should be touching now, for the hint and the verifier. */
+    /* Where the child should be touching now, for the hint and the verifier. */
     get target() {
       if (guide.done) return null;
       const stroke = current();
       return stroke.kind === 'dab' ? stroke.points[0] : pointAt(stroke.points, guide.cursor);
     },
 
-    /**
-     * A finger has landed.
-     *
-     * @returns {boolean} whether it landed somewhere that starts the stroke
-     */
+    /** A finger has landed.
+ * @returns {boolean} whether it landed somewhere that starts the stroke
+ */
     begin(x, y) {
       if (guide.done) return false;
       const stroke = current();
@@ -231,13 +185,9 @@ export function createGuide(scene, config) {
       return true;
     },
 
-    /**
-     * The finger has moved.
-     *
-     * @returns {boolean} whether the ink advanced, which is what the sparkle
-     *   trail follows — the clearest signal a child gets about whether they are
-     *   on the line, and it works for one who cannot read a progress bar.
-     */
+    /** The finger has moved.
+ * @returns {boolean} whether the ink advanced, which is what the sparkle
+ */
     move(x, y) {
       if (!guide.drawing || guide.done) return false;
       const stroke = current();
@@ -258,12 +208,12 @@ export function createGuide(scene, config) {
       return true;
     },
 
-    /** Lifted. The ink stays where it got to; nothing is taken away. */
+    /* Lifted. The ink stays where it got to; nothing is taken away. */
     lift() {
       guide.drawing = false;
     },
 
-    /** Everything drawn so far, gone. */
+    /* Everything drawn so far, gone. */
     reset() {
       ctx.clearRect(0, 0, ink.width, ink.height);
       ink.refresh();
@@ -274,7 +224,7 @@ export function createGuide(scene, config) {
       drawMarker();
     },
 
-    /** Fills the letter in, for the moment it is finished. */
+    /* Fills the letter in, for the moment it is finished. */
     complete() {
       guide.done = true;
       marker.removeAll(true);

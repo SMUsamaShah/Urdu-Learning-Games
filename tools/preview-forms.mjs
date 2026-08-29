@@ -1,28 +1,4 @@
-/**
- * Every positional form of one letter, side by side, to be looked at.
- *
- * "Is the initial form of mim right?" is not a question anybody can answer by
- * reading JSON, and it is not one the test suite can answer either — the tests
- * check that a form exists and has ink, which is a different claim from it
- * being the correct shape. This draws them so a person can judge.
- *
- * Two things it does that a naive render does not, both learned by getting it
- * wrong first:
- *
- *   - **One scale for all four.** Fitting each glyph to its own bounding box
- *     makes initial mim — a small loop on the line — look enormous beside the
- *     isolated form, and the first version of this picture had me thinking the
- *     font was broken. They share a viewBox now.
- *   - **The baseline is drawn.** Half of what distinguishes these forms is
- *     where they sit: isolated and final mim hang a long tail below the line,
- *     initial and medial sit on it. Without the line that is invisible.
- *
- * Underneath each is the same letter set by the system's own Urdu font, joined
- * with ZWJ the same way the baker asks for the form. That is the reference to
- * check ours against.
- *
- * Usage: node tools/preview-forms.mjs mim [out.png]
- */
+/* Every positional form of one letter, side by side, to be looked at. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,10 +42,7 @@ await page.evaluate(
     const CHAR = { mim: 'م', be: 'ب', ain: 'ع', he: 'ہ', kaf: 'ک' }[id] ?? '';
 
     const row = document.getElementById('row');
-    // One viewBox for all of them, spanning every form's extremes, so they are
-    // drawn to a common scale and share a baseline. Fitting each glyph to its
-    // own bbox makes a small initial form look enormous next to a tall
-    // isolated one, which is an artefact of the picture and not of the font.
+    // One viewBox for all of them, spanning every form's extremes, so they are drawn to a common scale and share a baseline.
     const all = Object.values(forms).map((g) => g.bbox);
     const minY = Math.min(...all.map((b) => b[1]));
     const maxY = Math.max(...all.map((b) => b[1] + b[3]));

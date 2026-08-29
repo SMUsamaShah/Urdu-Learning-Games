@@ -13,49 +13,20 @@ import { sayLetter } from '../lib/say.js';
 import { COLORS, DESIGN, RAIL_EDGE, familyColor, makeButton } from '../lib/theme.js';
 import { pickWeighted } from '../lib/mastery.js';
 
-/**
- * Catch the letter on the way up.
- *
- * The third and last screen where the answer moves, and each of the three moves
- * differently on purpose — a child who can only recognise a letter that is
- * holding still has not finished learning it:
- *
- *   - **Balloons** drift upwards and leave the top. Slow and one-way.
- *   - **Fishing** crosses sideways and comes round again. Steady.
- *   - **This** bounces: every letter is briefly still at the top of its arc and
- *     fastest in the middle, so the moment to tap is a moment rather than a
- *     window. It is the closest thing here to timing, and it is the gentlest
- *     way to ask for it — nothing is ever missed, because a letter that comes
- *     down simply goes back up.
- *
- * The arcs are deliberately out of step, so the screen never settles into a
- * rhythm a child could tap along with without looking.
- */
+/* Catch the letter on the way up. */
 
-/** Time for one full bounce, by streak. Slower is easier. */
+/* Time for one full bounce, by streak. */
 const BOUNCE_MS = [2600, 2400, 2200, 2000];
 const HOW_MANY = 5;
 const BALL = 116;
-/**
- * Where the balls live: the floor they land on, and how high they go.
- *
- * The floor used to be 118 from the bottom and was a number and nothing else —
- * the balls came to rest in mid-air over the grass. There is a trampoline under
- * each of them now, and a trampoline has to fit below the ball rather than
- * behind it, which is what moved this up.
- */
+/* Where the balls live: the floor they land on, and how high they go. */
 const FLOOR = DESIGN.height - 175;
 const RISE = { min: 210, max: 330 };
 const LANE = { left: RAIL_EDGE + 64, right: DESIGN.width - 110 };
-/**
- * `mat` is how far down the picture the bouncing surface is, as a fraction of
- * its height. It is what lines the ball's underside up with the thing it is
- * supposed to be landing on; without it the ball rests on the trampoline's legs
- * or floats above its rim.
- */
+/* `mat` is how far down the picture the bouncing surface is, as a fraction of its height. */
 const TRAMPOLINE = { width: 170, mat: 0.25 };
 
-/** Where the balls go across the lane, and so where the trampolines go. */
+/* Where the balls go across the lane, and so where the trampolines go. */
 function lanePlaces(count) {
   const span = (LANE.right - LANE.left) / count;
   return Array.from({ length: count }, (unused, i) => LANE.left + span * (i + 0.5));
@@ -101,29 +72,16 @@ export default class Bounce extends Phaser.Scene {
     this.events.once('shutdown', () => this.time.removeAllEvents());
   }
 
-  /**
-   * A trampoline under every place a ball can land.
-   *
-   * Built once in `create` rather than per round: the places do not move, and
-   * five pictures re-added every round is five textures re-uploaded for a thing
-   * that never changes. Drawn before any ball, so the balls bounce in front of
-   * them.
-   *
-   * Nothing if the picture is missing — the balls go back to landing on the
-   * grass, which is what they did until now.
-   */
+  /* A trampoline under every place a ball can land. */
   buildFloor() {
     const size = propSize('bounce-trampoline', TRAMPOLINE.width);
     if (!size) return;
-    // The mat, not the middle: the ball's underside has to meet the surface it
-    // is bouncing on.
+    // The mat, not the middle: the ball's underside has to meet the surface it is bouncing on.
     const centerY = FLOOR + BALL / 2 - size.height * TRAMPOLINE.mat + size.height / 2;
     for (const x of lanePlaces(HOW_MANY)) {
       addProp(this, x, centerY, 'bounce-trampoline', { width: TRAMPOLINE.width });
     }
   }
-
-  // ------------------------------------------------------------------ round
 
   newRound() {
     this.locked = false;
@@ -136,8 +94,7 @@ export default class Bounce extends Phaser.Scene {
     this.updateStreak();
     sayLetter(this.target, { word: false });
 
-    // Its own family first, so the choice is between letters that differ by a
-    // dot rather than by silhouette.
+    // Its own family first, so the choice is between letters that differ by a dot rather than by silhouette.
     const siblings = Phaser.Utils.Array.Shuffle(
       shapeFamilySiblings(this.target).filter((id) => letterGlyph(id))
     );
@@ -182,8 +139,6 @@ export default class Bounce extends Phaser.Scene {
   updateStreak() {
   }
 
-  // ----------------------------------------------------------------- balls
-
   launch(letterId, x, index) {
     const colour = familyColor(lettersById.get(letterId).shapeFamily);
     const ball = this.add.container(x, FLOOR);
@@ -218,16 +173,7 @@ export default class Bounce extends Phaser.Scene {
     return ball;
   }
 
-  /**
-   * One endless bounce.
-   *
-   * Quad easing both ways is what makes it read as gravity: slowest at the top,
-   * fastest at the floor. A linear yoyo looks like a lift.
-   *
-   * Each ball gets its own height and a starting delay, so the row never falls
-   * into step — five balls bouncing together is a rhythm to tap along with
-   * rather than a thing to look at.
-   */
+  /* One endless bounce. */
   bounce(ball, index) {
     const period = BOUNCE_MS[Math.min(this.streak, BOUNCE_MS.length - 1)];
     ball.trip = this.tweens.add({
@@ -266,8 +212,7 @@ export default class Bounce extends Phaser.Scene {
     if (ball.letterId !== this.target) {
       wrongAnswer({ subject: { kind: 'letter', id: this.target } });
       this.rail?.wonder();
-      // It keeps bouncing. Nothing is removed, so the right one is never harder
-      // to find because of a wrong guess.
+      // It keeps bouncing.
       this.tweens.add({
         targets: ball,
         angle: 12,

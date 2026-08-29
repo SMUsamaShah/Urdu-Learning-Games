@@ -1,36 +1,4 @@
-/**
- * Draws the mascot.
- *
- * The character is the one piece of art in this app that a person will look at
- * on every screen for months, so it is worth drawing properly rather than
- * assembling out of arcs. Everything else here stays procedural.
- *
- * ## Why poses and not a sprite sheet
- *
- * The obvious idea is to ask for a sprite sheet and play it back. Image models
- * are worse at that than at almost anything else: every cell drifts in size and
- * position, the character's face changes between frames, and nothing lines the
- * pivots up. What they are good at is drawing the same character again in a
- * different pose, given the first drawing to work from — so that is what this
- * does. Three whole poses, swapped between, with the liveliness coming from
- * tweens on the whole sprite.
- *
- * ## Two stages
- *
- *   node tools/make-mascot.mjs --variants 6
- *       Draws candidate idle poses and writes a contact sheet to look at.
- *       Nothing is promoted; this stage is for choosing.
- *
- *   node tools/make-mascot.mjs --pick 3
- *       Takes that candidate as the character, asks for the other poses as
- *       edits of it so they stay the same spider, cuts the backgrounds out and
- *       writes public/images/mascot/.
- *
- * Candidates are cached in .image-cache/mascot/, so picking, re-cutting and
- * re-running the poses costs nothing after the first draw.
- *
- * The key is only ever read from the environment. Do not put it in a file.
- */
+/* Draws the mascot. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -41,7 +9,7 @@ const OUT = path.join(ROOT, 'public', 'images', 'mascot');
 const RAW = path.join(ROOT, '.image-cache', 'mascot');
 const MODEL = 'gpt-image-2';
 const SIZE = 1024;
-/** Drawn at roughly 250px tall, so this stays crisp on a 2x screen. */
+/* Drawn at roughly 250px tall, so this stays crisp on a 2x screen. */
 const TARGET = 512;
 
 const key = process.env.OPENAI_API_KEY;
@@ -55,13 +23,7 @@ const arg = (name) => {
   return i > -1 ? process.argv[i + 1] : null;
 };
 
-/**
- * The character, described once and repeated in every prompt.
- *
- * Repeated rather than referenced because the pose edits go back to the model
- * as a fresh request each time, and dropping the description there is how a
- * character quietly turns into a different one between poses.
- */
+/* The character, described once and repeated in every prompt. */
 const CHARACTER =
   'an adorable fluffy cartoon jumping spider mascot for a toddler learning app: ' +
   'a small round body covered in soft fuzzy fur, a big rounded fuzzy head with ' +
@@ -81,16 +43,14 @@ const STYLE =
 
 const POSES = {
   idle: 'standing still and smiling, front legs relaxed at its sides',
-  // Pointing towards the right-hand edge of the picture, because the mascot
-  // stands at the left of every screen and the answers are to its right.
+  // Pointing towards the right-hand edge of the picture.
   point:
     'smiling and pointing towards the right-hand side of the picture with one ' +
     'front leg held straight out sideways, the other legs relaxed',
   cheer:
     'celebrating with both front legs raised high above its head, eyes happy ' +
     'and mouth open in a cheer',
-  // A blink is one frame, not an animation. Swapping to it for a tenth of a
-  // second is most of what makes a drawing feel like it is alive.
+  // A blink is one frame, not an animation.
   blink:
     'standing still and smiling exactly as before but with both eyes closed, ' +
     'drawn as two simple downward-curved lashes, front legs relaxed at its sides',
@@ -131,16 +91,14 @@ const generate = (prompt) =>
     { 'content-type': 'application/json' }
   );
 
-/** Redraws an existing image. This is what keeps the poses one character. */
+/* Redraws an existing image. */
 function edit(file, prompt) {
   const form = new FormData();
   form.set('model', MODEL);
   form.set('prompt', prompt);
   form.set('size', `${SIZE}x${SIZE}`);
   form.set('quality', 'low');
-  // Asked for on the edit as well as the generation. If the edits endpoint
-  // ignores it the picture comes back on white and cutout.mjs keys it, which
-  // is the arrangement that held for every frame drawn before this.
+  // Asked for on the edit as well as the generation.
   form.set('background', 'transparent');
   form.set('output_format', 'png');
   form.set('n', '1');
@@ -149,8 +107,6 @@ function edit(file, prompt) {
 }
 
 const save = (file, data) => fs.writeFileSync(file, Buffer.from(data.data[0].b64_json, 'base64'));
-
-// ------------------------------------------------------------------ stage 1
 
 if (arg('--variants')) {
   const count = Number(arg('--variants'));
@@ -165,8 +121,7 @@ if (arg('--variants')) {
     })
   );
 
-  // A contact sheet, because choosing between six characters means seeing them
-  // next to each other rather than opening six files.
+  // A contact sheet, because choosing between six characters means seeing them next to each other rather than opening.
   const cutter = await openCutter();
   const sheet = path.join(RAW, 'candidates.html');
   fs.writeFileSync(
@@ -185,8 +140,6 @@ if (arg('--variants')) {
   process.exit(0);
 }
 
-// ------------------------------------------------------------------ stage 2
-
 const pick = arg('--pick');
 if (!pick) {
   console.error('Usage: --variants <n> to draw candidates, then --pick <n>.');
@@ -201,9 +154,7 @@ if (!fs.existsSync(base)) {
 
 fs.mkdirSync(OUT, { recursive: true });
 
-// Poses are cached, so picking a different candidate has to throw the old ones
-// away. Without this, changing your mind about the character silently keeps
-// three poses of the previous one and only redraws the base.
+// Poses are cached, so picking a different candidate has to throw the old ones away.
 const stamp = path.join(RAW, 'picked.txt');
 const previous = fs.existsSync(stamp) ? fs.readFileSync(stamp, 'utf8').trim() : null;
 if (previous && previous !== pick) {
@@ -230,17 +181,6 @@ for (const [name, pose] of Object.entries(POSES)) {
   );
 }
 
-// ------------------------------------------------------- cut out and line up
-//
-// The model redraws the character at a slightly different size and position
-// every time. Swapped in place that reads as the spider jolting sideways and
-// changing size whenever it blinks, which is the failure this whole technique
-// is prone to and the reason a naive set of poses looks broken.
-//
-// So each pose is measured and then redrawn to sit where the idle pose sits.
-// The anchor is the feet, not the bounding box: raising a leg to point moves
-// the bounding box but not the part of the spider standing on the ground.
-
 console.log('Cutting out backgrounds…');
 const cutter = await openCutter();
 const names = Object.keys(POSES);
@@ -257,7 +197,7 @@ for (const name of names) {
 
 const anchor = measured.idle.metrics;
 
-/** Feet-aligned transform per pose, before anything is made to fit. */
+/* Feet-aligned transform per pose, before anything is made to fit. */
 const aligned = {};
 for (const name of names) {
   const { metrics } = measured[name];
@@ -269,11 +209,7 @@ for (const name of names) {
   };
 }
 
-// Aligning can push a pose off the edge — pointing sticks a leg out sideways
-// and cheering sticks two up, and either can now land outside the frame. So
-// every pose is shrunk by one shared factor, chosen so the widest and tallest
-// of them fits. One factor for all of them, because a per-pose fit would undo
-// the alignment that is the whole point of this.
+// Aligning can push a pose off the edge.
 const boxes = names.map((name) => {
   const t = aligned[name];
   const b = measured[name].metrics.bbox;
@@ -295,9 +231,7 @@ const MARGIN = 12;
 const fit = Math.min(
   1,
   (SIZE - MARGIN * 2) / (union.right - union.left),
-  // No bottom margin: the feet land on the bottom edge of the image, so a
-  // scene can stand the sprite on the ground with an origin of (0.5, 1) and
-  // not have to know anything about how it was drawn.
+  // Align the feet with the image bottom.
   (SIZE - MARGIN) / (union.bottom - union.top)
 );
 const shift = {

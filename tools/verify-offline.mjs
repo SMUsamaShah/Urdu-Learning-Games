@@ -1,15 +1,4 @@
-/**
- * Proves the app really runs with the network switched off.
- *
- * The static tests in tests/pwa.test.mjs check the precache list looks right.
- * This checks the thing that actually matters: install the service worker, cut
- * the network, reload, and see whether the app still starts and still speaks.
- *
- * Serves from a project subpath, matching how GitHub Pages hosts it, because
- * scope and start_url bugs only appear off the domain root.
- *
- * Usage: npm run build && node tools/verify-offline.mjs
- */
+/* Proves the app really runs with the network switched off. */
 
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -48,8 +37,7 @@ await new Promise((resolve) => {
 const { context, page, errors, finish } = await openApp({
   name: 'offline',
   timeoutMs: 120000,
-  // Navigated below, because the first load is itself one of the things being
-  // checked — it is what installs the service worker.
+  // Navigated below, because the first load is itself one of the things being checked — it is what installs the service.
   open: false,
 });
 
@@ -57,10 +45,7 @@ step('first load, installing the service worker');
 await page.goto(URL_, { waitUntil: 'networkidle' });
 await homeIsUp(page, 20000);
 
-// `navigator.serviceWorker.ready` resolves as soon as there is an active
-// worker, which can be while that worker is still in "activating" — so reading
-// the state once races the browser and fails about one run in three. Waited
-// for instead.
+// `navigator.serviceWorker.ready` resolves as soon as there is an active worker.
 const swState = await page.evaluate(async () => {
   const reg = await navigator.serviceWorker.ready;
   const worker = reg.active;
@@ -79,8 +64,7 @@ const swState = await page.evaluate(async () => {
 if (swState !== 'activated') fail(`service worker state is "${swState}"`);
 else step(`service worker ${swState}`);
 
-// Wait for precaching to finish before cutting the network. `ready` resolves
-// on activation, which can be before the last asset lands in the cache.
+// Wait for precaching to finish before cutting the network.
 step('waiting for the precache to fill');
 const cached = await page.evaluate(async (expected) => {
   const deadline = Date.now() + 30000;
@@ -107,11 +91,7 @@ if (!cached) {
     if (!cached.some((u) => u.includes(p))) fail(`${clip} (${p}) never reached the cache`);
   }
 
-  // Every tune can be picked from the grown-ups screen, and each is played on
-  // its own sampled instrument. A tune whose samples were not precached plays
-  // in development, plays on the first online load, and is silent on the
-  // aeroplane — so this is checked here, against a real service worker, rather
-  // than by reading the build config and hoping.
+  // Every tune can be picked from the grown-ups screen, and each is played on its own sampled instrument.
   for (const [id, piece] of Object.entries(TUNES)) {
     const folder = `audio/instruments/${piece.instrument}/`;
     if (!cached.some((u) => u.includes(folder))) {
@@ -121,8 +101,6 @@ if (!cached) {
   const voices = new Set(Object.values(TUNES).map((t) => t.instrument));
   step(`${voices.size} tune instruments cached`);
 }
-
-// -------------------------------------------------------------- offline
 
 step('going offline and reloading');
 await context.setOffline(true);
@@ -156,22 +134,14 @@ if (clipKeys.length > 0) {
   step('no recordings present, skipping offline playback check');
 }
 
-// The console has to be clean *while offline*, which is what the section above
-// was testing. Judged here, before the network comes back, so that a fetch
-// still unwinding from the offline reload cannot be blamed on the check that
-// follows — which is what made this verification flaky for one run.
+// The console has to be clean *while offline*, which is what the section above was testing.
 const offlineErrors = [...errors];
 if (offlineErrors.length) {
   for (const e of offlineErrors) console.error('  console: ' + e);
   fail(`${offlineErrors.length} console error(s) while offline`);
 }
 
-// -------------------------------------------------- the update indicator
-
-// The badge is the only thing telling anybody whether the app they opened is
-// current. It is easy for it to be quietly broken — a wrong selector, a state
-// that never clears — and nothing else would notice, so its states are driven
-// directly here rather than waiting for a real deploy to happen.
+// The badge is the only thing telling anybody whether the app they opened is current.
 step('checking the update indicator');
 await context.setOffline(false);
 errors.length = 0;
@@ -179,17 +149,12 @@ errors.length = 0;
 const badge = await page.evaluate(async () => {
   const el = document.querySelector('.update-badge');
   if (!el) return { missing: true };
-  // Computed style, not the `hidden` property. The property was set correctly
-  // all along while an author `display: flex` overrode the user agent's
-  // `[hidden] { display: none }`, so the badge sat on screen for ever with a
-  // ring spinning — and a check that reads the property passes on exactly that.
+  // Computed style, not the `hidden` property.
   const seen = { hiddenAtRest: getComputedStyle(el).display === 'none' };
 
-  // Through the app's own module, not a fresh import: this runs against the
-  // built preview, where /src/ does not exist at all.
+  // Through the app's own module.
   const { checkForUpdate } = window.__updates;
-  // Watched rather than sampled: 'checking' is replaced by a result as soon as
-  // the browser answers, and on a warm cache that can be within a frame.
+  // Watched rather than sampled.
   const states = new Set();
   const observer = new MutationObserver(() => {
     if (!el.hidden) states.add(el.dataset.state);
@@ -200,8 +165,7 @@ const badge = await page.evaluate(async () => {
   await new Promise((r) => setTimeout(r, 1500));
   observer.disconnect();
 
-  // And it has to go away again once it is done, which is the other half of
-  // the same bug.
+  // And it has to go away again once it is done, which is the other half of the same bug.
   await new Promise((r) => setTimeout(r, 3000));
   const hiddenAfter = getComputedStyle(el).display === 'none';
 

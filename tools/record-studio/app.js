@@ -1,14 +1,4 @@
-/**
- * Recording studio client.
- *
- * Keyboard-first on purpose: 120 clips through a mouse is miserable, and the
- * whole point of this tool is making a full recording session feasible in one
- * or two sittings.
- *
- *   Space  record / stop      Enter  save and advance
- *   P      play back          R      redo
- *   ← →    move between clips
- */
+/* Recording studio client. */
 
 import { DEFAULT_PROFILE, MIC_PROFILES, createRecorder } from '/lib/recorder.js';
 import { polishTake } from '/lib/take-polish.js';
@@ -22,11 +12,7 @@ const state = {
   take: null, // {blob, url, ext} of an unsaved recording
 };
 
-/**
- * Microphone handling is shared with the in-app recorder (src/lib/recorder.js),
- * so the choice not to run noise suppression — which can swallow the start of a
- * short syllable — holds in both places rather than in whichever was edited last.
- */
+/* Microphone handling is shared with the in-app recorder (src/lib/recorder.js). */
 const recorder = createRecorder({
   onLevel: (peak) => {
     const fill = $('meter-fill');
@@ -35,9 +21,7 @@ const recorder = createRecorder({
   },
 });
 
-// ---------------------------------------------------------------- rendering
-
-/** Draws a baked glyph as inline SVG, exactly as the game renders it. */
+/* Draws a baked glyph as inline SVG, exactly as the game renders it. */
 function glyphSvg(glyph, height = 240) {
   if (!glyph || !glyph.d) return '';
   const [x, y, w, h] = glyph.bbox;
@@ -104,8 +88,6 @@ function setStatus(text, cls = '') {
   $('status').className = cls;
 }
 
-// ---------------------------------------------------------------- recording
-
 async function startRecording() {
   await recorder.start();
   setStatus('Recording… Space to stop', 'recording');
@@ -113,13 +95,7 @@ async function startRecording() {
   $('btn-record').firstChild.textContent = 'Stop ';
 }
 
-/**
- * A context purely for tidying takes.
- *
- * Made here rather than borrowed: the studio is a desktop page with no game on
- * it, so the one-context rule that the app lives under does not apply, and the
- * recorder keeps its own for the meter anyway.
- */
+/* A context purely for tidying takes. */
 let polishCtx = null;
 function tidyContext() {
   if (!polishCtx) polishCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -181,8 +157,7 @@ async function saveTake() {
   discardTake();
   setStatus('Saved', 'saved');
   renderList();
-  // Advance to the next clip that still needs recording, so a second session
-  // picks up where the first left off instead of stepping through done ones.
+  // Advance to the next clip that still needs recording.
   const next = state.clips.findIndex((c, i) => i > state.index && !c.recorded);
   go(next === -1 ? Math.min(state.index + 1, state.clips.length - 1) : next);
 }
@@ -207,8 +182,7 @@ async function redo() {
 function go(index) {
   if (index < 0 || index >= state.clips.length) return;
   if (recorder.isRecording()) {
-    // Abandon the take rather than saving it: moving on mid-record means the
-    // recording was a mistake. The promise is deliberately dropped.
+    // Abandon the take rather than saving it: moving on mid-record means the recording was a mistake.
     recorder.stop();
     $('btn-record').classList.remove('recording');
     $('btn-record').firstChild.textContent = 'Record ';
@@ -219,8 +193,6 @@ function go(index) {
   renderList();
   renderStage();
 }
-
-// ---------------------------------------------------------------- wiring
 
 $('btn-record').onclick = toggleRecording;
 $('btn-play').onclick = playTake;
@@ -246,12 +218,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-/**
- * Pulls a zip exported from the app on a phone into the repo.
- *
- * This is the promote step: recordings made on a device are device-local, and
- * this is how a good set becomes the voice everyone gets.
- */
+/* Pulls a zip exported from the app on a phone into the repo. */
 async function importArchive(file) {
   if (!file) return;
   const status = $('import-status');
@@ -283,9 +250,7 @@ $('import-file').onchange = (e) => {
   e.target.value = '';
 };
 
-// Exposed so the Playwright check can drive a full record -> save cycle
-// without depending on button positions.
-// --------------------------------------------------------- microphone setup
+// Exposed so the Playwright check can drive a full record -> save cycle without depending on button positions.
 
 const MIC_KEY = 'urdu:mic-profile';
 const TIDY_KEY = 'urdu:tidy-takes';

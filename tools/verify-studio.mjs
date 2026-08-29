@@ -1,15 +1,4 @@
-/**
- * End-to-end check of the recording studio, with no microphone involved.
- *
- * Chromium can synthesise a media stream and auto-grant permission, so the
- * whole chain is exercised for real: getUserMedia -> MediaRecorder -> POST ->
- * a file on disk -> the manifest picking it up. Nothing is mocked.
- *
- * Starts its own server, drives it, then deletes the clip it recorded so a
- * verification run never leaves a fake take in the repo.
- *
- * Usage: node tools/verify-studio.mjs [screenshot.png]
- */
+/* End-to-end check of the recording studio, with no microphone involved. */
 
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -17,9 +6,7 @@ import path from 'node:path';
 import { fail, openApp, step } from './harness.mjs';
 import { RECORDED_DIR, ROOT, expectedClips, resolveClip } from './audio-keys.mjs';
 
-// Distinct from every other verify script's port. They are often run one after
-// another, and a server that outlived its run makes the next script fail with a
-// confusing timeout rather than an obvious "port in use".
+// Distinct from every other verify script's port.
 const PORT = 5195;
 const SHOT = process.argv[2];
 const TEST_SLUG = expectedClips()[0].slug;
@@ -47,8 +34,7 @@ const cleanup = () => {
   }
 };
 process.on('exit', cleanup);
-// A killed run must not leave its synthetic beep behind looking like a real
-// recording. 'exit' alone does not fire on a signal.
+// A killed run must not leave its synthetic beep behind looking like a real recording.
 for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   process.on(signal, () => process.exit(1));
 }
@@ -59,12 +45,10 @@ await new Promise((resolve) => {
   setTimeout(resolve, 4000);
 });
 
-// The studio is not the game, so there is no menu to wait for; it does its own
-// navigation once mic permission is granted.
+// The studio is not the game, so there is no menu to wait for; it does its own navigation once mic permission is granted.
 const { page, finish } = await openApp({
   name: 'studio',
-  // The whole check should take seconds. Anything longer is a hang, and dying
-  // loudly beats a background job that never returns.
+  // The whole check should take seconds.
   timeoutMs: 90000,
   open: false,
   context: { viewport: { width: 1280, height: 820 }, deviceScaleFactor: 2 },
@@ -119,8 +103,6 @@ if (!resolved) {
   if (resolved.source !== 'recorded') fail('clip did not resolve as a recording');
 }
 
-// The spawned server holds the event loop open through its stdio pipe, so
-// finish() exits deliberately rather than waiting to be reaped. `cleanup` still
-// runs on exit.
+// The spawned server holds the event loop open through its stdio pipe.
 step('closing');
 await finish();

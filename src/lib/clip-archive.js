@@ -1,27 +1,8 @@
-/**
- * Reads and writes the export archive: an ordinary .zip.
- *
- * The layout mirrors the repo on purpose:
- *
- *   recorded/letter-be-name.webm    ← exactly what public/audio/recorded/ wants
- *   urdu-clips.json                 ← what was exported, and when
- *   README.txt                      ← how to promote these into the repo
- *
- * so refining a take means unzipping, opening one file in an audio editor, and
- * copying the folder into the repo. No renaming, no tooling.
- *
- * Written by hand rather than pulling in a zip library. Entries are STORE
- * (uncompressed) because Opus and AAC are already compressed and deflating them
- * buys nothing but CPU. Reading accepts STORE *and* DEFLATE, so an archive that
- * has been unzipped, edited and re-zipped by an ordinary zip tool still imports
- * — which is the whole point of choosing a real format over a JSON blob.
- */
+/* Reads and writes the export archive: an ordinary .zip. */
 
 const LOCAL_SIG = 0x04034b50;
 const CENTRAL_SIG = 0x02014b50;
 const EOCD_SIG = 0x06054b50;
-
-// ------------------------------------------------------------------ crc32
 
 let crcTable = null;
 function crc32(bytes) {
@@ -40,10 +21,7 @@ function crc32(bytes) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-/**
- * Zip stores timestamps as MS-DOS date and time, which has a two-second
- * resolution and an epoch of 1980. Anything older than 1980 clamps.
- */
+/* Zip stores timestamps as MS-DOS date and time, which has a two-second resolution and an epoch of 1980. */
 function dosDateTime(date) {
   const year = Math.max(1980, date.getFullYear());
   return {
@@ -52,8 +30,6 @@ function dosDateTime(date) {
     date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
   };
 }
-
-// ------------------------------------------------------------------ write
 
 /**
  * @param {{name: string, bytes: Uint8Array}[]} entries
@@ -126,8 +102,6 @@ export function writeZip(entries, now = new Date()) {
   });
 }
 
-// ------------------------------------------------------------------- read
-
 async function inflateRaw(bytes) {
   if (typeof DecompressionStream === 'undefined') {
     throw new Error(
@@ -155,9 +129,7 @@ export async function readZip(input) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
 
-  // Find the end-of-central-directory record by scanning back from the end. It
-  // is variable length because of the trailing comment, so there is no fixed
-  // offset to read.
+  // Find the end-of-central-directory record by scanning back from the end.
   let eocd = -1;
   for (let i = bytes.length - 22; i >= 0 && i > bytes.length - 22 - 65536; i--) {
     if (view.getUint32(i, true) === EOCD_SIG) {
@@ -186,8 +158,7 @@ export async function readZip(input) {
       bytes.subarray(pointer + 46, pointer + 46 + nameLength)
     );
 
-    // The local header repeats the name and extra lengths, and they can differ
-    // from the central copy, so the data offset must come from the local header.
+    // The local header repeats the name and extra lengths.
     const localNameLength = view.getUint16(localOffset + 26, true);
     const localExtraLength = view.getUint16(localOffset + 28, true);
     const dataStart = localOffset + 30 + localNameLength + localExtraLength;
@@ -207,8 +178,6 @@ export async function readZip(input) {
 
   return entries;
 }
-
-// --------------------------------------------------------------- the archive
 
 const ARCHIVE_VERSION = 1;
 const CLIPS_DIR = 'recorded/';
@@ -241,9 +210,7 @@ Either way, finish with:
 Note that committing these publishes your voice to anyone who has the repo.
 `;
 
-/**
- * Builds the export archive.
- *
+/** Builds the export archive.
  * @param {{key: string, slug: string, ext: string, blob: Blob, recordedAt?: number}[]} clips
  * @returns {Promise<Blob>}
  */
@@ -280,18 +247,9 @@ export async function buildArchive(clips) {
   return writeZip(entries);
 }
 
-/**
- * Reads an export archive back into clips.
- *
- * Tolerant on purpose. The metadata file is used when present, but clips are
- * recovered from the filenames under recorded/ if it is missing or damaged, so
- * an archive somebody assembled by hand still imports. Unknown slugs are
- * reported rather than dropped silently, since a typo in a hand-edited filename
- * would otherwise look like a successful import of nothing.
- *
+/** Reads an export archive back into clips.
  * @param {Blob} blob
- * @param {(slug: string) => string|null} keyForSlug maps a filename back to a
- *   clip key, using the expected list rather than parsing the name.
+ * @param {(slug: string) => string|null} keyForSlug Maps a slug to a clip key.
  * @returns {Promise<{clips: object[], unknown: string[]}>}
  */
 export async function readArchive(blob, keyForSlug) {

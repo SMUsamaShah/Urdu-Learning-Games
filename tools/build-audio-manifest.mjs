@@ -1,9 +1,4 @@
-/**
- * Writes content/audio.json: which clips exist and where.
- *
- * Run after recording anything, or after adding a letter or word.
- * Usage: npm run audio:manifest
- */
+/* Writes content/audio.json: which clips exist and where. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -39,8 +34,7 @@ console.log(
     `${counts.recorded} recorded, ${counts.tts} generated, ${counts.missing} missing`
 );
 
-// Missing clips are the normal state while recording is in progress, so this
-// reports rather than fails. The app treats a missing clip as silence.
+// Missing clips are the normal state while recording is in progress, so this reports rather than fails.
 if (counts.missing > 0 && process.argv.includes('--list-missing')) {
   console.log('\nStill needed:');
   for (const key of missing) console.log('  ' + key);

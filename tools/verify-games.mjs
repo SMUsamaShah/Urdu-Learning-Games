@@ -1,26 +1,8 @@
-/**
- * Plays every game and checks it behaves.
- *
- * Screenshots show a round looks right; this checks it *works* — that the
- * answer is always reachable, that a right answer advances and a wrong one does
- * not, and that nothing throws over a long sitting. The invariant that matters
- * most is the first one: if a line-up could ever be built without the target in
- * it, the round would be unwinnable and a child has no way to tell that it is
- * the game that is broken rather than themselves.
- *
- * Everything here waits on a condition rather than on a duration. Phaser
- * advances its clock by a fixed per-frame delta, so when headless WebGL renders
- * at around half the usual frame rate, game time runs at about half wall-clock
- * speed and a 760ms delayedCall can take 1.6s of real time. Sleeping a fixed
- * number of milliseconds produces a test that fails on slow machines and passes
- * on fast ones, which is worse than no test.
- *
- * Usage: npm run dev &  then  node tools/verify-games.mjs [baseUrl]
- */
+/* Plays every game and checks it behaves. */
 
 import { fail, openApp, startScene, step } from './harness.mjs';
 
-/** The scenes built on QuizScene, which all answer to the same driving. */
+/* The scenes built on QuizScene, which all answer to the same driving. */
 const QUIZZES = [
   { key: 'FindLetter', rounds: 12 },
   { key: 'WordPictures', rounds: 8 },
@@ -37,19 +19,7 @@ const { page, finish } = await openApp({
   timeoutMs: 420000,
 });
 
-/**
- * Carrying something across the board with a real mouse.
- *
- * Half the screens in this app are drags now, and Phaser's drag events only
- * fire for a pointer that actually moves — emitting `pointerup` on a tile the
- * way the tap checks do would test nothing at all on those screens. So this
- * presses, moves in steps, and lets go, in page coordinates worked out from
- * where the canvas happens to be.
- *
- * The canvas is measured per call rather than once: several checks below start
- * a scene between drags, and Phaser resizes the canvas when the scale manager
- * reflows.
- */
+/* Carrying something across the board with a real mouse. */
 async function dragTo(from, tx, ty, settle = 400) {
   const geo = await page.evaluate(() => {
     const box = window.__game.canvas.getBoundingClientRect();
@@ -68,21 +38,7 @@ async function dragTo(from, tx, ty, settle = 400) {
   await page.waitForTimeout(settle);
 }
 
-// ---------------------------------------------------------------- the menu
-
-/**
- * Every game reachable, and every tile pointing somewhere real.
- *
- * The menu shows ten at a time and swipes for the rest, so "the games all work"
- * is not the same claim as "the games can all be got to". Both failures here
- * are silent: a tile naming a scene that is not registered does nothing at all
- * when tapped, and a game that falls off the end of the paging simply is not in
- * the app any more.
- *
- * Collected by walking the pages rather than by reading a list of what *should*
- * be on them — the paging is the thing under test, and asking it to agree with
- * itself would prove nothing.
- */
+/* Every game reachable, and every tile pointing somewhere real. */
 step('checking every game is reachable by paging through the menu');
 const menu = await page.evaluate(async () => {
   const { GAMES, missingIcons } = await import('/src/lib/games.js');
@@ -96,8 +52,7 @@ const menu = await page.evaluate(async () => {
     shown: pages.flat().map((g) => g.scene),
     pages: pages.length,
     perPage: PER_PAGE,
-    // No page may be over its size, or the last row would be drawn off the
-    // grid and the games on it would be invisible rather than merely late.
+    // No page may be over its size.
     oversized: pages.filter((one) => one.length > PER_PAGE).length,
     unknown: GAMES.filter((g) => !registered.includes(g.scene)).map((g) => g.scene),
     missingIcons: missingIcons(),
@@ -112,15 +67,7 @@ if (!menu.unknown.length && !unreachable.length && !menu.missingIcons.length && 
   step(`${menu.listed.length} games over ${menu.pages} pages, all reachable, every tile illustrated`);
 }
 
-/**
- * A game switched off is gone from everywhere, not just from the menu.
- *
- * The menu is the obvious half and the one anybody would check. چلو is the half
- * that would rot: it used to read its list of playable scenes once at import,
- * so a game switched off in Settings went on turning up in runs for the rest of
- * the session — and a run is the one place a child meets a game without picking
- * it, so nobody would ever see where it came from.
- */
+/* A game switched off is gone from everywhere, not just from the menu. */
 step('checking a switched-off game disappears');
 const hidden = await page.evaluate(async () => {
   const { menuGames, pagesOf, resetMenu } = await import('/src/lib/menu.js');
@@ -145,8 +92,7 @@ else step(`  "${hidden.victim}" off: gone from the pages and from the run, and b
 
 const start = async (key) => {
   await startScene(page, key);
-  // A beat for the entrance tweens; nothing below depends on them finishing,
-  // but a tile added on a delay would otherwise be missed.
+  // A beat for the entrance tweens.
   await page.waitForTimeout(400);
 };
 
@@ -159,8 +105,6 @@ const sceneState = (key) =>
       streak: scene.streak,
     };
   }, key);
-
-// ------------------------------------------------------------- the quizzes
 
 for (const { key, rounds } of QUIZZES) {
   await start(key);
@@ -229,8 +173,6 @@ for (const { key, rounds } of QUIZZES) {
     step(`${key}: wrong answer kept the round and reset the streak`);
   }
 }
-
-// ---------------------------------------------------------------- balloons
 
 if (!process.exitCode) {
   await start('Balloons');
@@ -303,8 +245,7 @@ if (!process.exitCode) {
     }
   }
 
-  // Let it run untouched: balloons recycle off the top, and the target must be
-  // re-launched rather than quietly disappearing.
+  // Let it run untouched: balloons recycle off the top, and the target must be re-launched rather than quietly disappearing.
   step('idling to check the answer is always available');
   await page.waitForTimeout(6000);
   const idle = await page.evaluate(() => {
@@ -315,13 +256,10 @@ if (!process.exitCode) {
     };
   });
   if (!idle.hasTarget) fail('after idling, no balloon carries the answer');
-  // A balloon destroyed without killing its rise tween still recycles itself,
-  // which quietly multiplies the balloons each round until the screen is a mess.
+  // A balloon destroyed without killing its rise tween still recycles itself.
   else if (idle.count > 8) fail(`${idle.count} balloons on screen — they are leaking`);
   else step(`${idle.count} balloons on screen, answer present`);
 }
-
-// ---------------------------------------------------------------- sequence
 
 if (!process.exitCode) {
   await start('Sequence');
@@ -340,8 +278,7 @@ if (!process.exitCode) {
       };
     });
 
-    // The caterpillar has to be a genuine run of the alphabet, or the question
-    // has no answer that reasoning could reach.
+    // The caterpillar has to be a genuine run of the alphabet, or the question has no answer that reasoning could reach.
     const from = state.sequence.indexOf(state.window[0]);
     const expected = state.sequence.slice(from, from + state.window.length);
     if (expected.join() !== state.window.join()) {
@@ -359,8 +296,7 @@ if (!process.exitCode) {
       break;
     }
 
-    // A distractor already sitting in the caterpillar makes the round
-    // unanswerable by reasoning: the child can see that letter is elsewhere.
+    // A distractor already sitting in the caterpillar makes the round unanswerable by reasoning.
     const alsoShown = state.ids.filter(
       (id) => id !== state.target && state.window.includes(id)
     );
@@ -387,8 +323,6 @@ if (!process.exitCode) {
   }
   if (!process.exitCode) step('every run was consecutive and every line-up was answerable');
 }
-
-// ------------------------------------------------------------------ hidden
 
 if (!process.exitCode) {
   await start('Hidden');
@@ -418,8 +352,7 @@ if (!process.exitCode) {
     fail(`hunting for ${first.wanted} of "${first.target}" but ${present} are on screen`);
   } else step(`${first.letters.length} letters hidden, ${present} of them "${first.target}"`);
 
-  // Nothing may overlap. Two letters on top of each other are unreadable and
-  // impossible to tap apart, which turns a hunt into a mess.
+  // Nothing may overlap.
   for (let i = 0; i < first.letters.length; i++) {
     for (let j = i + 1; j < first.letters.length; j++) {
       const a = first.letters[i];
@@ -433,8 +366,7 @@ if (!process.exitCode) {
     }
   }
 
-  // And every one has to be on screen. A letter placed off the edge is one the
-  // round can never be finished without.
+  // And every one has to be on screen.
   for (const l of first.letters) {
     if (l.x < 40 || l.x > 1240 || l.y < 40 || l.y > 700) {
       fail(`a hidden letter is off screen at ${l.x.toFixed(0)},${l.y.toFixed(0)}`);
@@ -476,8 +408,6 @@ if (!process.exitCode) {
   else step('all found and a new round dealt');
 }
 
-// ------------------------------------------------------------------ bounce
-
 if (!process.exitCode) {
   await start('Bounce');
   step('Bounce: checking the answer is always catchable');
@@ -497,9 +427,7 @@ if (!process.exitCode) {
     fail(`"${first.target}" is being asked for but is not bouncing`);
   } else step(`${first.balls.length} balls, the answer among them`);
 
-  // Balls bounce for ever rather than leaving, so the answer can never go away
-  // while a child is still looking at the prompt. Watched over a real second,
-  // because this is a tween on the clock rather than scene state.
+  // Balls bounce for ever rather than leaving, so the answer can never go away while a child is still looking at the prompt.
   await page.waitForTimeout(1200);
   const later = await state();
   const stillThere = later.balls.some((b) => b.letterId === first.target);
@@ -510,8 +438,7 @@ if (!process.exitCode) {
     else step('the balls bounce, and the answer stays');
   }
 
-  // A wrong ball must stay on screen: removing it would make the answer easier
-  // to find by elimination every time somebody guessed.
+  // A wrong ball must stay on screen.
   const wrong = first.balls.find((b) => b.letterId !== first.target);
   if (wrong) {
     await page.evaluate((id) => {
@@ -541,8 +468,6 @@ if (!process.exitCode) {
   else step('caught it, and a new round started');
 }
 
-// ---------------------------------------------------------- connect pairs
-
 if (!process.exitCode) {
   await start('ConnectPairs');
   step('ConnectPairs: drawing a line from each letter to its picture');
@@ -567,16 +492,14 @@ if (!process.exitCode) {
 
   const first = await state();
 
-  // Every letter must have exactly one picture to go to, and vice versa. A
-  // letter with no partner cannot be joined and the board never finishes.
+  // Every letter must have exactly one picture to go to, and vice versa.
   for (const letter of first.letters) {
     const matches = first.pictures.filter((p) => p.letterId === letter.letterId);
     if (matches.length !== 1) {
       fail(`"${letter.letterId}" has ${matches.length} pictures, not one`);
     }
   }
-  // The two columns must not be in the same order, or every pair is simply the
-  // one opposite and the board can be cleared without looking at anything.
+  // The two columns must not be in the same order.
   const sameOrder = first.letters.every(
     (l, i) => first.pictures[i]?.letterId === l.letterId
   );
@@ -635,8 +558,6 @@ if (!process.exitCode) {
   }
 }
 
-// --------------------------------------------------------------- in order
-
 if (!process.exitCode) {
   await start('InOrder');
   step('InOrder: checking the run must be popped in order');
@@ -655,8 +576,7 @@ if (!process.exitCode) {
 
   const first = await board();
 
-  // The run has to be a real consecutive slice, and every letter in it has to
-  // be on screen — a bubble missing from the middle makes the board unfinishable.
+  // The run has to be a real consecutive slice.
   const at = first.sequence.indexOf(first.run[0]);
   if (!first.run.every((id, i) => first.sequence[at + i] === id)) {
     fail('the run is not a consecutive slice of the alphabet');
@@ -671,9 +591,7 @@ if (!process.exitCode) {
       window.__game.scene.getScene('InOrder').bubbles.find((b) => b.letterId === id)?.emit('pointerup');
     }, letterId);
 
-  // Out of order must do nothing at all — and the bubble must stay, because
-  // working through them until one gives is how a child finds out what next
-  // means.
+  // Out of order must do nothing at all.
   if (first.run.length > 1) {
     await tap(first.run[first.run.length - 1]);
     await page.waitForTimeout(350);
@@ -701,8 +619,6 @@ if (!process.exitCode) {
   else step('run popped and a new one dealt');
 }
 
-// ------------------------------------------------------------------- paint
-
 if (!process.exitCode) {
   await start('Paint');
   step('Paint: checking a finger actually paints');
@@ -719,9 +635,7 @@ if (!process.exitCode) {
   });
   if (before.touched) fail('the letter was already painted before anything touched it');
 
-  // A real stroke down the middle of the letter. Painting is done by writing
-  // into a canvas texture from pointer events, so poking scene state would
-  // check nothing that a child's finger goes through.
+  // A real stroke down the middle of the letter.
   const [sx, sy] = toPage(before.centre.x, before.centre.y - 120);
   await page.mouse.move(sx, sy);
   await page.mouse.down();
@@ -735,8 +649,7 @@ if (!process.exitCode) {
 
   const painted = await page.evaluate(() => {
     const scene = window.__game.scene.getScene('Paint');
-    // Count how many pixels are neither transparent nor the white the letter
-    // starts as. Anything else can only have come from the brush.
+    // Count pixels that are neither transparent nor the initial white fill.
     const ctx = scene.canvas.context;
     const { width, height } = scene.canvas;
     const { data } = ctx.getImageData(0, 0, width, height);
@@ -769,8 +682,6 @@ if (!process.exitCode) {
   else step('Next moves on, and the new letter starts clean');
 }
 
-// ---------------------------------------------------------------- baskets
-
 if (!process.exitCode) {
   await start('Baskets');
   step('Baskets: checking the pile can be sorted');
@@ -795,8 +706,7 @@ if (!process.exitCode) {
 
   const first = await state();
 
-  // Both baskets must have something to receive. An empty basket at the end
-  // reads as a mistake rather than as a finished job.
+  // Both baskets must have something to receive.
   for (const kind of first.kinds) {
     if (!first.tiles.some((t) => t.letterId === kind)) {
       fail(`nothing in the pile belongs in the "${kind}" basket`);
@@ -825,8 +735,7 @@ if (!process.exitCode) {
     await page.waitForTimeout(350);
   };
 
-  // The wrong basket must refuse it. Dropping ب into the ت basket and having it
-  // stick would make the whole game unwinnable-by-accident rather than a sort.
+  // The wrong basket must refuse it.
   const tile = first.tiles[0];
   const wrongBasket = first.baskets.find((b) => b.letterId !== tile.letterId);
   if (wrongBasket) {
@@ -862,16 +771,11 @@ if (!process.exitCode) {
   }
 }
 
-// ------------------------------------------------------------ letter puzzle
-
 if (!process.exitCode) {
   await start('LetterPuzzle');
   step('LetterPuzzle: dragging the pieces home');
 
-  // The only screen whose input is a drag, so this is driven with a real
-  // mouse.down / move / up against the canvas rather than by poking scene
-  // state. A snap that only works when the scene moves the piece itself would
-  // pass every state-poking check and fail for every child.
+  // The only screen whose input is a drag.
   const geo = await page.evaluate(() => {
     const rect = window.__game.canvas.getBoundingClientRect();
     const scale = rect.width / window.__game.scale.width;
@@ -904,8 +808,7 @@ if (!process.exitCode) {
     const [ex, ey] = toPage(tx, ty);
     await page.mouse.move(sx, sy);
     await page.mouse.down();
-    // Several steps: Phaser starts a drag on movement, and one jump from
-    // grab to release is not a drag as far as the input manager is concerned.
+    // Move in steps so Phaser recognises the gesture as a drag.
     for (let i = 1; i <= 6; i++) {
       await page.mouse.move(sx + ((ex - sx) * i) / 6, sy + ((ey - sy) * i) / 6);
       await page.waitForTimeout(16);
@@ -914,14 +817,9 @@ if (!process.exitCode) {
     await page.waitForTimeout(300);
   };
 
-  // Dropped far from home, a piece must go back to the tray rather than stick
-  // where it landed — a scatter of near-misses over the ghost makes the letter
-  // impossible to read.
+  // Dropped far from home.
   await dragTo(first.pieces[0], 300, 250);
-  // Waited for rather than sampled after a pause. The piece flies home on a
-  // tween, which runs on Phaser's clock — and headless that clock is roughly
-  // half wall-clock speed, so a fixed 300ms sometimes caught the piece still
-  // in the air and reported a broken game.
+  // Waited for rather than sampled after a pause.
   const wentBack = await page
     .waitForFunction(
       (home) => {
@@ -964,8 +862,6 @@ if (!process.exitCode) {
   }
 }
 
-// ------------------------------------------------------------- caterpillar
-
 for (const KEY of ['Caterpillar', 'NumberLine']) {
   if (process.exitCode) break;
   await start(KEY);
@@ -986,28 +882,24 @@ for (const KEY of ['Caterpillar', 'NumberLine']) {
 
   const first = await board();
 
-  // The run has to be a real consecutive slice of the alphabet, or the game is
-  // teaching an order that does not exist.
+  // The run has to be a real consecutive slice of the alphabet, or the game is teaching an order that does not exist.
   const at = first.sequence.indexOf(first.run[0]);
   const consecutive =
     at > -1 && first.run.every((id, i) => first.sequence[at + i] === id);
   if (!consecutive) fail('the run is not a consecutive slice of the alphabet');
 
-  // Every hole's answer must be in the tray. A hole whose letter was never
-  // offered cannot be filled, and the round would simply stop.
+  // Every hole's answer must be in the tray.
   const trayIds = first.tray.map((t) => t.letterId);
   for (const hole of first.holes) {
     if (!trayIds.includes(first.run[hole])) {
       fail(`"${first.run[hole]}" is a hole but is not in the tray`);
     }
   }
-  // And the tray must offer more than the answers, or every tap is right and
-  // there is nothing being asked.
+  // And the tray must offer more than the answers, or every tap is right and there is nothing being asked.
   if (trayIds.length <= first.holes.length) {
     fail(`the tray has ${trayIds.length} letters for ${first.holes.length} holes — no choice at all`);
   }
-  // Holes never at either end: those are answerable by carrying on, which is
-  // the easier question Sequence already asks.
+  // Holes never at either end: those are answerable by carrying on, which is the easier question Sequence already asks.
   if (first.holes.includes(0) || first.holes.includes(first.run.length - 1)) {
     fail('a hole is at the end of the run');
   }
@@ -1015,7 +907,7 @@ for (const KEY of ['Caterpillar', 'NumberLine']) {
     step(`${first.run.length} in the run, ${first.holes.length} holes, ${trayIds.length} in the tray`);
   }
 
-  /** Where a tray letter and the gap being asked for are, on the board. */
+  /* Where a tray letter and the gap being asked for are, on the board. */
   const places = (letterId) =>
     page.evaluate(([k, id]) => {
       const scene = window.__game.scene.getScene(k);
@@ -1024,7 +916,7 @@ for (const KEY of ['Caterpillar', 'NumberLine']) {
       return tile && hole ? { tile: { x: tile.x, y: tile.y }, hole: { x: hole.x, y: hole.y } } : null;
     }, [KEY, letterId]);
 
-  /** Carries a tray letter into the gap the board is asking for. */
+  /* Carries a tray letter into the gap the board is asking for. */
   const dragTray = async (letterId) => {
     const where = await places(letterId);
     if (!where) return false;
@@ -1032,9 +924,7 @@ for (const KEY of ['Caterpillar', 'NumberLine']) {
     return true;
   };
 
-  // A tap does nothing at all now. Worth asserting rather than assuming: the
-  // tap handler is one line to add back by accident, and a game that quietly
-  // accepts both is a game nobody notices has stopped being a drag.
+  // A tap does nothing at all now.
   const tapped = await page.evaluate((k) => {
     const scene = window.__game.scene.getScene(k);
     const tile = scene.tray.list.find((t) => !t.used);
@@ -1074,8 +964,6 @@ for (const KEY of ['Caterpillar', 'NumberLine']) {
   else step('run completed and a new one dealt');
 }
 
-// ----------------------------------------------------------------- tap all
-
 if (!process.exitCode) {
   await start('TapAll');
   step('TapAll: checking the board can be cleared');
@@ -1094,10 +982,7 @@ if (!process.exitCode) {
 
   const first = await board();
 
-  // The invariant this game turns on: the number of targets actually on the
-  // board must equal the number it is waiting for. One short and the round can
-  // never be finished, and a child has no way to tell the board is unwinnable
-  // rather than that they have missed one.
+  // The board target count must match the requested count.
   const present = first.tiles.filter((t) => t.letterId === first.target).length;
   if (present !== first.wanted) {
     fail(`waiting for ${first.wanted} of "${first.target}" but ${present} are on the board`);
@@ -1123,8 +1008,7 @@ if (!process.exitCode) {
     else step('a wrong tap costs nothing');
   }
 
-  // Tapping the same target twice must not count twice, or the round can be
-  // finished without finding the rest.
+  // Tapping the same target twice must not count twice, or the round can be finished without finding the rest.
   const rightIndexes = first.tiles
     .map((t, i) => (t.letterId === first.target ? i : -1))
     .filter((i) => i > -1);
@@ -1152,8 +1036,6 @@ if (!process.exitCode) {
   else step('board cleared and a new one dealt');
 }
 
-// -------------------------------------------------------------- join forms
-
 if (!process.exitCode) {
   await start('JoinForms');
   step('JoinForms: checking the board is joinable');
@@ -1176,17 +1058,12 @@ if (!process.exitCode) {
 
   const first = await board();
 
-  // The empty board is a real failure mode and a quiet one. `letterForms`
-  // returns the form *names*, and reading it as though it were a map of them
-  // gave every letter no partner: the pool came out empty, the board came up
-  // with nothing on it, and not one thing threw. Only a screenshot caught it.
+  // The empty board is a real failure mode and a quiet one.
   if (first.pool === 0) fail('no letters have a second form — the board is empty');
   else if (first.cards.length === 0) fail('the board was dealt with no cards on it');
   else step(`${first.pool} letters available, ${first.cards.length} cards dealt`);
 
-  // Every card must have exactly one partner: the same letter, on the other
-  // row, wearing a different face. An odd card out cannot be joined, and a
-  // child has no way to tell that it is the board that is stuck.
+  // Every card must have exactly one partner: the same letter, on the other row, wearing a different face.
   const byLetter = new Map();
   for (const card of first.cards) {
     byLetter.set(card.letterId, [...(byLetter.get(card.letterId) ?? []), card]);
@@ -1214,8 +1091,7 @@ if (!process.exitCode) {
       [letterId, row]
     );
 
-  // A wrong pair must cost nothing: no card leaves the board, and the one that
-  // was held is put back down rather than staying stuck to the finger.
+  // A wrong pair must cost nothing.
   const letters = [...byLetter.keys()];
   if (letters.length >= 2) {
     await tap(letters[0], 0);
@@ -1252,8 +1128,6 @@ if (!process.exitCode) {
   else step('board finished and a new one dealt');
 }
 
-// ------------------------------------------------------------------ memory
-
 if (!process.exitCode) {
   await start('Memory');
   step('Memory: checking the board is solvable');
@@ -1275,10 +1149,7 @@ if (!process.exitCode) {
 
   const first = await board();
 
-  // The invariant that makes this game playable at all: every card has exactly
-  // one partner, and a pair is one letter and one picture. A board with an odd
-  // card out cannot be finished, and the child has no way to tell that it is
-  // the game that is stuck rather than themselves.
+  // The invariant that makes this game playable at all.
   const counts = new Map();
   for (const card of first.cards) {
     counts.set(card.pairId, [...(counts.get(card.pairId) ?? []), card.kind]);
@@ -1295,13 +1166,13 @@ if (!process.exitCode) {
   }
   if (!process.exitCode) step(`${counts.size} pairs, each a letter and a picture`);
 
-  /** Waits for the board to accept input again. */
+  /* Waits for the board to accept input again. */
   const settle = () =>
     page.waitForFunction(() => !window.__game.scene.getScene('Memory').locked, null, {
       timeout: 20000,
     });
 
-  /** Turns two cards over by index. */
+  /* Turns two cards over by index. */
   const turnTwo = async (a, b) => {
     await settle();
     await page.evaluate(([i, j]) => {
@@ -1335,8 +1206,7 @@ if (!process.exitCode) {
     else step('mismatched pair turned back over');
   }
 
-  // Solve the whole board. Finishing has to start a new one, or the game ends
-  // in a dead screen.
+  // Solve the whole board.
   step('Memory: solving the board');
   const solved = await (async () => {
     for (let i = 0; i < 12; i++) {
@@ -1383,15 +1253,6 @@ if (!process.exitCode) {
   }
 }
 
-// --- Building a whole word --------------------------------------------------
-//
-// The quiz games above are all one tap; this one is a word's worth of taps in a
-// fixed order, and the order is the game. Three things can go wrong quietly: the
-// slot being asked for could be the wrong end of the word (Urdu is written right
-// to left and the row is built from the right), a wrong letter could be accepted,
-// and the joined word at the end could fail to appear — leaving the child with a
-// row of separate letters and no sign that they spell anything.
-
 step('BuildWord: spelling a word from its letters');
 await start('BuildWord');
 await page.waitForTimeout(900);
@@ -1408,8 +1269,7 @@ const deal = await page.evaluate(() => {
 
 if (!deal.letters?.length) fail('BuildWord dealt no letters at all');
 else {
-  // Every letter of the word has to be in the tray, or the round cannot be
-  // finished. The tray may hold more — the distractors — but never fewer.
+  // Every letter of the word has to be in the tray, or the round cannot be finished.
   const missing = deal.letters.filter(
     (id, i) =>
       deal.tray.filter((t) => t === id).length <
@@ -1417,8 +1277,7 @@ else {
   );
   if (missing.length) fail(`BuildWord wants ${missing.join()} and the tray has none`);
 
-  // The first letter of the word is the rightmost slot. Getting this backwards
-  // would still play — it would just teach a child to spell left to right.
+  // The first letter of the word is the rightmost slot.
   const rightmost = Math.max(...deal.slotX);
   if (deal.slotX[0] !== rightmost) {
     fail(
@@ -1428,7 +1287,7 @@ else {
   } else step(`  ${deal.letters.length} letters, first one at the right-hand end`);
 }
 
-/** Where a tray letter and a slot are, right now. */
+/* Where a tray letter and a slot are, right now. */
 const spellingBoard = () =>
   page.evaluate(() => {
     const scene = window.__game.scene.getScene('BuildWord');
@@ -1451,8 +1310,7 @@ const spellingBoard = () =>
     };
   });
 
-// A tap does nothing. This screen was a tap game a commit ago and the handler
-// is one line to reintroduce, so it is asserted rather than assumed.
+// A tap does nothing.
 await page.evaluate(() => {
   window.__game.scene.getScene('BuildWord').tray.list.find((t) => !t.used)?.emit('pointerup');
 });
@@ -1462,8 +1320,6 @@ if ((await spellingBoard()).filled !== 0) {
 } else step('  a tap does nothing');
 
 // Dropped in mid-air: nothing filled, and the letter is back where it started.
-// This is the commonest thing a small finger does and the one that loses a tile
-// off the board entirely if swimHome is wrong.
 let board = await spellingBoard();
 const stray = board.tray.find((t) => !t.used);
 await dragTo(stray, 360, 300);
@@ -1485,9 +1341,7 @@ if (wrongSlot) {
   else step('  the wrong slot refuses it');
 }
 
-// And then the whole word. Deliberately last letter first: a letter belongs in
-// its own slot whichever order it is placed in, and a game that insisted on
-// right-to-left would fail here.
+// And then the whole word.
 for (const index of [...deal.letters.keys()].reverse()) {
   board = await spellingBoard();
   const slot = board.slots[index];
@@ -1510,13 +1364,6 @@ if (done.filled !== done.total) {
 } else if (!done.joined) {
   fail('BuildWord: the word was spelled and the joined word never appeared');
 } else step(`  spelled back to front, and ${deal.word} appeared joined up`);
-
-// --- The missing letter is carried into its hole -----------------------------
-//
-// FillLetter is a QuizScene, so everything about picking an answer is already
-// covered by the loop at the top of this file — except that this one is the
-// only quiz whose answer is dragged rather than tapped. That seam
-// (`dragTarget` in QuizScene) is what gets checked here.
 
 step('FillLetter: dropping the letter into the gap');
 await start('FillLetter');
@@ -1563,25 +1410,9 @@ else {
   else step('  and the right one, dropped in the gap, answers the round');
 }
 
-// --- The furniture stays on the screen ---------------------------------------
-//
-// Props are baked into a texture whose size is worked out from the drawing, and
-// getting that arithmetic wrong does not throw — it silently crops. The first
-// caterpillar lost the side of its head that way, and then, once the texture
-// was big enough, ran the head off the right of the canvas instead. Both are
-// invisible unless somebody opens that one screen.
-
 step('every prop fits on the screen');
 
-// Hand-written, and it has to stay that way — a prop is found by walking a
-// live scene, so there is no list to read this off. It was two names for as
-// long as props.js had two props, and the first generated prop went in without
-// being added here: Whack's mounds are twice as tall as the ellipses they
-// replaced, the bottom row of them hung off the bottom of the screen, and this
-// check passed while looking at two other screens.
-//
-// So: **a scene that gains a prop gains a name here.** Both kinds count, drawn
-// and generated.
+// Hand-written, and it has to stay that way — a prop is found by walking a live scene, so there is no list to read.
 const PROP_SCREENS = ['Caterpillar', 'Baskets', 'Whack', 'Bounce'];
 for (const key of PROP_SCREENS) {
   await start(key);
@@ -1621,20 +1452,7 @@ for (const key of PROP_SCREENS) {
   if (!process.exitCode) step(`  ${key}: ${props.props.length} prop(s), all on screen`);
 }
 
-// ------------------------------------------------- the letters he gets wrong
-
-/**
- * That a wrong answer in a real game really does change what the games deal.
- *
- * tests/mastery.test.mjs already proves the distribution, by calling the module
- * directly. What it cannot prove is that the wire is connected: that a scene
- * passes a subject when it reports an answer, and that the same scene asks
- * mastery for its next target rather than rolling a die. Both halves are one
- * line each, in seventeen and twenty places, and either could be left out of a
- * scene without a single test noticing.
- *
- * So this plays FindLetter badly on purpose and then counts.
- */
+/* That a wrong answer in a real game really does change what the games deal. */
 step('a letter he gets wrong comes back more often');
 
 await start('FindLetter');
@@ -1645,9 +1463,7 @@ const wrongOne = await page.evaluate(async (rounds) => {
   mastery.reset();
   const scene = window.__game.scene.getScene('FindLetter');
 
-  // Answer the same letter wrong over and over. The scene has to be told which
-  // letter that is, so if it is the target that gets blamed rather than the
-  // tile that was tapped, this is the id that ends up with the record.
+  // Answer the same letter wrong over and over.
   const blamed = scene.target;
   for (let i = 0; i < rounds; i++) {
     const wrong = scene.choicesLayer.list.find((t) => t.choiceId !== scene.target);
@@ -1669,16 +1485,7 @@ if (!wrongOne.history.length) {
   step(`  ${MISSES} wrong answers on "${wrongOne.blamed}" recorded as ${wrongOne.history}`);
 }
 
-// And that the picking end reads it. Drawn through the scene's own pickTarget,
-// not through mastery directly, because the thing in doubt is the scene.
-//
-// **Against a letter he has never met, not against one he has mastered.** The
-// app's 4x is the gap between "always wrong" and "always right"; every other
-// letter here has been answered nought times and sits at the unseen weight of
-// 2, which is deliberately partway up. So the honest expectation on a fresh
-// record is about 2x, and asserting 4x here would be asserting something the
-// design does not claim. The 4x itself is proved in tests/mastery.test.mjs,
-// where the other letters can be mastered first.
+// And that the picking end reads it.
 if (!process.exitCode) {
   const share = await page.evaluate(async (id) => {
     const scene = window.__game.scene.getScene('FindLetter');
@@ -1705,28 +1512,13 @@ if (!process.exitCode) {
   }
 }
 
-// --------------------------------------------------- swiping the menu's pages
-
-/**
- * A swipe that starts on a tile turns the page and opens nothing.
- *
- * The one check that earns its keep on this screen. `games-panel.js`, which
- * this replaced, refused to have a draggable list at all and said why: *"a
- * dragged list steals the drag from the tiles underneath it — a child pressing
- * a tile and moving their finger a few pixels would scroll instead of
- * choosing."* The answer is a slop threshold, in src/lib/swipe.js, and a
- * threshold is the kind of thing that is set to the wrong number once and then
- * believed for a year.
- *
- * Both directions are checked, because they fail apart: a threshold of zero
- * opens a game on every swipe, and a threshold of infinity never turns a page.
- */
+/* A swipe that starts on a tile turns the page and opens nothing. */
 step("swiping the menu's pages");
 
 await startScene(page, 'Home');
 await page.waitForTimeout(500);
 
-/** Where a tile is on screen, in page coordinates, through the real canvas. */
+/* Where a tile is on screen, in page coordinates, through the real canvas. */
 async function tileOnScreen() {
   return page.evaluate(() => {
     const home = window.__game.scene.getScene('Home');

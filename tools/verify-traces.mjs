@@ -1,39 +1,18 @@
-/**
- * Fixing a letter's pen path on the device, and having it reach the game.
- *
- * The whole point of the Settings editor is that a correction made on a tablet
- * is playable on that tablet immediately and can then be sent to me as a file.
- * Every link in that is invisible from anywhere else: the paths live in
- * IndexedDB, the game reads them through a cache filled at startup, and the
- * export is a Blob that never touches a server.
- *
- * So this drives the real thing end to end:
- *
- *   parental gate → Settings → Letter traces → drag a point → Save
- *     → the Write screen guides along the *edited* path, not the bundled one
- *     → Export writes a file with the font fingerprint in it
- *     → poisoning that fingerprint turns every letter back to colouring in
- *
- * The last one is the case that matters most and the one nobody will be looking
- * for: it only ever happens months from now, when the font changes.
- *
- * Usage: npm run dev &  then  node tools/verify-traces.mjs [baseUrl]
- */
+/* Fixing a letter's pen path on the device, and having it reach the game. */
 
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fail, homeIsUp, openApp, step } from './harness.mjs';
 
-/** A letter with a bundled guide, so "device beats bundled" is a real contest. */
+/* A letter with a bundled guide, so "device beats bundled" is a real contest. */
 const LETTER = 'alif';
 
 const { context, page, finish, url } = await openApp({
   name: 'traces',
   waitForHome: false,
   open: false,
-  // hasTouch for the second half: the editor's gestures are the thing being
-  // checked, and a context without touch cannot produce them.
+  // hasTouch for the second half.
   context: { acceptDownloads: true, hasTouch: true },
 });
 
@@ -42,7 +21,7 @@ const openHome = async () => {
   await homeIsUp(page);
 };
 
-/** Through the gate and into Settings. The same route a parent takes. */
+/* Through the gate and into Settings. */
 async function openSettings() {
   await page.evaluate(() => {
     window.__game.scene.getScene('Home').settingsButton.emit('pointerdown');
@@ -60,8 +39,6 @@ await openHome();
 step('opening settings');
 await openSettings();
 
-// --- 1. The page is reachable and says how many letters are guided ----------
-
 const rowValue = await page.textContent('.set-root [data-page="traces"] .set-row-value');
 step(`the Writing row reads "${rowValue}"`);
 if (!/^\d+ of \d+$/.test(rowValue ?? '')) {
@@ -72,10 +49,7 @@ step('opening the traces page');
 await page.click('.set-root [data-page="traces"]');
 await page.waitForSelector('.ste-board', { timeout: 20000 });
 
-// The editor is loaded on demand, so its stylesheet arrives with it. A page
-// whose CSS never loaded still "works" — every element is there and every
-// handler fires — and is unusable, which is why this is measured rather than
-// eyeballed.
+// The editor is loaded on demand, so its stylesheet arrives with it.
 const boardHeight = await page.$eval('.ste-board', (el) => el.getBoundingClientRect().height);
 if (boardHeight < 150) {
   fail(`the board is ${boardHeight.toFixed(0)}px tall — the editor's stylesheet did not load`);
@@ -98,9 +72,7 @@ await page.waitForFunction(
 const where = await page.textContent('.set-traces-where');
 if (where !== 'From the app') fail(`${LETTER} says "${where}" before it has been edited`);
 
-// --- 2. An edit is saved to the device --------------------------------------
-
-/** The path as the app will draw it, in font units. */
+/* The path as the app will draw it, in font units. */
 const pathNow = () =>
   page.evaluate(
     (id) => window.__strokes.editableStrokes()[id].strokes[0].points.map((p) => [...p]),
@@ -134,15 +106,9 @@ const moved = Math.hypot(after[2][0] - before[2][0], after[2][1] - before[2][1])
 step(`point 2 moved ${moved.toFixed(0)} font units`);
 if (moved < 20) fail('the drag did not reach the app');
 
-// The count on the row behind should have picked up the edit too — it is read
-// from the same place the game reads.
+// The count on the row behind should have picked up the edit too — it is read from the same place the game reads.
 await page.click('.set-back');
 await page.waitForSelector('.set-list', { timeout: 5000 });
-
-// --- 3. The edit survives a reload and reaches the Write screen -------------
-//
-// This is the device tier doing its job, and it is invisible from anywhere
-// else: the bundled path for this letter is still in the bundle, unchanged.
 
 step('reloading, then opening the Write screen');
 await openHome();
@@ -182,11 +148,8 @@ const drawn = await page.evaluate(() => {
 if (!drawn.guided) fail(`${LETTER} opened in colouring mode despite having a device guide`);
 else step(`${LETTER} opened guided, ${drawn.strokes} stroke(s), from the device's path`);
 
-// --- 4. Export writes a file with the fingerprint in it ---------------------
-
 step('exporting');
-// Back to the menu first: the Write screen is what is running, and the
-// grown-ups button belongs to Home.
+// Back to the menu first: the Write screen is what is running, and the grown-ups button belongs to Home.
 await openHome();
 await openSettings();
 await page.click('.set-root [data-page="traces"]');
@@ -204,16 +167,12 @@ step(`${download.suggestedFilename()}: ${Object.keys(exported.letters).length} l
 if (!/^urdu-traces-\d{4}-\d{2}-\d{2}\.json$/.test(download.suggestedFilename())) {
   fail(`exported as "${download.suggestedFilename()}"`);
 }
-// Without the fingerprint the file cannot be refused by the studio, which is
-// the only thing standing between a font change and silently wrong guides in
-// the repo.
+// Without the fingerprint the file cannot be refused by the studio.
 if (!exported.font?.sha) fail('the export carries no font fingerprint');
 if (!exported.letters[LETTER]?.corrected) fail(`the export does not contain ${LETTER}`);
 if (Object.keys(exported.letters).length !== 1) {
   fail('the export contains letters that were not edited on this device');
 }
-
-// --- 5. A stale fingerprint turns every guide off --------------------------
 
 step('poisoning the stored fingerprint');
 await page.evaluate(
@@ -245,13 +204,6 @@ if (afterPoison === 'device') {
   step(`${LETTER} fell back to "${afterPoison}" — the stale device path was dropped`);
 }
 
-// --- 6. A font change turns the whole feature off --------------------------
-//
-// Done by rewriting the fingerprint in glyphs.json on the way to the browser,
-// which is exactly what re-baking against another typeface produces. No
-// back door in the app: this is the real mechanism, and the app cannot tell the
-// difference.
-
 step('serving a glyphs.json baked from a different font');
 await page.route('**/glyphs.json*', async (route) => {
   const response = await route.fetch();
@@ -265,9 +217,7 @@ const allOff = await page.evaluate(() => window.__strokes.guidedLetters().length
 if (allOff !== 0) fail(`${allOff} letter(s) are still guided after a font change`);
 else step('no letter claims a guide any more');
 
-// And the screen a child actually opens agrees, which is the only claim that
-// matters: paths drawn for another face sit beside the letter, and following
-// one teaches the wrong shape.
+// And the screen a child actually opens agrees.
 await page.evaluate(() => {
   const game = window.__game;
   game.scene.getScenes(true).forEach((s) => game.scene.stop(s.scene.key));
@@ -288,17 +238,6 @@ const stale = await page.evaluate(() => {
 if (stale.guided) fail(`${LETTER} is still guided by a path drawn for another font`);
 else if (!stale.colouring) fail(`${LETTER} has no guide and nothing to colour in either`);
 else step(`${LETTER} opened as colouring in, which needs no authoring and cannot go stale`);
-
-// --- 7. The same editor, with a finger ------------------------------------
-//
-// Everything above drives the editor with a mouse, and every one of those
-// checks passed while the editor was close to unusable on a phone — which is
-// the device it was built for. Mouse and touch are different input paths, and
-// only one of them was ever exercised.
-//
-// So: a second pass in a touch context, using real browser-level touch input
-// through CDP rather than synthesised events. Playwright's touchscreen can tap
-// and nothing else, and a tap is not the gesture that was broken.
 
 step('--- the same page, driven by a finger');
 const phone = await context.newPage();
@@ -331,7 +270,7 @@ const finger = {
     await this.send('touchEnd', to.x, to.y);
     await phone.waitForTimeout(200);
   },
-  /** Held still, which for a real finger means wobbling by a pixel. */
+  /* Held still, which for a real finger means wobbling by a pixel. */
   async hold(at, ms) {
     await this.send('touchStart', at.x, at.y);
     const until = Date.now() + ms;
@@ -344,11 +283,7 @@ const finger = {
   },
 };
 
-// The poisoned device record from the checks above is still in IndexedDB, and
-// is left there deliberately: it is dropped on read, so this page sees the
-// bundled paths, which is what the letter below is edited from. Deleting the
-// database instead would block on the page above still holding it open, and the
-// app would wait on that open forever rather than reaching the menu.
+// The poisoned device record from the checks above is still in IndexedDB.
 await phone.goto(url, { waitUntil: 'domcontentloaded' });
 await homeIsUp(phone);
 await phone.evaluate(() => {
@@ -363,8 +298,7 @@ await phone.waitForSelector('.set-root', { timeout: 10000 });
 await phone.click('[data-page="traces"]');
 await phone.waitForSelector('.ste-board', { timeout: 20000 });
 
-// A letter with three separate strokes, so "select another stroke" is a real
-// thing to do rather than a no-op.
+// A letter with three separate strokes, so "select another stroke" is a real thing to do rather than a no-op.
 const TOUCH_LETTER = 'Te';
 await phone.$$eval(
   '.ste-letters button',
@@ -379,7 +313,7 @@ await phone.waitForFunction(
 
 const shape = () => phone.$$eval('.ste-strokes li .ste-grow', (els) => els.map((e) => e.textContent));
 
-/** The selected stroke as drawn, in font units: `[[x, y], …]`. */
+/* The selected stroke as drawn, in font units: `[[x, y], …]`. */
 const points = () =>
   phone.$eval('.ste-board polyline', (el) =>
     el
@@ -388,12 +322,7 @@ const points = () =>
       .map((pair) => pair.split(',').map(Number))
   );
 
-/**
- * Where on the screen a point of the selected stroke is.
- *
- * Through the visible handle, which is all there is now — the invisible hit
- * circles are gone, because hit-testing is what made this unusable.
- */
+/* Where on the screen a point of the selected stroke is. */
 async function handleAt(i) {
   const handle = phone.locator(`.ste-handle[data-point="${i}"]`);
   await handle.scrollIntoViewIfNeeded();
@@ -404,14 +333,7 @@ async function handleAt(i) {
 
 const scrollTop = () => phone.$eval('.set-body', (el) => el.scrollTop);
 
-// 7a. A finger drag moves a point. This is the case that was reported, and it
-// is the one every mouse-driven check above sailed past.
-//
-// Grabbed from *beside* the point rather than dead centre on it. A mouse lands
-// where it is pointed and a finger does not, and a check that taps the exact
-// centre of the ring passes however small the target is — which is the whole
-// thing that was wrong. Offset perpendicular to the stroke so the nearest point
-// is still the one being aimed at.
+// 7a. A finger drag moves a point.
 step('finger: dragging a point');
 const beforeDrag = await points();
 const restedAt = await scrollTop();
@@ -430,19 +352,12 @@ const shifted = apart(afterDrag[2], beforeDrag[2]);
 step(`  point 2 moved ${shifted.toFixed(0)} font units`);
 if (shifted < 20) fail('a finger cannot move a point');
 if (afterDrag.length !== beforeDrag.length) fail('the drag changed how many points there are');
-// The neighbours staying put is the difference between dragging a point and
-// dragging the whole stroke.
+// The neighbours staying put is the difference between dragging a point and dragging the whole stroke.
 for (const i of [0, 3]) {
   if (apart(afterDrag[i], beforeDrag[i]) > 0.5) fail(`the drag also moved point ${i}`);
 }
 
-// 7b. And the page stayed put while it happened — a drag that scrolls the page
-// instead is the other way this fails.
-//
-// Worth being straight about what this proves: `touch-action` is set on both
-// the wrapper and the `<svg>`, and this browser honours the one on the svg, so
-// removing it from the wrapper alone does not make this fail. What it catches
-// is it going missing from both, which is the case that actually breaks a drag.
+// 7b. And the page stayed put while it happened — a drag that scrolls the page instead is the other way this fails.
 if ((await scrollTop()) !== restedAt) {
   fail(`the page scrolled ${(await scrollTop()) - restedAt}px during the drag`);
 } else {
@@ -460,15 +375,11 @@ if (apart(undone[2], beforeDrag[2]) > 0.5) {
   step('  the point went back where it was');
 }
 
-// 7d. A tap on another stroke selects it and changes nothing. This used to
-// select *and* insert a point in one gesture, so the first tap on the stroke
-// you wanted to fix damaged it — the reported "I have to delete the stroke and
-// redo it".
+// 7d. A tap on another stroke selects it and changes nothing.
 step('finger: tapping another stroke');
 const beforeTap = await shape();
 const other = await phone.$eval('polyline[data-line="2"]', (el) => {
-  // The middle *point* of the line, not the middle of its bounding box, which
-  // for a curve is usually not on the line at all.
+  // The middle *point* of the line, not the middle of its bounding box, which for a curve is usually not on the line at all.
   const list = el.getAttribute('points').split(' ');
   const [px, py] = list[Math.floor(list.length / 2)].split(',').map(Number);
   const ctm = el.getScreenCTM();
@@ -487,9 +398,7 @@ else if (afterTap.join() !== beforeTap.join()) {
   step('  it selected the stroke and left it alone');
 }
 
-// 7e. Press and hold removes a point, with a finger that never holds quite
-// still. Any movement at all used to cancel it, which meant the only way to
-// remove a point on a phone did not work on a phone.
+// 7e. Press and hold removes a point, with a finger that never holds quite still.
 step('finger: pressing and holding a point');
 const held = await handleAt(1);
 await finger.hold(held, 900);

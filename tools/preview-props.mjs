@@ -1,27 +1,4 @@
-/**
- * Every generated prop on a sheet, over the colours it will actually sit on.
- *
- * A cut-out is the one kind of picture that cannot be judged on its own. Alpha
- * that looks immaculate on a white page shows a pale halo the moment it lands
- * on grass, because the halo *is* white and the page was too. So this puts each
- * prop over four grounds: the sky and the grass and the sand from the backdrops
- * it stands on, and a hard magenta that nothing in the app is anywhere near.
- *
- * Magenta is not decoration. It is the strip where a fringe has nowhere to
- * hide: a half-transparent pixel over magenta reads as a bright rim, and a
- * background the model failed to remove reads as a rectangle.
- *
- * `make-props.mjs` already counts half-transparent pixels and warns. This is
- * the other half of that check, the half that needs eyes, and it is the same
- * arrangement as the tiles — a number that catches the gross failures and a
- * sheet for everything a number cannot see.
- *
- * Needs `npm run dev` up, like the other preview tools: the props are served
- * out of `public/`, and the browser has to fetch them from somewhere.
- *
- * Usage:
- *   node tools/preview-props.mjs
- */
+/* Every generated prop on a sheet, over the colours it will actually sit on. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -41,7 +18,7 @@ if (!names.length) {
   process.exit(1);
 }
 
-/** Taken off the backdrops: pale sky, meadow green, path sand, and the tell. */
+/* Taken off the backdrops: pale sky, meadow green, path sand, and the tell. */
 const GROUNDS = ['#bfe3f5', '#8fc75f', '#e8cf9a', '#ff00c8'];
 
 const BASE = process.argv[2] || 'http://localhost:5173';
@@ -83,8 +60,7 @@ const shot = await page.evaluate(
         ctx.fillStyle = grounds[col];
         ctx.fillRect(left, cellTop, CELL - 4, CELL - 4);
 
-        // Contained, not filled: a prop is judged on its edge and its shape, so
-        // it has to arrive whole rather than cropped to a square cell.
+        // Preserve the whole prop; remove only its background.
         const scale = Math.min((CELL - 40) / image.width, (CELL - 40) / image.height);
         const w = image.width * scale;
         const h = image.height * scale;

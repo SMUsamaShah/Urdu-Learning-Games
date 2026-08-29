@@ -1,12 +1,4 @@
-/**
- * Screenshots the running app so changes can be checked visually.
- *
- * Nothing here asserts; it just drives the app and writes PNGs. Automated tests
- * can tell you a glyph exists, but only looking at it tells you the Nastaliq is
- * right, and that is the thing most likely to be subtly wrong.
- *
- * Usage: npm run dev &  then  node tools/screenshot.mjs [outdir] [baseUrl]
- */
+/* Screenshots the running app so changes can be checked visually. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,12 +9,7 @@ const OUT = process.argv[2] || 'screenshots';
 const BASE = process.argv[3] || 'http://localhost:5173';
 
 const VIEWPORTS = {
-  phone: { width: 844, height: 390 },   // 19.5:9, landscape
-  // 20:9, which is most Android phones and the shape the empty bands down the
-  // sides used to show up at. Kept alongside `phone` rather than replacing it,
-  // because the design width is now measured from the screen and the two are no
-  // longer the same picture scaled: this one has more room either side of the
-  // rail, and a layout can be right at one and wrong at the other.
+  phone: { width: 844, height: 390 },   // Typical Android landscape viewport.
   wide: { width: 888, height: 400 },
   tablet: { width: 1180, height: 820 },
 };
@@ -44,8 +31,7 @@ for (const [name, viewport] of Object.entries(VIEWPORTS)) {
   await startScene(page, 'Flashcards');
   await page.screenshot({ path: path.join(OUT, `${name}-flashcards.png`) });
 
-  // A non-joining letter, to confirm the forms row adapts rather than always
-  // drawing four boxes. `dal` is index 10 in the alphabetical sequence.
+  // A non-joining letter, to confirm the forms row adapts rather than always drawing four boxes.
   await selectLetter(page, 10);
   await page.screenshot({ path: path.join(OUT, `${name}-flashcards-nonjoiner.png`) });
 

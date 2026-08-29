@@ -1,42 +1,6 @@
-/**
- * Microphone capture, shared by the desktop studio and the in-app recorder.
- *
- * Extracted so there is exactly one place that decides how the mic is opened.
- * The processing flags below are a real judgement about short syllables, not
- * boilerplate, and two copies of them would eventually drift apart.
- *
- * Knows nothing about DOM or storage: it hands back a Blob and lets the caller
- * decide whether that becomes a file on disk or a row in IndexedDB.
- *
- * ## Why the microphone is not held open
- *
- * An open microphone is not free. On a phone it moves the whole audio path into
- * the communications profile — a different sample rate, aggressive processing —
- * and anything played back while that is true stutters. Keeping the mic open
- * for the length of a recording session therefore breaks the very playback the
- * session exists to check.
- *
- * So the mic is opened for a take and released shortly after it, with a short
- * grace period so back-to-back takes do not pay to reopen it each time.
- *
- * Note for anyone wondering why the in-app recorder cannot work over a LAN
- * address: getUserMedia requires a secure context, which means localhost or
- * HTTPS. http://192.168.x.x will not prompt for the microphone at all.
- */
+/* Microphone capture, shared by the desktop studio and the in-app recorder. */
 
-/**
- * What the microphone is allowed to do to the signal before we get it.
- *
- * This matters far more than it looks. `autoGainControl` with no noise
- * suppression is the classic recipe for a hissy recording: between words the
- * gain ramps up hunting for signal and amplifies the room's noise floor, then
- * ducks when a word arrives. The result breathes, and it is baked into the file
- * — no amount of care on the playback side can take it back out.
- *
- * There is no universally right answer, because it depends on the room and the
- * phone, so the choice is offered rather than assumed. `clean` is the default
- * because a fixed gain with the hiss removed is the safer bet on a phone.
- */
+/* What the microphone is allowed to do to the signal before we get it. */
 export const MIC_PROFILES = {
   clean: {
     label: 'Clean (recommended)',
@@ -57,7 +21,7 @@ export const MIC_PROFILES = {
 
 export const DEFAULT_PROFILE = 'clean';
 
-/** Containers to try, best first. Chrome gives webm/opus, Safari mp4/aac. */
+/* Containers to try, best first. */
 const MIME_CANDIDATES = [
   ['audio/webm;codecs=opus', 'webm'],
   ['audio/webm', 'webm'],
@@ -65,15 +29,14 @@ const MIME_CANDIDATES = [
   ['audio/ogg;codecs=opus', 'ogg'],
 ];
 
-/** Picks a container the browser can actually produce. */
+/* Picks a container the browser can actually produce. */
 function pickMimeType() {
   for (const [mime, ext] of MIME_CANDIDATES) {
     if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mime)) {
       return { mime, ext };
     }
   }
-  // Recording still works; the browser picks its own container. webm is the
-  // right guess everywhere this branch is reachable.
+  // Recording still works; the browser picks its own container.
   return { mime: '', ext: 'webm' };
 }
 
@@ -85,18 +48,10 @@ export function isRecordingSupported() {
   );
 }
 
-/**
- * Creates a recorder. The microphone is not opened until the first start().
- *
+/** Creates a recorder.
  * @param {{onLevel?: (peak: number) => void}} [options] onLevel fires roughly
- *   per frame with 0..1 peak amplitude, for a level meter. A meter matters more
- *   than it sounds: without one, a dead mic or a clipping take is only
- *   discovered after recording a hundred clips.
  */
-/**
- * How long the mic stays open after a take, so consecutive takes are quick
- * without leaving the audio path in voice mode while the child listens back.
- */
+/* How long the mic stays open after a take. */
 const RELEASE_AFTER_MS = 2500;
 
 export function createRecorder({ onLevel, audioContext = null, profile = DEFAULT_PROFILE } = {}) {
@@ -105,7 +60,7 @@ export function createRecorder({ onLevel, audioContext = null, profile = DEFAULT
   let stream = null;
   /** @type {AudioContext|null} */
   let meterCtx = null;
-  /** Whether this recorder created meterCtx and so must close it. */
+  /* Whether this recorder created meterCtx and so must close it. */
   let ownsContext = false;
   /** @type {MediaStreamAudioSourceNode|null} */
   let meterSource = null;
@@ -124,9 +79,7 @@ export function createRecorder({ onLevel, audioContext = null, profile = DEFAULT
     });
 
     if (onLevel) {
-      // The app's own context, not a new one. A second AudioContext is a second
-      // claim on the audio hardware; one per recorder session also quietly
-      // accumulates, and browsers cap how many a page may hold.
+      // The app's own context, not a new one.
       meterCtx = audioContext ?? new (window.AudioContext || window.webkitAudioContext)();
       ownsContext = !audioContext;
       const source = meterCtx.createMediaStreamSource(stream);
@@ -151,11 +104,7 @@ export function createRecorder({ onLevel, audioContext = null, profile = DEFAULT
     tick();
   }
 
-  /**
-   * Hands the microphone back, leaving everything else intact so the next take
-   * can just reopen it. The meter goes quiet, which is honest: there is nothing
-   * being listened to.
-   */
+  /* Hands the microphone back, leaving everything else intact so the next take can just reopen it. */
   function releaseMic() {
     clearTimeout(releaseTimer);
     releaseTimer = 0;
@@ -179,29 +128,19 @@ export function createRecorder({ onLevel, audioContext = null, profile = DEFAULT
   return {
     isRecording: () => recorder?.state === 'recording',
 
-    /** Whether the microphone is currently open. */
+    /* Whether the microphone is currently open. */
     isMicOpen: () => Boolean(stream),
 
     profile: () => profileName,
 
-    /**
-     * Switches microphone settings.
-     *
-     * The open stream is thrown away rather than reconfigured: constraints
-     * applied to a live track are honoured inconsistently across browsers, and
-     * a setting that silently did not take is worse than a moment's delay.
-     */
+    /* Switches microphone settings. */
     setProfile(name) {
       if (!MIC_PROFILES[name] || name === profileName) return;
       profileName = name;
       releaseMic();
     },
 
-    /**
-     * Opens the mic ahead of a take so the meter is live while you read the
-     * prompt. Released again on the same timer as a real take, so leaving the
-     * screen idle does not leave the audio path in voice mode.
-     */
+    /* Opens the mic ahead of a take so the meter is live while you read the prompt. */
     async warmUp() {
       await ensureStream();
       clearTimeout(releaseTimer);
@@ -221,25 +160,21 @@ export function createRecorder({ onLevel, audioContext = null, profile = DEFAULT
       recorder.start();
     },
 
-    /**
-     * Stops and resolves with the take.
-     * @returns {Promise<{blob: Blob, ext: string, mime: string}|null>}
-     */
+    /** Stops and resolves with the take.
+ * @returns {Promise<{blob: Blob, ext: string, mime: string}|null>}
+ */
     stop() {
       if (recorder?.state !== 'recording') return Promise.resolve(null);
       return new Promise((resolve) => {
         recorder.onstop = () => {
           const mime = recorder.mimeType || pickMimeType().mime;
           const blob = new Blob(chunks, { type: mime });
-          // Derive the extension from what was actually produced rather than
-          // what was requested: a browser may ignore the requested container.
+          // Derive the extension from what was actually produced rather than what was requested.
           const ext =
             MIME_CANDIDATES.find(([m]) => mime.startsWith(m.split(';')[0]))?.[1] ??
             pickMimeType().ext;
           resolve({ blob, ext, mime });
-          // Hand the mic back shortly after the take. The grace period keeps
-          // back-to-back takes quick; releasing at all is what stops playback
-          // stuttering while the take is being listened to.
+          // Hand the mic back shortly after the take.
           clearTimeout(releaseTimer);
           releaseTimer = setTimeout(releaseMic, RELEASE_AFTER_MS);
         };
@@ -247,7 +182,7 @@ export function createRecorder({ onLevel, audioContext = null, profile = DEFAULT
       });
     },
 
-    /** Releases the microphone and everything hanging off it, for good. */
+    /* Releases the microphone and everything hanging off it, for good. */
     dispose() {
       releaseMic();
       meterCtx = null;

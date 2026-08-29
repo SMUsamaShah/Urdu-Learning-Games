@@ -1,30 +1,4 @@
-/**
- * Speech playback.
- *
- * Every recorded clip in the app goes through here. Clips are fetched and
- * decoded on first use and cached for the session, so the app starts fast and
- * only pays for the letters actually visited.
- *
- * ## Where a clip comes from
- *
- *   device (IndexedDB) → bundled (content/audio.json) → silence
- *
- * A recording made on this device beats the one shipped with the app, which is
- * the whole point of being able to record in your own voice: a child hears their
- * parent, not whoever recorded the repo. It extends the same precedence the
- * build pipeline already uses, where public/audio/recorded/ beats tts/.
- *
- * Two rules shape the rest of the design:
- *
- * 1. **A missing clip is silence, never an error.** Recording the whole set takes
- *    a while, and the app has to stay completely playable throughout. Every
- *    call resolves whether or not a recording exists.
- *
- * 2. **Reuse Phaser's AudioContext** rather than opening a second one. Mobile
- *    browsers refuse to start audio until a user gesture, and Phaser already
- *    installs the handlers that resume its context on first touch. Borrowing
- *    its context inherits that unlock for free.
- */
+/* Speech playback. */
 
 import { allKeys, getClip } from './clip-store.js';
 import { duck } from './music.js';
@@ -38,16 +12,13 @@ let ctx = null;
 /** @type {{clips: Record<string,string>, missing: string[], counts: object}|null} */
 let manifest = null;
 
-/** key -> AudioBuffer, or null once known to be unavailable. */
+/* key -> AudioBuffer, or null once known to be unavailable. */
 const buffers = new Map();
-/** key -> in-flight decode, so a double tap does not fetch twice. */
+/* key -> in-flight decode, so a double tap does not fetch twice. */
 const pending = new Map();
-/** Sources still playing, so a new selection can cut off the last one. */
+/* Sources still playing, so a new selection can cut off the last one. */
 let playing = new Set();
-/**
- * Which keys have a device recording. Held as a Set so hasClip() can stay
- * synchronous for the scenes that call it while drawing.
- */
+/* Which keys have a device recording. */
 let deviceKeys = new Set();
 
 async function loadAudioManifest() {
@@ -58,23 +29,13 @@ async function loadAudioManifest() {
       ? await response.json()
       : { clips: {}, missing: [], counts: {} };
   } catch {
-    // A missing manifest is the same situation as missing clips: silent, but
-    // fully playable. Never let it stop the app from starting.
+    // A missing manifest is the same situation as missing clips: silent, but fully playable.
     manifest = { clips: {}, missing: [], counts: {} };
   }
   return manifest;
 }
 
-/**
- * Gets audio ready: the manifest of bundled clips, the list of what this device
- * has recorded, and the context to play them through.
- *
- * One call rather than three, because there was never a point at which doing
- * one of these and not the others was a state worth having — Preload did all
- * three in a row and nothing else called any of them. The two fetches run
- * together; neither blocks the other, and both degrade to "no clips" rather
- * than throwing, so a missing manifest cannot stop the app starting.
- *
+/** Gets audio ready: the manifest of bundled clips, the list of what this device has recorded, and the context to play.
  * @param {Phaser.Game} game
  */
 export async function initAudio(game) {
@@ -84,24 +45,12 @@ export async function initAudio(game) {
   deviceKeys = new Set(keys);
 }
 
-/**
- * The app's one AudioContext, borrowed from Phaser.
- *
- * Anything in the app that needs Web Audio must use this rather than opening
- * its own: a second context is a second claim on the audio hardware, and on a
- * phone that is enough to make playback stutter.
- */
+/* The app's one AudioContext, borrowed from Phaser. */
 export function getAudioContext() {
   return ctx;
 }
 
-/**
- * Drops every decoded buffer and nudges the context back awake.
- *
- * Called after the microphone has been released. Opening a mic can move the
- * output device into its communications mode at a different sample rate, and
- * buffers decoded while that was true can play back wrong afterwards.
- */
+/* Drops every decoded buffer and nudges the context back awake. */
 export function refreshAudio() {
   buffers.clear();
   pending.clear();
@@ -113,17 +62,12 @@ export function audioStats() {
   return { ...counts, device: deviceKeys.size };
 }
 
-/** Whether a recording exists, for deciding if a speaker icon is worth showing. */
+/* Whether a recording exists, for deciding if a speaker icon is worth showing. */
 export function hasClip(key) {
   return deviceKeys.has(key) || Boolean(manifest?.clips?.[key]);
 }
 
-/**
- * Drops a cached buffer so the next play picks up a new recording.
- *
- * Without this, re-recording a clip keeps playing the previous take until the
- * page is reloaded, which makes the recorder feel broken.
- */
+/* Drops a cached buffer so the next play picks up a new recording. */
 export function invalidate(key) {
   buffers.delete(key);
   pending.delete(key);
@@ -133,7 +77,7 @@ export function invalidate(key) {
   }
 }
 
-/** Called by the recorder when a device recording is added or removed. */
+/* Called by the recorder when a device recording is added or removed. */
 export function noteDeviceClip(key, present) {
   if (present) deviceKeys.add(key);
   else deviceKeys.delete(key);
@@ -159,8 +103,7 @@ async function bufferFor(key) {
           buffers.set(key, buffer);
           return buffer;
         }
-        // The key was listed but the row has gone; fall through to the bundled
-        // clip rather than going silent.
+        // The key was listed but the row has gone; fall through to the bundled clip rather than going silent.
         deviceKeys.delete(key);
       }
 
@@ -188,19 +131,10 @@ async function bufferFor(key) {
   return task;
 }
 
-/**
- * Which era of speech we are in, bumped by every stopAll().
- *
- * A clip is a fetch — or an IndexedDB read — and a decode before any sound
- * exists, and on a phone that is long enough for a child to have tapped twice
- * more. Stopping the sources that are *playing* does nothing about the ones
- * still loading, so before this a clip that lost the race arrived half a second
- * later and spoke over whatever had replaced it. Everything that waits checks
- * that its era is still the current one before making a sound.
- */
+/* Which era of speech we are in, bumped by every stopAll(). */
 let era = 0;
 
-/** Cuts off anything currently speaking, and abandons anything still loading. */
+/* Cuts off anything currently speaking, and abandons anything still loading. */
 export function stopAll() {
   era++;
   for (const source of playing) {
@@ -213,27 +147,21 @@ export function stopAll() {
   playing = new Set();
 }
 
-/**
- * Plays a clip, resolving when it finishes.
- *
+/** Plays a clip, resolving when it finishes.
  * @param {string} key e.g. "letter/be/name"
- * @param {{interrupt?: boolean}} [options] interrupt stops whatever is already
- *   speaking, which is what you want when a child taps rapidly.
+ * @param {{interrupt?: boolean}} [options]
  * @returns {Promise<boolean>} whether a sound actually played.
  */
 export async function play(key, options = {}) {
   const { interrupt = true } = options;
-  // Before the load rather than after it: interrupting is what a child means by
-  // tapping something else, and waiting for the new clip to arrive first left
-  // the old one talking through the whole load.
+  // Stop current audio before loading the next clip.
   if (interrupt) stopAll();
   const mine = era;
 
   const buffer = await bufferFor(key);
   if (!buffer || !ctx) return false;
 
-  // Phaser resumes on first gesture, but a clip triggered from a scene
-  // transition can beat that, so nudge it.
+  // Phaser resumes on first gesture, but a clip triggered from a scene transition can beat that, so nudge it.
   if (ctx.state === 'suspended') {
     try {
       await ctx.resume();
@@ -242,15 +170,10 @@ export async function play(key, options = {}) {
     }
   }
 
-  // Something else was asked for while this was loading. Drop it: arriving late
-  // and speaking over the newer clip is worse than not being heard.
+  // Something else was asked for while this was loading.
   if (era !== mine) return false;
 
-  // Pull the tune down underneath the voice. This is the entire reason the
-  // music module exposes a duck at all: the recorded voice saying a letter is
-  // the point of the app, and a three-year-old meeting a new sound needs to
-  // hear it without a melody underneath. A little longer than the clip, so the
-  // music does not swell back up into the gap before the next one.
+  // Pull the tune down underneath the voice.
   duck(buffer.duration + 0.4);
 
   return new Promise((resolve) => {
@@ -266,12 +189,7 @@ export async function play(key, options = {}) {
   });
 }
 
-/**
- * Plays clips one after another, skipping any that are missing.
- *
- * Used for name-then-sound, where the pause between the two is part of the
- * teaching: "bay ... b".
- *
+/** Plays clips one after another, skipping any that are missing.
  * @param {string[]} keys
  * @param {number} [gapMs=280]
  */
@@ -279,9 +197,7 @@ export async function playSequence(keys, gapMs = 280) {
   stopAll();
   const mine = era;
   for (let i = 0; i < keys.length; i++) {
-    // The gap between "bay" and "bakri" is long enough to tap something else
-    // in, and the word used to arrive on top of whatever that was. A sequence
-    // that has been replaced stops where it got to.
+    // The gap between "bay" and "bakri" is long enough to tap something else in.
     if (era !== mine) return;
     const played = await play(keys[i], { interrupt: false });
     if (played && i < keys.length - 1) {
@@ -290,7 +206,7 @@ export async function playSequence(keys, gapMs = 280) {
   }
 }
 
-/** Key builders, so scenes never hand-assemble a key string. */
+/* Key builders, so scenes never hand-assemble a key string. */
 export const clipKeys = {
   letterName: (id) => `letter/${id}/name`,
   letterSound: (id) => `letter/${id}/sound`,

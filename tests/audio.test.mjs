@@ -1,12 +1,4 @@
-/**
- * Integrity checks over the audio clip list and manifest.
- *
- * The recording backlog is normally incomplete, so nothing here asserts that
- * clips exist. What it does assert is that the list of clips the app asks for
- * and the files on disk can never drift apart — a manifest pointing at a file
- * that is not there, or two clips fighting over one filename, would both be
- * silent failures during play.
- */
+/* Integrity checks over the audio clip list and manifest. */
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -51,8 +43,7 @@ describe('clip list', () => {
   });
 
   test('slugs are unique and filename-safe', () => {
-    // Letter ids already contain dashes (do-chashmi-he, bari-ye), so slugifying
-    // a key by replacing slashes could in principle collide. It must not.
+    // Letter ids already contain dashes (do-chashmi-he.
     const slugs = clips.map((c) => c.slug);
     assert.equal(new Set(slugs).size, slugs.length, 'two clips share a filename');
     for (const slug of slugs) {
@@ -69,7 +60,7 @@ describe('clip list', () => {
   });
 
   test('every clip glyph resolves against the baked outlines', () => {
-    // The studio draws these. A missing one means recording blind.
+    // The studio draws these.
     const glyphs = readContent('glyphs.json');
     for (const clip of clips) {
       const { kind, id, form } = clip.glyph;
@@ -124,8 +115,7 @@ describe('manifest', () => {
   });
 
   test('is current with what is on disk', () => {
-    // Catches a recording added without re-running the manifest builder, which
-    // would leave the app silent for a clip that exists.
+    // Catches a recording added without re-running the manifest builder.
     for (const clip of clips) {
       const onDisk = resolveClip(clip.slug);
       const inManifest = manifest.clips[clip.key] ?? null;
@@ -140,8 +130,7 @@ describe('manifest', () => {
 
 describe('recorded files', () => {
   test('every audio file present belongs to a known clip', () => {
-    // A stray or misnamed file is silently ignored at runtime, which looks
-    // exactly like never having recorded it.
+    // A stray or misnamed file is silently ignored at runtime, which looks exactly like never having recorded it.
     const slugs = new Set(clips.map((c) => c.slug));
     for (const dir of ['recorded', 'tts']) {
       const full = path.join(ROOT, 'public', 'audio', dir);

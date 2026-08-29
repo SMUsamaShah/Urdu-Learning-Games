@@ -17,41 +17,20 @@ import { COLORS, chunkyGlyphEm, label } from '../lib/theme.js';
 import QuizScene from './QuizScene.js';
 import { pickWeighted } from '../lib/mastery.js';
 
-/**
- * The most things a round will ever lay out to be counted.
- *
- * Not the same as how high the numerals go — see the note in onCreated().
- */
+/* The most things a round will ever lay out to be counted. */
 const COUNTABLE_MAX = 9;
 
-/** Star colours, cycled by value so the same digit is always the same colour. */
+/* Star colours, cycled by value so the same digit is always the same colour. */
 const STAR_COLORS = [0xe4633c, 0x3f74d6, 0x2fa05f, 0xd44f8c, 0x9b5fc9, 0xe09a1c, 0x1a9c96];
 
-/**
- * Count the things, then pick the number.
- *
- * Counting comes before numerals: a child can count four apples long before ۴
- * means anything, so the objects are the question and the digit is the answer.
- * Going the other way — showing ۴ and asking which group has four — would test
- * a symbol they have not learned yet.
- *
- * The objects are the word pictures, a different one each round. Recognisable
- * things are easier to count than abstract dots, and it quietly puts the
- * vocabulary in front of the child again.
- *
- * Distractors are the neighbouring numbers. Off-by-one is what counting
- * actually goes wrong by, so a line-up of 3, 4, 5 is the real exercise where a
- * line-up of 4 and 9 would not be.
- */
+/* Count the things, then pick the number. */
 export default class Numbers extends QuizScene {
   constructor() {
     super('Numbers');
     this.instruction = 'how-many';
     this.instructionRoman = 'How many?';
     this.subjectKind = 'number';
-    // Stars here and nowhere else: an Urdu numeral is compact enough to sit
-    // comfortably in the thin middle of one, which is exactly what a letter is
-    // not.
+    // Stars here and nowhere else.
     this.tileShape = 'star';
     this.tileSize = 200;
     this.tileGap = 8;
@@ -68,21 +47,12 @@ export default class Numbers extends QuizScene {
     queueWordImages(this);
   }
 
-
   onCreated() {
-    // Zero is left out: an empty screen is not a counting question, and "how
-    // many?" with nothing there reads as a bug rather than a puzzle.
-    //
-    // Counting does not follow the Settings band, and that is not an oversight.
-    // The band decides which numerals a child is shown and told the name of;
-    // this is the other thing, laying out that many objects and asking how many
-    // there are, and nobody counts forty-seven ducks. Nine stays nine however
-    // high the numerals go.
+    // Zero is left out: an empty screen is not a counting question, and "how many?" with nothing there reads as a bug.
     this.countable = activeNumbers()
       .filter((n) => n.value >= 1 && n.value <= COUNTABLE_MAX)
       .map((n) => n.id);
-    // The things laid out to be counted are the word pictures, so a word
-    // switched off should not turn up here as scenery either.
+    // The things laid out to be counted are the word pictures.
     const shown = inPlay.words();
     this.props = illustratedWords().filter((id) => shown.has(id));
   }
@@ -93,8 +63,7 @@ export default class Numbers extends QuizScene {
 
   lineUpFor(target, count) {
     const value = numbersById.get(target).value;
-    // Nearest first, so two choices means "is it 4 or 5?" rather than an easy
-    // pair, and a wider line-up still stays around the answer.
+    // Nearest first, so two choices means "is it 4 or 5?" rather than an easy pair, and a wider line-up still stays around.
     const neighbours = this.countable
       .filter((id) => id !== target)
       .sort(
@@ -112,9 +81,7 @@ export default class Numbers extends QuizScene {
     const number = numbersById.get(target);
     const prop = Phaser.Utils.Array.GetRandom(this.props);
 
-    // The group fills roughly the same area whatever the count, so one apple is
-    // a big apple and nine are small ones. A fixed size would leave "how many?"
-    // asking about a single stamp adrift in an empty screen.
+    // The group fills roughly the same area whatever the count, so one apple is a big apple and nine are small ones.
     const perRow = Math.min(number.value, 5);
     const rows = Math.ceil(number.value / 5);
     const step = Math.min(190, 720 / perRow);
@@ -131,9 +98,7 @@ export default class Numbers extends QuizScene {
       const image = addWordImage(this, x, y, prop, size);
       if (image) {
         layer.add(image);
-        // A small stagger so they arrive one after another, which invites
-        // counting them rather than seeing a block. The scale to return to is
-        // whatever setDisplaySize worked out, so it has to be read first.
+        // A small stagger so they arrive one after another, which invites counting them rather than seeing a block.
         const { scaleX, scaleY } = image;
         image.setScale(0);
         this.tweens.add({
@@ -145,14 +110,7 @@ export default class Numbers extends QuizScene {
           ease: 'Back.easeOut',
         });
 
-        // Each one can be poked, and each poke counts it out loud: one, two,
-        // three. This is the actual skill the game is about — a three-year-old
-        // counts by touching things, one at a time, and a screen where the
-        // things cannot be touched is asking them to count in their head.
-        //
-        // Nothing is scored and nothing can go wrong. Tapping them in a silly
-        // order, or the same one eight times, is allowed; the point is the
-        // pairing of one touch with one number.
+        // Each one can be poked, and each poke counts it out loud: one, two, three.
         const ordinal = i + 1;
         image.setInteractive({ useHandCursor: true });
         image.on('pointerdown', () => {
@@ -173,7 +131,7 @@ export default class Numbers extends QuizScene {
     if (hasClip(clipKeys.number(target))) layer.add(this.speakerIcon(410));
   }
 
-  /** One hue per digit, so a star is a colour before it is a number. */
+  /* One hue per digit, so a star is a colour before it is a number. */
   tileColor(id) {
     return STAR_COLORS[numbersById.get(id).value % STAR_COLORS.length];
   }
@@ -181,20 +139,14 @@ export default class Numbers extends QuizScene {
   decorateTile(tile, id, size) {
     const glyph = numberGlyph(id);
     if (glyph) {
-      // One em across all ten numerals. Fitted to a height instead, ۱ — a bare
-      // upright stroke — was drawn nearly twice the size of ۴, so the choices
-      // looked like answers of different importance.
-      //
-      // Sat above the star's middle: a star is widest above its centre, and a
-      // numeral any lower hangs into the bottom notch.
+      // One em across all ten numerals.
       const fit = fitEmAlone(allNumberGlyphs(), size * 0.5, size * 0.44);
       tile.add(
         addGlyph(this, 0, -18, `number-choice:em${Math.round(fit.em)}:${id}`, glyph,
           chunkyGlyphEm(fit.em))
       );
     }
-    // The Latin numeral underneath, small: it is for the parent counting along,
-    // and for a child who meets 4 and ۴ in the same week.
+    // The Latin numeral underneath.
     tile.add(
       label(this, 0, 34, String(numbersById.get(id).value), {
         size: 18,
@@ -207,16 +159,7 @@ export default class Numbers extends QuizScene {
     sayNumber(this.target);
   }
 
-  /**
-   * Says a number as one of the objects is touched.
-   *
-   * Interrupts whatever was already speaking, because a child tapping quickly
-   * along a row wants one number per tap — queueing them would run the count
-   * on long after they had finished, and the whole value of this is that the
-   * sound lands with the finger.
-   *
-   * Silent if that number has not been recorded yet, like everything else here.
-   */
+  /* Says a number as one of the objects is touched. */
   countAloud(value) {
     const number = activeNumbers().find((n) => n.value === value);
     if (number) sayNumber(number.id);

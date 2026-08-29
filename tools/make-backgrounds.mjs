@@ -1,38 +1,4 @@
-/**
- * Draws a backdrop for each screen.
- *
- * Every screen used to share one painted meadow. That is fine and it is also
- * why the app feels like one room: the reference apps give each activity its
- * own place — a beach, a forest, a riverbank — and moving between them is a
- * large part of why they feel like a set of games rather than one game with
- * eight modes. A three-year-old cannot read the title on the ribbon; the
- * background is how they know where they are.
- *
- * ## What makes a usable backdrop here, which is not what makes a nice picture
- *
- * These sit *underneath* Nastaliq letters, answer tiles and a spider. Almost
- * everything that makes a landscape illustration good makes it a bad backdrop:
- *
- *   - **Nothing in the middle.** The middle band is where the letters go. The
- *     interest belongs at the edges and along the bottom.
- *   - **Quiet, and light.** Low contrast, no dark masses, no busy texture. A
- *     glyph is a thin black outline; anything detailed behind it wins.
- *   - **No text.** Image models put lettering into children's illustrations
- *     unprompted, and Latin letters on a screen teaching the Urdu alphabet are
- *     worse than no picture at all. Checked for below, not just asked for.
- *
- * ## Cost and repeatability
- *
- * Generated once and committed, like the word pictures. Not run at build time:
- * it costs money, needs a key, and which of these is any good is a judgement
- * somebody has to make by looking. Raw PNGs are cached in .image-cache/bg/, so
- * re-running to retune the crop or the compression is free.
- *
- * Usage:
- *   OPENAI_API_KEY=... node tools/make-backgrounds.mjs [--force] [--only home,trace]
- *
- * The key is only ever read from the environment. Do not put it in a file.
- */
+/* Draws a backdrop for each screen. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -43,50 +9,37 @@ import { CONTENT_DIR, ROOT } from './audio-keys.mjs';
 const OUT = path.join(ROOT, 'public', 'images', 'backgrounds');
 const RAW = path.join(ROOT, '.image-cache', 'bg');
 const MODEL = 'gpt-image-2';
-/** The widest the model offers. Cropped to 16:9 below. */
+/* The widest the model offers. */
 const SIZE = '1536x1024';
-/** The design surface is 1280x720; this is that at 1x, which is enough. */
+/* The design surface is 1280x720; this is that at 1x, which is enough. */
 const TARGET = { width: 1280, height: 720 };
 const CONCURRENCY = 3;
 
-/**
- * The house style, on every prompt.
- *
- * Written as one illustrator's brief rather than a list of tags, because the
- * whole point is that eleven pictures look like a set. The "empty middle"
- * instruction is repeated in different words on purpose: it is the one that
- * matters most and the one the model most wants to ignore.
- */
+/* The house style, on every prompt. */
 const STYLE =
-  'Soft flat vector illustration for a toddler picture book, wide landscape. ' +
-  'Gentle pastel colours, pale blue sky, no dark areas, low contrast, ' +
-  'simple bold shapes with soft edges, no fine texture, no gradients on small ' +
-  'details. Scenery only, no characters, no people, no animals. ' +
-  'The entire middle of the image is empty open sky or plain flat ground — ' +
-  'all scenery sits along the bottom edge and the far left and right edges, ' +
-  'leaving a large clear calm space through the centre. ' +
-  'Absolutely no text, no letters, no numbers, no writing, no signs, no logos.';
+  'Premium 2.5D cartoon background for a preschool learning app, wide landscape. ' +
+  'Use saturated cyan, turquoise, coral, yellow, purple and green, rounded shapes, ' +
+  'friendly storybook scenery, layered depth, soft glossy highlights and a lively ' +
+  'RV-style educational-game finish. Scenery only: no characters, people or animals. ' +
+  'Keep a large, calm, uncluttered play area through the centre so menus and game ' +
+  'content remain readable; put the richer scenery along the far edges and bottom. ' +
+  'Absolutely no text, letters, numbers, writing, signs or logos.';
 
-/**
- * One per screen, keyed by scene.
- *
- * The brief for each is a place, not a mood: "a beach" gives something usable,
- * "cheerful and fun" gives whatever the model felt like. Where a screen draws
- * something large over the backdrop, the brief says so.
- */
+/* One per screen, keyed by scene. */
 const BACKDROPS = {
   Home: 'A sunny green meadow with rolling hills far behind, a few small ' +
     'flowers along the very bottom edge, and a tree at each far side.',
   Flashcards:
-    'A calm garden on a bright day: a low hedge and a few tulips along the ' +
-    'bottom edge only, pale sky filling everything above. Very plain, since a ' +
-    'row of cards covers the bottom of this screen.',
+    'A bright flower garden: colourful shrubs, tulips and a low hedge along the ' +
+    'bottom and far edges, with saturated blue sky through the centre. Keep the ' +
+    'middle calm because a row of cards covers the bottom of this screen.',
   FindLetter:
     'A green meadow with soft rolling hills and scattered daisies along the ' +
     'bottom, a wide pale sky above.',
   Balloons:
-    'A high open sky seen from above the clouds: pale blue, a few soft white ' +
-    'cloud banks along the very bottom edge only, nothing else at all.',
+    'A vivid turquoise sky with soft white clouds at the corners, a small rainbow ' +
+    'at one far edge, and a thin strip of colourful meadow along the bottom. Keep ' +
+    'the centre open for floating balloons.',
   WordPictures:
     'A fruit orchard: neat rounded trees along the far left and far right ' +
     'edges, green grass along the bottom, wide open sky between them.',
@@ -118,10 +71,9 @@ const BACKDROPS = {
     'A leafy garden hedge running along the bottom edge with a few round ' +
     'bushes, one tall sunflower at the far right edge, wide pale sky above.',
   LetterPuzzle:
-    'A plain playroom floor seen flat on: a soft cream wall filling most of ' +
-    'the picture, a pale wooden floor strip along the bottom edge, one potted ' +
-    'plant at the far left edge. Very quiet — a large letter is built over ' +
-    'the middle of this screen.',
+    'A cheerful playroom: a soft turquoise wall, a colourful low shelf and toy ' +
+    'blocks at the far edges, and a pale wooden floor strip along the bottom. Keep ' +
+    'the centre open because a large letter puzzle sits there.',
   Fishing:
     'Underwater, seen from inside a calm pond. Flat pale turquoise water ' +
     'fills the whole picture from top to bottom. A pale sandy bed with two or ' +
@@ -132,8 +84,6 @@ const BACKDROPS = {
     'A sunny market yard: a plain sandy floor across the bottom third, a low ' +
     'stone wall behind it, one striped awning at the far left edge, wide pale ' +
     'sky above.',
-  // --- Spelling. Their own places, so a child can tell at a glance that they
-  // have left the alphabet games behind.
   BuildWord:
     'A child\'s desk seen flat on: a warm pale wooden desktop across the ' +
     'bottom third, a soft cream wall above it, one small potted plant at the ' +
@@ -144,10 +94,9 @@ const BACKDROPS = {
     'a low bookshelf with a few books along the very bottom edge, one small ' +
     'globe at the far right edge. Very plain and light.',
   JoinWord:
-    'An open picture book laid flat and seen from above, filling the whole ' +
-    'frame: two blank cream pages with a soft crease down the middle, a thin ' +
-    'ribbon bookmark at the far left edge, and nothing printed on the pages ' +
-    'at all. No text, no drawings on the pages.',
+    'A colourful open picture book laid flat and seen from above: two blank cream ' +
+    'pages with a soft crease down the middle, a bright ribbon bookmark and tiny ' +
+    'colourful page tabs at the far edges. Keep the pages empty for the word game.',
   Whack:
     'A grassy field seen close up: flat green grass filling the lower two ' +
     'thirds with a few small daisies, a hedge along the very top of the grass ' +
@@ -161,17 +110,17 @@ const BACKDROPS = {
     'the whole picture, a curve of pale sand along the very bottom edge and a ' +
     'few green palm fronds at the far left and right edges only.',
   Paint:
-    'An art room: a plain pale lilac wall filling most of the picture, a pale ' +
-    'wooden desk edge along the very bottom, a jar of paintbrushes at the far ' +
-    'left edge. Very quiet — a large letter is coloured in over the middle.',
+    'A cheerful art room: a soft lilac wall, colourful paint pots and brushes at ' +
+    'the far edges, and a pale wooden desk edge along the bottom. Keep the centre ' +
+    'open because a large letter is coloured in there.',
   ConnectPairs:
-    'A tidy noticeboard wall: a plain pale cork-coloured surface filling most ' +
-    'of the picture, a thin wooden frame edge at the far left and right, a ' +
-    'narrow shelf along the very bottom. Completely empty in the middle.',
+    'A cheerful turquoise noticeboard wall with colourful pins and paper shapes at ' +
+    'the far edges, a bright wooden frame, and a narrow shelf along the bottom. ' +
+    'Keep the centre open for matching cards.',
   NumberLine:
-    'A railway siding: flat pale gravel across the bottom third with two thin ' +
-    'rails, a low hedge behind it, one signal post at the far right edge, ' +
-    'wide pale sky above.',
+    'A sunny railway garden: colourful gravel and two clean rails across the bottom ' +
+    'third, flowers and a low hedge at the edges, one bright signal post at the far ' +
+    'right, and open blue sky through the centre.',
   Hidden:
     'An overgrown garden corner: leafy green bushes and ferns filling the ' +
     'bottom third and climbing the far left and right edges, a few flowers, ' +
@@ -181,10 +130,9 @@ const BACKDROPS = {
     'picture, a polished wooden floor strip along the bottom edge, one ' +
     'wall-bar ladder at the far left edge, nothing in the middle.',
   Trace:
-    'An almost empty pale blue sky with the faintest suggestion of two soft ' +
-    'clouds at the top corners and a thin strip of green grass along the very ' +
-    'bottom. Nearly featureless — a large letter is drawn over the middle of ' +
-    'this screen.',
+    'A bright turquoise sky with soft clouds at the top corners, colourful flowers ' +
+    'and a thin strip of green grass along the bottom. Keep the centre calm because ' +
+    'a large tracing card sits there.',
 };
 
 const key = process.env.OPENAI_API_KEY;
@@ -254,7 +202,7 @@ async function generate(name) {
   }
 }
 
-/** Runs `worker` over `items`, `limit` at a time. */
+/* Runs `worker` over `items`, `limit` at a time. */
 async function pool(items, limit, worker) {
   const queue = [...items];
   let done = 0;
@@ -275,17 +223,6 @@ async function pool(items, limit, worker) {
 }
 
 await pool(todo, CONCURRENCY, generate);
-
-// ------------------------------------------------------------ crop and pack
-//
-// A browser, for the same reason cutout.mjs uses one: it has a good image
-// decoder, a good scaler and a WebP encoder, and depending on one of those from
-// npm to resize eleven pictures is not a trade worth making.
-//
-// Cropped rather than squashed. The model's widest is 3:2 and the app is 16:9,
-// so about an eighth of the height goes. Taken off the top, because these are
-// landscapes: the bottom edge carries the grass and the hedges, and the top is
-// the part that is meant to be empty anyway.
 
 console.log('Cropping to 16:9 and packing…');
 const browser = await chromium.launch(launchOptions());
@@ -314,9 +251,7 @@ async function pack(png) {
         image.height * scale
       );
 
-      // How much of this is dark. A backdrop is meant to be pale — a dark one
-      // will swallow the black glyphs drawn over it, and it is far cheaper to
-      // notice that here than by squinting at a screenshot.
+      // How much of this is dark.
       const { data } = ctx.getImageData(0, 0, width, height);
       let dark = 0;
       for (let i = 0; i < data.length; i += 4) {
@@ -339,9 +274,7 @@ for (const name of wanted) {
   if (!fs.existsSync(rawFile)) continue;
 
   const { webp, ink } = await pack(fs.readFileSync(rawFile));
-  // Anything above a few per cent means a dark mass somewhere — a night sky, a
-  // heavy tree line, a shadow across the ground — and a Nastaliq outline drawn
-  // over that is unreadable.
+  // Anything above a few per cent means a dark mass somewhere.
   if (ink > 0.06) {
     console.warn(
       `  ! ${name}: ${(ink * 100).toFixed(1)}% of it is dark — letters may not read over this`
@@ -354,11 +287,7 @@ for (const name of wanted) {
 }
 await browser.close();
 
-// Every backdrop on disk, not only the ones this run touched. Built from
-// `written` once, and `--only Doors` then rewrote the manifest with two entries
-// and dropped the other eleven — every screen fell back to the drawn meadow,
-// which is exactly the silent failure the fallback is designed to hide.
-// verify:sizing caught it; it should never have been possible.
+// Every backdrop on disk, not only the ones this run touched.
 const manifest = {
   $comment: 'Generated by tools/make-backgrounds.mjs. Do not edit by hand.',
   model: MODEL,
