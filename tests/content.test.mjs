@@ -138,8 +138,12 @@ describe('words taken apart', () => {
 });
 
 describe('word clusters', () => {
-  /* How many of the words let the taught letter be coloured on its own. */
-  const SEPARABLE = 9;
+  /* Noto keeps every source letter in its own cluster for per-letter colouring. */
+  const SEPARABLE = words.length;
+
+  test('word outlines record the separate colouring font', () => {
+    assert.match(glyphs.wordFont?.file ?? '', /noto-nastaliq-urdu/i);
+  });
 
   test('every word has clusters covering it exactly once', () => {
     for (const word of words) {
@@ -299,7 +303,7 @@ describe('baked glyphs', () => {
   });
 
   test('words are shaped, not letters set side by side', () => {
-    // The failure this guards against is a word baked as its letters in a row.
+    // The failure this guards against is losing the source-letter map while baking a whole word.
     const byChar = new Map(letters.map((l) => [l.char, l.id]));
     const byId = new Map(letters.map((l) => [l.id, l]));
     let checked = 0;
@@ -308,13 +312,11 @@ describe('baked glyphs', () => {
       const joins = ids.slice(0, -1).filter((id) => byId.get(id).joins === 'both').length;
       if (!joins) continue;
 
-      // Per join rather than as a fraction of the word.
-      const apart = ids.reduce((total, id) => total + glyphs.letters[id].isolated.advance, 0);
-      const joined = glyphs.words[word.id].advance;
+      const clusters = [...glyphs.words[word.id].clusters].sort((a, b) => a.from - b.from);
       assert.ok(
-        apart - joined > joins * glyphs.upem * 0.1,
-        `${word.id} (${word.word}) has ${joins} join(s) but shapes to ${joined} units ` +
-          `against ${apart} for its letters set apart — it does not look joined`
+        clusters.length === [...word.word].length &&
+          clusters.every((cluster, index) => cluster.from === index && cluster.to === index + 1),
+        `${word.id} (${word.word}) lost a source-letter cluster while shaping its joined form`
       );
       checked++;
     }

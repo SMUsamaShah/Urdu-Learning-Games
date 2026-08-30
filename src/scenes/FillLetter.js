@@ -11,14 +11,14 @@ import { chooseWeighted, weightOf } from '../lib/mastery.js';
 /* One letter is missing. */
 
 /* The row of letters being read, and the empty socket in it. */
-const ROW = { size: 108, gap: 12, y: 126 };
+const ROW = { size: 108, gap: 12, y: 84 };
 
 export default class FillLetter extends QuizScene {
   constructor() {
     super('FillLetter');
     this.instruction = 'fill-letter-word';
     this.instructionRoman = 'Which letter is missing?';
-    this.choicesY = 556;
+    this.choicesY = 590;
     this.promptY = 300;
     this.tileSize = 150;
     this.choicesByStreak = [2, 2, 3, 3, 3, 4];
@@ -151,6 +151,7 @@ export default class FillLetter extends QuizScene {
   }
 
   onCorrect() {
+    this.showCompletedWord(this.wordId, { y: 178, width: 460, height: 64 });
     this.speak();
   }
 }

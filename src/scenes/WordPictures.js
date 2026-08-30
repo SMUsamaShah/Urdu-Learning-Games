@@ -5,6 +5,7 @@ import { clipKeys, hasClip } from '../lib/audio.js';
 import { addWordImage, illustratedWords, queueWordImages } from '../lib/images.js';
 import { sayWord } from '../lib/say.js';
 import { COLORS, label } from '../lib/theme.js';
+import { coloredWordParts } from '../lib/word-colors.js';
 import QuizScene from './QuizScene.js';
 import { pickWeighted } from '../lib/mastery.js';
 
@@ -65,10 +66,12 @@ export default class WordPictures extends QuizScene {
     // Every word at one em, so the writing stays the same size round to round.
     const glyph = wordGlyph(target);
     if (glyph) {
+      const parts = coloredWordParts(glyph);
       layer.add(
-        addGlyph(this, 0, 0, `word-prompt:em${Math.round(this.promptFit.em)}:${target}`, glyph, {
+        addGlyph(this, 0, 0, `word-prompt:em${Math.round(this.promptFit.em)}:${target}:coloured`, glyph, {
           em: this.promptFit.em,
           color: COLORS.ink,
+          parts,
         })
       );
     }
@@ -91,10 +94,12 @@ export default class WordPictures extends QuizScene {
     // No picture for this word yet: show the word instead of an empty card.
     const glyph = wordGlyph(id);
     if (glyph) {
+      const parts = coloredWordParts(glyph);
       tile.add(
-        addGlyph(this, 0, -8, `word-tile:em${Math.round(this.fallbackFit.em)}:${id}`, glyph, {
+        addGlyph(this, 0, -8, `word-tile:em${Math.round(this.fallbackFit.em)}:${id}:coloured`, glyph, {
           em: this.fallbackFit.em,
           color: COLORS.ink,
+          parts,
         })
       );
     }

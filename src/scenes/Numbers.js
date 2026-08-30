@@ -7,7 +7,7 @@ import {
   numbersById,
 } from '../lib/content.js';
 import { addGlyph, fitEmAlone } from '../lib/glyph.js';
-import { hop } from '../lib/liveliness.js';
+import { hop, popIn } from '../lib/liveliness.js';
 import { ringBurst } from '../lib/particles.js';
 import * as sfx from '../lib/sfx.js';
 import { clipKeys, hasClip } from '../lib/audio.js';
@@ -98,17 +98,7 @@ export default class Numbers extends QuizScene {
       const image = addWordImage(this, x, y, prop, size);
       if (image) {
         layer.add(image);
-        // A small stagger so they arrive one after another, which invites counting them rather than seeing a block.
-        const { scaleX, scaleY } = image;
-        image.setScale(0);
-        this.tweens.add({
-          targets: image,
-          scaleX,
-          scaleY,
-          delay: i * 70,
-          duration: 260,
-          ease: 'Back.easeOut',
-        });
+        popIn(this, image, { delay: i * 70, duration: 260 });
 
         // Each one can be poked, and each poke counts it out loud: one, two, three.
         const ordinal = i + 1;

@@ -7,7 +7,7 @@ import {
   lettersById,
   wordGlyph,
 } from '../lib/content.js';
-import { addGlyph, fitEmAlone } from '../lib/glyph.js';
+import { addGlyph, fitEmAlone, glyphMetrics } from '../lib/glyph.js';
 import { addWordImage, queueWordImages } from '../lib/images.js';
 import { HINT_AFTER_MISSES, pickWord, spellingPlan, trayFor } from '../lib/spelling.js';
 import { sayLetter, sayWord } from '../lib/say.js';
@@ -21,6 +21,7 @@ import { bob, hop, popIn } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, PLAY, familyColor, makeButton } from '../lib/theme.js';
 import { weightOf } from '../lib/mastery.js';
+import { coloredWordParts } from '../lib/word-colors.js';
 
 /* Build the word out of its letters. */
 
@@ -30,6 +31,8 @@ const TRAY_Y = DESIGN.height - 112;
 const TRAY = { size: 112, gap: 18 };
 /* Where the picture sits, and how big. */
 const PICTURE = { y: 250, size: 168 };
+/* The joined word shown below the completed letter slots. */
+const JOINED = { y: 514, width: 640, height: 74 };
 
 export default class BuildWord extends Phaser.Scene {
   constructor() {
@@ -308,31 +311,44 @@ export default class BuildWord extends Phaser.Scene {
     finished();
 
     const glyph = wordGlyph(this.wordId);
-    const em = fitEmAlone(allWordGlyphs(), 640, 210).em;
+    const parts = coloredWordParts(glyph);
+    const em = fitEmAlone(allWordGlyphs(), JOINED.width, JOINED.height).em;
+    const metrics = glyph ? glyphMetrics(glyph, em) : null;
+    const plate = metrics ? this.add.graphics() : null;
+    if (plate) {
+      const width = Math.max(132, metrics.width + 34);
+      const height = Math.max(68, metrics.height + 12);
+      plate.fillStyle(COLORS.shadow, 0.12);
+      plate.fillRoundedRect(
+        PLAY.centerX - width / 2,
+        JOINED.y - height / 2 + 4,
+        width,
+        height,
+        20
+      );
+      plate.fillStyle(COLORS.card, 0.96);
+      plate.fillRoundedRect(PLAY.centerX - width / 2, JOINED.y - height / 2, width, height, 20);
+      plate.setAlpha(0);
+      this.board.add(plate);
+    }
     const joined = glyph
-      ? addGlyph(this, PLAY.centerX, SLOT.y, `build-word:em${Math.round(em)}:${this.wordId}`, glyph, {
-          em,
-          color: COLORS.ink,
-        })
+      ? addGlyph(
+          this,
+          PLAY.centerX,
+          JOINED.y,
+          `build-word:em${Math.round(em)}:${this.wordId}:coloured`,
+          glyph,
+          { em, color: COLORS.ink, parts }
+        )
       : null;
     if (joined) {
       joined.setAlpha(0);
       this.board.add(joined);
     }
 
-    for (const slot of this.slots) {
-      slot.pulse?.stop();
-      this.tweens.add({
-        targets: slot,
-        x: PLAY.centerX,
-        alpha: 0,
-        duration: 460,
-        delay: 120,
-        ease: 'Quad.easeInOut',
-      });
-    }
+    for (const slot of this.slots) slot.pulse?.stop();
     if (joined) {
-      this.tweens.add({ targets: joined, alpha: 1, duration: 420, delay: 380 });
+      this.tweens.add({ targets: [plate, joined], alpha: 1, duration: 420, delay: 380 });
       this.time.delayedCall(520, () => dance(this, joined));
     }
 
