@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { allWordGlyphs, wordGlyph } from '../lib/content.js';
-import { addGlyph, fitEmAlone } from '../lib/glyph.js';
+import { addGlyph, fitEmAlone, glyphMetrics } from '../lib/glyph.js';
 import * as sfx from '../lib/sfx.js';
 import { milestone, rightAnswer, wrongAnswer } from '../lib/flourish.js';
 import { confetti, dance, flyStar } from '../lib/celebrate.js';
@@ -10,7 +10,7 @@ import { armDragging, carry, nearest, swimHome } from '../lib/dragging.js';
 import { bob, hop, popIn, squash } from '../lib/liveliness.js';
 import { sparkleBurst } from '../lib/particles.js';
 import { COLORS, label, makeButton, PLAY } from '../lib/theme.js';
-import { coloredWordParts, WORD_OUTLINE } from '../lib/word-colors.js';
+import { coloredWordParts } from '../lib/word-colors.js';
 
 /* The shape every "which one is it?" game in this app has. */
 
@@ -85,17 +85,28 @@ export default class QuizScene extends Phaser.Scene {
 
     const parts = coloredWordParts(glyph);
     const em = fitEmAlone(allWordGlyphs(), width, height).em;
+    const metrics = glyphMetrics(glyph, em);
+    const plateWidth = Math.max(132, metrics.width + 34);
+    const plateHeight = Math.max(68, metrics.height + 12);
+    const plate = this.add.graphics();
+    plate.fillStyle(COLORS.shadow, 0.12);
+    plate.fillRoundedRect(-plateWidth / 2, y - plateHeight / 2 + 4, plateWidth, plateHeight, 20);
+    plate.fillStyle(COLORS.card, 0.96);
+    plate.fillRoundedRect(-plateWidth / 2, y - plateHeight / 2, plateWidth, plateHeight, 20);
+    plate.setAlpha(0);
+    this.promptLayer.add(plate);
+
     const joined = addGlyph(
       this,
       0,
       y,
       `completed-word:em${Math.round(em)}:${id}:coloured`,
       glyph,
-      { em, color: COLORS.ink, parts, ...WORD_OUTLINE }
+      { em, color: COLORS.ink, parts }
     );
     joined.setAlpha(0);
     this.promptLayer.add(joined);
-    this.tweens.add({ targets: joined, alpha: 1, delay: 100, duration: 340 });
+    this.tweens.add({ targets: [plate, joined], alpha: 1, delay: 100, duration: 340 });
     this.completedWord = joined;
     return joined;
   }

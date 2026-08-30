@@ -1,18 +1,12 @@
-/* Paul Tol's vibrant, colour-blind-safe qualitative hues, expressed as HSL. */
+/* Kite-inspired hues, ordered so neighbours differ in hue and brightness. */
 
 export const WORD_COLORS = Object.freeze([
-  'hsl(173, 100%, 30%)',
-  'hsl(202, 100%, 37%)',
-  'hsl(22, 85%, 57%)',
-  'hsl(338, 85%, 51%)',
-  'hsl(11, 85%, 38%)',
+  'hsl(202, 100%, 29%)',
+  'hsl(355, 86%, 50%)',
+  'hsl(98, 68%, 26%)',
+  'hsl(289, 70%, 52%)',
+  'hsl(38, 100%, 38%)',
 ]);
-
-/* A thin edge keeps the brighter fills readable on the white word plate. */
-export const WORD_OUTLINE = Object.freeze({
-  stroke: '#2b3047',
-  strokeWidth: 1.5,
-});
 
 export function wordColor(index) {
   return WORD_COLORS[index % WORD_COLORS.length];
