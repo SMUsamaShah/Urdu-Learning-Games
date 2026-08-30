@@ -1,11 +1,16 @@
-/* Kite-inspired hues, ordered so neighbours differ in hue and brightness. */
+/* Supplied palette, kept in source-letter order. */
 
 export const WORD_COLORS = Object.freeze([
-  'hsl(202, 100%, 29%)',
-  'hsl(355, 86%, 50%)',
-  'hsl(98, 68%, 26%)',
-  'hsl(289, 70%, 52%)',
-  'hsl(38, 100%, 38%)',
+  '#FF0000',
+  '#FFFF00',
+  '#00EAFF',
+  '#AA00FF',
+  '#FF7F00',
+  '#0095FF',
+  '#FF00AA',
+  '#FFD400',
+  '#0040FF',
+  '#EDB9B9',
 ]);
 
 export function wordColor(index) {
