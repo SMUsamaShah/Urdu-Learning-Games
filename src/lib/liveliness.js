@@ -57,20 +57,18 @@ export function sway(scene, target, options = {}) {
   });
 }
 
-/** Arrives with a bounce, from nothing.
+/** Reveals a target at its existing size.
  * @returns {Phaser.Tweens.Tween}
  */
 export function popIn(scene, target, options = {}) {
-  const { delay = 0, duration = 380, from = 0.2 } = options;
-  const base = scaleOf(target);
-  target.setScale(base.x * from, base.y * from);
+  const { delay = 0, duration = 380 } = options;
+  target.setAlpha(0);
   return scene.tweens.add({
     targets: target,
-    scaleX: base.x,
-    scaleY: base.y,
+    alpha: 1,
     delay,
     duration,
-    ease: 'Back.easeOut',
+    ease: 'Quad.easeOut',
   });
 }
 

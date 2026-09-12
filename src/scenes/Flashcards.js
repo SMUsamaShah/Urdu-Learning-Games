@@ -7,7 +7,6 @@ import {
   letterGlyph,
   lettersById,
   sequenceFor,
-  taughtCluster,
   uiGlyph,
   uiGlyphs,
   wordForLetter,
@@ -24,6 +23,7 @@ import { breathe, hop, jig, popIn, squash } from '../lib/liveliness.js';
 import { ringBurst, sparkleBurst } from '../lib/particles.js';
 import { COLORS, DESIGN, familyColor, label } from '../lib/theme.js';
 import { watchSwipe } from '../lib/swipe.js';
+import { coloredWordParts, wordColor } from '../lib/word-colors.js';
 
 /* Free exploration of the alphabet, and the backbone the other games hang off. */
 
@@ -435,21 +435,19 @@ export default class Flashcards extends Phaser.Scene {
 
     const wordFit = fitEmAlone(allWordGlyphs(), WORD_BOX.width, WORD_BOX.height);
     const glyph = wordGlyph(word.id);
-    // The taught letter picked out inside the word.
-    const lit = taughtCluster(word.id);
+    const parts = coloredWordParts(glyph);
     let wordGlyphImage = null;
     if (glyph) {
       wordGlyphImage = addGlyph(
         this,
         MAIN_X - 60,
         WORD_BOX.top + WORD_BOX.height / 2,
-        `card-word:em${Math.round(wordFit.em)}:${word.id}${lit ? ':lit' : ''}`,
+        `card-word:em${Math.round(wordFit.em)}:${word.id}:coloured`,
         glyph,
         {
           em: wordFit.em,
           color: COLORS.ink,
-          partD: lit,
-          partColor: lit ? COLORS.taughtCss : null,
+          parts,
         }
       );
       card.add(wordGlyphImage);
@@ -494,9 +492,9 @@ export default class Flashcards extends Phaser.Scene {
           this,
           x,
           middle,
-          `broken:em${Math.round(brokenFit.em)}:${id}${taught ? ':taught' : ''}`,
+          `broken:em${Math.round(brokenFit.em)}:${id}:c${index}`,
           glyph,
-          { em: brokenFit.em, color: taught ? COLORS.taughtCss : COLORS.ink }
+          { em: brokenFit.em, color: wordColor(index) }
         );
         card.add(piece);
         // Left to right in time.

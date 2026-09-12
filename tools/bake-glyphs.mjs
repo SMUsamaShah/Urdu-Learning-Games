@@ -5,7 +5,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as hb from 'harfbuzzjs';
 import wawoff2 from 'wawoff2';
-import { FONT_WOFF2, fontFingerprint } from './font.mjs';
+import {
+  FONT_WOFF2,
+  WORD_FONT_WOFF2,
+  fontFingerprint,
+  wordFontFingerprint,
+} from './font.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT = path.join(ROOT, 'content');
@@ -39,13 +44,11 @@ const FORMS_BY_JOINING = {
  * @property {number} upem Font units per em, so the runtime can scale.
  */
 
-async function loadFont() {
-  if (!fs.existsSync(FONT_WOFF2)) {
-    throw new Error(
-      `Font not found at ${FONT_WOFF2}\nRun \`npm install\` first.`
-    );
+async function loadFont(file) {
+  if (!fs.existsSync(file)) {
+    throw new Error(`Font not found at ${file}\nRun \`npm install\` first.`);
   }
-  const ttf = await wawoff2.decompress(fs.readFileSync(FONT_WOFF2));
+  const ttf = await wawoff2.decompress(fs.readFileSync(file));
   const face = new hb.Face(new hb.Blob(new Uint8Array(ttf)), 0);
   return { face, font: new hb.Font(face) };
 }
@@ -53,9 +56,10 @@ async function loadFont() {
 /** Shapes a string and flattens the whole glyph run into one path.
  * @param {hb.Font} font
  * @param {string} text
+ * @param {number} [unitScale=1] Scale the outlines into the app's shared em.
  * @returns {BakedGlyph}
  */
-function bakeRun(font, text) {
+function bakeRun(font, text, unitScale = 1) {
   const buf = new hb.Buffer();
   buf.addText(text);
   buf.guessSegmentProperties();
@@ -81,14 +85,14 @@ function bakeRun(font, text) {
 
     // ZWJ and other zero-ink glyphs shape to empty outlines.
     if (commands.length > 0) {
-      const originX = cursorX + pos.xOffset;
-      const originY = cursorY + pos.yOffset;
+      const originX = (cursorX + pos.xOffset) * unitScale;
+      const originY = (cursorY + pos.yOffset) * unitScale;
 
       for (const cmd of commands) {
         const values = [];
         for (let v = 0; v < cmd.values.length; v += 2) {
-          const x = originX + cmd.values[v];
-          const y = -(originY + cmd.values[v + 1]); // flip to y-down
+          const x = originX + cmd.values[v] * unitScale;
+          const y = -(originY + cmd.values[v + 1] * unitScale); // flip to y-down
           values.push(round(x), round(y));
           if (cmd.type !== 'Z') {
             if (x < minX) minX = x;
@@ -112,8 +116,8 @@ function bakeRun(font, text) {
     return {
       d: '',
       bbox: [0, 0, 0, 0],
-      advance: cursorX,
-      upem: font.face.upem,
+      advance: round(cursorX * unitScale),
+      upem: round(font.face.upem * unitScale),
       clusters: [],
     };
   }
@@ -121,8 +125,8 @@ function bakeRun(font, text) {
   return {
     d: parts.join(''),
     bbox: [round(minX), round(minY), round(maxX - minX), round(maxY - minY)],
-    advance: round(cursorX),
-    upem: font.face.upem,
+    advance: round(cursorX * unitScale),
+    upem: round(font.face.upem * unitScale),
     clusters: clustersOf(pieces, [...text].length),
   };
 }
@@ -153,7 +157,8 @@ function readJson(name) {
 }
 
 async function main() {
-  const { font } = await loadFont();
+  const mainFont = await loadFont(FONT_WOFF2);
+  const wordFont = await loadFont(WORD_FONT_WOFF2);
   const { letters } = readJson('letters.json');
   const { numbers } = readJson('numbers.json');
   const { words } = readJson('words.json');
@@ -162,6 +167,7 @@ async function main() {
   const out = {
     upem: 0,
     font: fontFingerprint(),
+    wordFont: wordFontFingerprint(),
     letters: {},
     names: {},
     numbers: {},
@@ -190,27 +196,35 @@ async function main() {
     }
     out.letters[letter.id] = {};
     for (const form of forms) {
-      const baked = bakeRun(font, FORMS[form](letter.char));
+      const baked = bakeRun(mainFont.font, FORMS[form](letter.char));
       out.letters[letter.id][form] = record(baked, `${letter.id}.${form}`);
     }
 
     // The letter's spoken name (بے) as its own glyph.
-    out.names[letter.id] = record(bakeRun(font, letter.name), `name:${letter.id}`);
+    out.names[letter.id] = record(
+      bakeRun(mainFont.font, letter.name),
+      `name:${letter.id}`
+    );
   }
 
   for (const number of numbers) {
-    out.numbers[number.id] = record(bakeRun(font, number.char), number.id);
+    out.numbers[number.id] = record(bakeRun(mainFont.font, number.char), number.id);
   }
 
-  // Words are shaped whole.
+  const wordScale = mainFont.face.upem / wordFont.face.upem;
+
+  // Words use Noto so each source letter has its own cluster.
   for (const word of words) {
-    // With clusters: the Letters screen colours the taught letter inside its word where the face leaves it separable.
-    out.words[word.id] = record(bakeRun(font, word.word), word.id, { clusters: true });
+    out.words[word.id] = record(
+      bakeRun(wordFont.font, word.word, wordScale),
+      word.id,
+      { clusters: true }
+    );
   }
 
   // Menu labels go through the same pipeline as gameplay glyphs.
   for (const string of strings) {
-    out.ui[string.id] = record(bakeRun(font, string.text), `ui:${string.id}`);
+    out.ui[string.id] = record(bakeRun(mainFont.font, string.text), `ui:${string.id}`);
   }
 
   fs.rmSync(path.join(CONTENT, 'glyphs'), { recursive: true, force: true });

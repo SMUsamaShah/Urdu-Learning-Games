@@ -10,6 +10,7 @@ import { addGlyph, fitEmAlone } from '../lib/glyph.js';
 import { pickWord, shuffle, wordDistractors } from '../lib/spelling.js';
 import { sayLetter, sayWord } from '../lib/say.js';
 import { COLORS } from '../lib/theme.js';
+import { coloredWordParts } from '../lib/word-colors.js';
 
 /* These letters — which word do they make? */
 
@@ -47,10 +48,12 @@ export default class JoinWord extends QuizScene {
     const em = fitEmAlone(allWordGlyphs(), size - 44, height - 44).em;
     const glyph = wordGlyph(id);
     if (!glyph) return;
+    const parts = coloredWordParts(glyph);
     tile.add(
-      addGlyph(this, 0, 0, `join-word:em${Math.round(em)}:${id}`, glyph, {
+      addGlyph(this, 0, 0, `join-word:em${Math.round(em)}:${id}:coloured`, glyph, {
         em,
         color: COLORS.ink,
+        parts,
       })
     );
   }
@@ -88,6 +91,7 @@ export default class JoinWord extends QuizScene {
 
   /* Speak the word after it has been found. */
   onCorrect(id) {
+    this.showCompletedWord(id, { y: 94, width: 540, height: 74 });
     sayWord(id);
   }
 }
