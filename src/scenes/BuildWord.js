@@ -7,7 +7,7 @@ import {
   lettersById,
   wordGlyph,
 } from '../lib/content.js';
-import { addGlyph, fitEmAlone } from '../lib/glyph.js';
+import { addGlyph, fitEmAlone, glyphMetrics } from '../lib/glyph.js';
 import { addWordImage, queueWordImages } from '../lib/images.js';
 import { HINT_AFTER_MISSES, pickWord, spellingPlan, trayFor } from '../lib/spelling.js';
 import { sayLetter, sayWord } from '../lib/say.js';
@@ -32,7 +32,7 @@ const TRAY = { size: 112, gap: 18 };
 /* Where the picture sits, and how big. */
 const PICTURE = { y: 250, size: 168 };
 /* The joined word shown below the completed letter slots. */
-const JOINED = { y: 520, width: 640, height: 74 };
+const JOINED = { y: 514, width: 640, height: 74 };
 
 export default class BuildWord extends Phaser.Scene {
   constructor() {
@@ -313,6 +313,24 @@ export default class BuildWord extends Phaser.Scene {
     const glyph = wordGlyph(this.wordId);
     const parts = coloredWordParts(glyph);
     const em = fitEmAlone(allWordGlyphs(), JOINED.width, JOINED.height).em;
+    const metrics = glyph ? glyphMetrics(glyph, em) : null;
+    const plate = metrics ? this.add.graphics() : null;
+    if (plate) {
+      const width = Math.max(132, metrics.width + 34);
+      const height = Math.max(68, metrics.height + 12);
+      plate.fillStyle(COLORS.shadow, 0.12);
+      plate.fillRoundedRect(
+        PLAY.centerX - width / 2,
+        JOINED.y - height / 2 + 4,
+        width,
+        height,
+        20
+      );
+      plate.fillStyle(COLORS.card, 0.96);
+      plate.fillRoundedRect(PLAY.centerX - width / 2, JOINED.y - height / 2, width, height, 20);
+      plate.setAlpha(0);
+      this.board.add(plate);
+    }
     const joined = glyph
       ? addGlyph(
           this,
@@ -330,7 +348,7 @@ export default class BuildWord extends Phaser.Scene {
 
     for (const slot of this.slots) slot.pulse?.stop();
     if (joined) {
-      this.tweens.add({ targets: joined, alpha: 1, duration: 420, delay: 380 });
+      this.tweens.add({ targets: [plate, joined], alpha: 1, duration: 420, delay: 380 });
       this.time.delayedCall(520, () => dance(this, joined));
     }
 

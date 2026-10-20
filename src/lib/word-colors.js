@@ -1,11 +1,16 @@
-/* Alternate dark and light colours so adjacent letters stay distinct. */
+/* Supplied palette, kept in source-letter order. */
 
 export const WORD_COLORS = Object.freeze([
-  '#003b73',
-  '#b85c00',
-  '#2f2f2f',
-  '#006b4f',
-  '#d81b60',
+  '#FF0000',
+  '#FFFF00',
+  '#00EAFF',
+  '#AA00FF',
+  '#FF7F00',
+  '#0095FF',
+  '#FF00AA',
+  '#FFD400',
+  '#0040FF',
+  '#EDB9B9',
 ]);
 
 export function wordColor(index) {

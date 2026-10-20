@@ -21,7 +21,7 @@ import { GAMES } from '../lib/games.js';
 import { PER_PAGE, menuGames, pagesOf } from '../lib/menu.js';
 import { watchSwipe } from '../lib/swipe.js';
 import { watchMenu } from '../lib/time-up.js';
-import { queueTileArt, queueTileFrame } from '../lib/tiles.js';
+import { queueTileArt } from '../lib/tiles.js';
 
 /* The menu. Games are listed right-to-left to match the reading direction of the script being taught. */
 
@@ -47,9 +47,8 @@ export default class Home extends Phaser.Scene {
 
   preload() {
     queueBackdrop(this);
-    // Menu artwork and the shared tile frame.
+    // Menu artwork. Each generated picture is a complete tile face.
     queueTileArt(this, GAMES);
-    queueTileFrame(this);
   }
 
   create() {

@@ -1,50 +1,43 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { WORD_COLORS, wordColor } from '../src/lib/word-colors.js';
 
-const rgb = (hex) => [0, 2, 4].map((offset) => parseInt(hex.slice(1 + offset, 3 + offset), 16));
-const distance = (a, b) => Math.hypot(...rgb(a).map((channel, i) => channel - rgb(b)[i]));
-const luminance = (hex) => {
-  const channels = rgb(hex)
-    .map((channel) => channel / 255)
-    .map((channel) => (channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
-};
+const WORD_GLYPHS = Object.values(
+  JSON.parse(readFileSync(new URL('../content/glyphs.json', import.meta.url), 'utf8')).words
+);
 
-test('joined-word colours are unique and visibly separated', () => {
+const SUPPLIED_PALETTE = [
+  '#FF0000',
+  '#FFFF00',
+  '#00EAFF',
+  '#AA00FF',
+  '#FF7F00',
+  '#0095FF',
+  '#FF00AA',
+  '#FFD400',
+  '#0040FF',
+  '#EDB9B9',
+];
+
+test('the word palette matches the supplied colours and order', () => {
+  assert.deepEqual(WORD_COLORS, SUPPLIED_PALETTE);
   assert.equal(new Set(WORD_COLORS).size, WORD_COLORS.length);
-  for (let i = 0; i < WORD_COLORS.length; i += 1) {
-    const next = wordColor(i + 1);
-    assert.ok(
-      distance(WORD_COLORS[i], next) > 140 ||
-        Math.abs(luminance(WORD_COLORS[i]) - luminance(next)) >= 0.05,
-      `${WORD_COLORS[i]} and ${next} are too similar for adjacent letters`
+  for (const color of WORD_COLORS) assert.match(color, /^#[0-9A-F]{6}$/);
+});
+
+test('every taught word gets a different colour for each source letter', () => {
+  for (const glyph of WORD_GLYPHS) {
+    const colours = glyph.clusters.map((_, index) => wordColor(index));
+    assert.equal(
+      new Set(colours).size,
+      colours.length,
+      `a ${glyph.clusters.length}-letter word repeats a colour`
     );
   }
 });
 
-test('every colour stays readable on a white word', () => {
-  for (const color of WORD_COLORS) {
-    assert.ok(1.05 / (luminance(color) + 0.05) >= 4.5, `${color} needs more contrast with white`);
-  }
-});
-
-test('adjacent colours have a meaningful brightness difference', () => {
-  const differences = WORD_COLORS.map((color, index) =>
-    Math.abs(luminance(color) - luminance(wordColor(index + 1)))
-  );
-
-  assert.ok(
-    Math.min(...differences) >= 0.05,
-    `adjacent brightness differences are too small: ${differences.map((value) => value.toFixed(3))}`
-  );
-  assert.ok(
-    Math.max(...WORD_COLORS.map(luminance)) - Math.min(...WORD_COLORS.map(luminance)) >= 0.12,
-    'the palette needs a wider overall brightness range'
-  );
-});
-
-test('the palette repeats predictably for longer words', () => {
+test('the palette repeats predictably after all supplied colours', () => {
   assert.equal(wordColor(0), wordColor(WORD_COLORS.length));
   assert.equal(wordColor(WORD_COLORS.length + 1), wordColor(1));
 });

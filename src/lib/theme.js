@@ -165,13 +165,16 @@ function cardTexture(scene, { width, height, color, shape, backing, rim, paint, 
   const key = paintKey ? `${paintKey}:${shapeKey}` : `card:${shapeKey}`;
   if (scene.textures.exists(key)) return key;
 
+  // Tile art is already a finished image. Do not leave the button-card
+  // padding around it or the face will be smaller than its hit area.
+  const pad = backing || rim ? CARD_PAD : 0;
   const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil((width + CARD_PAD * 2) * CARD_SUPERSAMPLE);
-  canvas.height = Math.ceil((height + CARD_PAD * 2) * CARD_SUPERSAMPLE);
+  canvas.width = Math.ceil((width + pad * 2) * CARD_SUPERSAMPLE);
+  canvas.height = Math.ceil((height + pad * 2) * CARD_SUPERSAMPLE);
   const ctx = canvas.getContext('2d');
   ctx.scale(CARD_SUPERSAMPLE, CARD_SUPERSAMPLE);
   // Origin at the shape's centre, matching how the shapes are described.
-  ctx.translate(CARD_PAD + width / 2, CARD_PAD + height / 2);
+  ctx.translate(pad + width / 2, pad + height / 2);
 
   let outline = null;
   if (shape === 'star') outline = starPoints(width, height);
