@@ -3,6 +3,7 @@ import { fitEmLine, paintGlyph } from './glyph.js';
 import { artName } from './games.js';
 import { paintTileFace } from './tile-faces.js';
 import { hasTileArt, tileArtImage } from './tiles.js';
+import { tileArtSurface } from './tile-art.js';
 import { squash } from './liveliness.js';
 import { COLORS, makeButton } from './theme.js';
 
@@ -26,6 +27,15 @@ export function tilePanel(width, height) {
  * @returns {boolean} whether a drawing was found.
  */
 export function paintTilePanel(ctx, game, panel, picture = null) {
+  if (picture) {
+    // The illustration owns its silhouette. A second rounded mask or a wash
+    // behind its transparent corners leaves wedges or cuts through its rim.
+    ctx.drawImage(
+      tileArtSurface(picture),
+      -panel.width / 2, -panel.height / 2, panel.width, panel.height
+    );
+    return true;
+  }
   ctx.save();
   ctx.beginPath();
   ctx.roundRect(-panel.width / 2, -panel.height / 2, panel.width, panel.height, panel.radius);
@@ -36,29 +46,13 @@ export function paintTilePanel(ctx, game, panel, picture = null) {
   wash.addColorStop(1, tint(game.color, 0.96));
   ctx.fillStyle = wash;
   ctx.fill();
-  // Clip artwork to the tile surface. This keeps both generated and fallback
-  // faces clean at the corners without putting another frame over them.
+  // Only coded fallback drawings use the panel's geometric clip and wash.
   ctx.clip();
-  // Prefer generated artwork when available.
-  const drawn = picture
-    ? Boolean(
-        ctx.drawImage(
-          picture,
-          0,
-          0,
-          picture.width,
-          picture.height,
-          -panel.width / 2,
-          -panel.height / 2,
-          panel.width,
-          panel.height
-        ) ?? true
-      )
-    : paintTileFace(ctx, artName(game), {
-        width: panel.width,
-        height: panel.height,
-        color: game.color,
-      });
+  const drawn = paintTileFace(ctx, artName(game), {
+    width: panel.width,
+    height: panel.height,
+    color: game.color,
+  });
   ctx.restore();
   return drawn;
 }

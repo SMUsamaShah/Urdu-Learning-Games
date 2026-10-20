@@ -72,10 +72,6 @@ const drew = await page.evaluate(
       const y = pad + Math.floor(i / columns) * (tile.height + gap) + tile.height / 2;
       ctx.save();
       ctx.translate(x, y);
-      ctx.fillStyle = `#${(game.color >>> 0).toString(16).padStart(6, '0')}`;
-      ctx.beginPath();
-      ctx.roundRect(-tile.width / 2, -tile.height / 2, tile.width, tile.height, 26);
-      ctx.fill();
       if (!paintTilePanel(ctx, game, panel, pictures[artName(game)] ?? null)) {
         missing.push(artName(game));
       }
