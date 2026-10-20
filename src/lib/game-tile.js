@@ -2,7 +2,7 @@ import { glyphUpem, letterGlyph, numberGlyph } from './content.js';
 import { fitEmLine, paintGlyph } from './glyph.js';
 import { artName } from './games.js';
 import { paintTileFace } from './tile-faces.js';
-import { hasTileArt, TILE_FRAME_KEY, tileArtImage } from './tiles.js';
+import { hasTileArt, tileArtImage } from './tiles.js';
 import { squash } from './liveliness.js';
 import { COLORS, makeButton } from './theme.js';
 
@@ -15,11 +15,10 @@ export function iconGlyph(game) {
   return null;
 }
 
-/* The artwork panel, inset beneath the generated frame. */
+/* The artwork surface. Generated pictures already contain their own frame. */
 export function tilePanel(width, height) {
-  const inset = Math.round(Math.min(width, height) * FRAME);
-  const panel = { width: width - inset * 2, height: height - inset * 2 };
-  panel.radius = Math.round(Math.min(panel.width, panel.height) * 0.13);
+  const panel = { width, height };
+  panel.radius = Math.round(Math.min(width, height) * 0.08);
   return panel;
 }
 
@@ -37,17 +36,18 @@ export function paintTilePanel(ctx, game, panel, picture = null) {
   wash.addColorStop(1, tint(game.color, 0.96));
   ctx.fillStyle = wash;
   ctx.fill();
-  // Clip artwork to the tile panel.
+  // Clip artwork to the tile surface. This keeps both generated and fallback
+  // faces clean at the corners without putting another frame over them.
   ctx.clip();
   // Prefer generated artwork when available.
   const drawn = picture
     ? Boolean(
         ctx.drawImage(
           picture,
-          GENERATED_BEZEL,
-          GENERATED_BEZEL,
-          picture.width - GENERATED_BEZEL * 2,
-          picture.height - GENERATED_BEZEL * 2,
+          0,
+          0,
+          picture.width,
+          picture.height,
           -panel.width / 2,
           -panel.height / 2,
           panel.width,
@@ -73,12 +73,6 @@ function tint(color, towards) {
   };
   return `#${to(16)}${to(8)}${to(0)}`;
 }
-
-/* How thick the coloured frame is, as a fraction of the tile. */
-const FRAME = 0.055;
-
-/* Generated tile files include their own outer bezel; the coded card owns that edge. */
-const GENERATED_BEZEL = 28;
 
 /** Measures a set of games, then draws tiles from it.
  * @param {Phaser.Scene} scene
@@ -130,8 +124,6 @@ export function tileMaker(scene, games, { width, height, role = 'tile' }) {
         `${role}-face:em${Math.round(panel.height)}:${artName(game)}` +
         (hasTileArt(game) ? ':art' : ':drawn'),
     });
-    // Keep the frame separate so its transparent opening reveals the artwork.
-    button.add(scene.add.image(0, 0, TILE_FRAME_KEY).setDisplaySize(width, height));
     // Named so a check can find the tiles among everything else on the menu without knowing where they were laid out.
     button.setName(role);
     button.on('pointerdown', () => squash(scene, button));
