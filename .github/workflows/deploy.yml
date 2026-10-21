@@ -38,7 +38,7 @@ jobs:
 
       - name: Check committed glyphs are up to date
         # Catches a content/*.json edit committed without re-baking.
-        run: git diff --exit-code content/glyphs.json
+        run: git diff --exit-code content/glyphs.json content/brand-glyphs.json
 
       - name: Check audio manifest is up to date
         run: |

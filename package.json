@@ -9,7 +9,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "bake": "node tools/bake-glyphs.mjs",
+    "bake": "node tools/bake-glyphs.mjs && node tools/bake-branding.mjs",
     "seed:strokes": "node tools/seed-strokes.mjs",
     "trace-studio": "node tools/trace-studio/server.mjs",
     "icons": "node tools/make-icons.mjs",

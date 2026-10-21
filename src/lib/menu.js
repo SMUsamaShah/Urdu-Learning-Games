@@ -6,7 +6,7 @@ import { enableAll, isEnabled, onContentChange } from './enabled.js';
 const KEY = 'urdu-games:menu-order';
 
 /* Tiles on one page. */
-export const PER_PAGE = 10;
+export const PER_PAGE = 6;
 
 /* Everyone who wants telling when the order changes mid-session. */
 const listeners = new Set();

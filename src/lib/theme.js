@@ -159,15 +159,15 @@ const CARD_PAD = 14;
 /** Bakes a button's card into one cached texture.
  * @returns {string} texture key
  */
-function cardTexture(scene, { width, height, color, shape, backing, rim, paint, paintKey }) {
+function cardTexture(scene, { width, height, color, shape, backing, rim, paint, paintKey, padding }) {
   // Include the painter name in the texture key.
-  const shapeKey = `${shape}:${Math.round(width)}x${Math.round(height)}:${color}:${backing ? 1 : 0}:${rim ? 1 : 0}`;
+  const shapeKey = `${shape}:${Math.round(width)}x${Math.round(height)}:${color}:${backing ? 1 : 0}:${rim ? 1 : 0}:${padding ?? 'auto'}`;
   const key = paintKey ? `${paintKey}:${shapeKey}` : `card:${shapeKey}`;
   if (scene.textures.exists(key)) return key;
 
   // Tile art is already a finished image. Do not leave the button-card
   // padding around it or the face will be smaller than its hit area.
-  const pad = backing || rim ? CARD_PAD : 0;
+  const pad = padding ?? (backing || rim ? CARD_PAD : 0);
   const canvas = document.createElement('canvas');
   canvas.width = Math.ceil((width + pad * 2) * CARD_SUPERSAMPLE);
   canvas.height = Math.ceil((height + pad * 2) * CARD_SUPERSAMPLE);
@@ -232,6 +232,7 @@ function cardTexture(scene, { width, height, color, shape, backing, rim, paint, 
  * @param {(ctx: CanvasRenderingContext2D, size: object) => void} [config.paint]
  * @param {string} [config.paintKey] Cache key for custom painting.
  * @param {boolean} [config.press=true] The squash-under-the-finger tween.
+ * @param {number} [config.padding] Transparent texture room for a custom surface's shadow.
  * @returns {Phaser.GameObjects.Container}
  */
 export function makeButton(scene, config) {
@@ -247,13 +248,14 @@ export function makeButton(scene, config) {
     onTap,
     paint,
     paintKey,
+    padding,
     press: wantPress = true,
   } = config;
   const container = scene.add.container(x, y);
 
   // One baked image rather than a shadow Graphics and a face Graphics.
   const card = scene.add
-    .image(0, 0, cardTexture(scene, { width, height, color, shape, backing, rim, paint, paintKey }))
+    .image(0, 0, cardTexture(scene, { width, height, color, shape, backing, rim, paint, paintKey, padding }))
     .setScale(1 / CARD_SUPERSAMPLE);
 
   container.add(card);

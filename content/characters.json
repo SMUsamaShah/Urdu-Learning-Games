@@ -1,0 +1,9 @@
+{
+  "default": "spider",
+  "characters": {
+    "spider": {
+      "image": "images/characters/spider.webp",
+      "poses": {}
+    }
+  }
+}

@@ -48,8 +48,8 @@ export default defineConfig({
         id: '.',
         // Deliberately not 'landscape', even though the app now is landscape everywhere.
         orientation: 'any',
-        background_color: '#8fd4f5',
-        theme_color: '#8fd4f5',
+        background_color: '#fff9eb',
+        theme_color: '#fff9eb',
         categories: ['education', 'kids'],
         icons: [
           { src: 'icons/pwa-192x192.png', sizes: '192x192', type: 'image/png' },

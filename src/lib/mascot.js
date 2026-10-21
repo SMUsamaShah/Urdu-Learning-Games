@@ -1,4 +1,5 @@
-/* The spider who stands on every screen. */
+/* A replaceable transparent character, independent of every screen's background. */
+import characterData from '../../content/characters.json';
 
 const BASE = import.meta.env.BASE_URL ?? '/';
 
@@ -8,14 +9,18 @@ const POSES = ['idle', 'point', 'cheer', 'blink'];
 /* How tall the sprite is drawn when nobody asks for a size. */
 const DEFAULT_HEIGHT = 230;
 
-const textureKey = (pose) => `mascot:${pose}`;
+const character = characterData.characters[characterData.default];
+const poseImage = (pose) => character.poses?.[pose] ?? character.image;
+const textureKey = (pose) => `character:${characterData.default}:${poseImage(pose)}`;
 
 /* Queues the mascot's art. */
 export function queueMascot(scene) {
   for (const pose of POSES) {
     const key = textureKey(pose);
     if (scene.textures.exists(key)) continue;
-    scene.load.image(key, `${BASE}images/mascot/${pose}.webp`);
+    // A character may start with one sprite and gain individual pose assets later.
+    if (POSES.indexOf(pose) !== POSES.findIndex((one) => poseImage(one) === poseImage(pose))) continue;
+    scene.load.image(key, `${BASE}${poseImage(pose)}`);
   }
 }
 
@@ -38,10 +43,10 @@ function noMascot(scene, x, y) {
  * @param {Phaser.Scene} scene
  * @param {number} x
  * @param {number} y the ground it stands on, not its centre.
- * @param {{height?: number, depth?: number}} [options]
+ * @param {{height?: number, maxWidth?: number, depth?: number}} [options]
  */
 export function addMascot(scene, x, y, options = {}) {
-  const { height = DEFAULT_HEIGHT, depth = 4 } = options;
+  const { height = DEFAULT_HEIGHT, maxWidth = height, depth = 4 } = options;
   if (!available(scene)) {
     console.warn('mascot: art not loaded; call queueMascot() in preload()');
     return noMascot(scene, x, y);
@@ -53,7 +58,9 @@ export function addMascot(scene, x, y, options = {}) {
   const sprites = Object.fromEntries(
     POSES.map((pose) => {
       const sprite = scene.add.image(0, 0, textureKey(pose));
-      sprite.setOrigin(0.5, 1).setDisplaySize(height, height).setVisible(false);
+      const image = sprite.texture.getSourceImage();
+      const scale = Math.min(height / image.height, maxWidth / image.width);
+      sprite.setOrigin(0.5, 1).setDisplaySize(image.width * scale, image.height * scale).setVisible(false);
       root.add(sprite);
       return [pose, sprite];
     })

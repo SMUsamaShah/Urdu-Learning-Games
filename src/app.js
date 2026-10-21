@@ -57,7 +57,7 @@ const audioContext = createAppAudioContext();
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
-  backgroundColor: '#8fd4f5',
+  backgroundColor: '#fff9eb',
   ...(audioContext ? { audio: { context: audioContext } } : {}),
   scale: {
     mode: Phaser.Scale.FIT,

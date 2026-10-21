@@ -109,4 +109,13 @@ describe('pwa', { skip: built ? false : 'no dist/ — run `npm run build`' }, ()
       );
     }
   });
+
+  test('the separate character and studio illustrations work offline', () => {
+    const urls = precachedUrls();
+    const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'content/characters.json'), 'utf8'));
+    assert.ok(urls.has(config.characters[config.default].image));
+    for (const name of ['goat', 'grapes', 'apple', 'pencil', 'magnifier', 'puzzle', 'balloons']) {
+      assert.ok(urls.has(`images/studio/${name}.webp`), `${name} is missing from the offline cache`);
+    }
+  });
 });

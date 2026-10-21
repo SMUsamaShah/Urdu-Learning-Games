@@ -7,38 +7,26 @@ import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { canFullscreen, isFullscreen, onFullscreenChange, toggleFullscreen } from '../lib/fullscreen.js';
 
 import { dropScreen, pushScreen, replaceScreen } from '../lib/history.js';
-import { addScenery } from '../lib/scenery.js';
-import { gridPlaces, tileMaker } from '../lib/game-tile.js';
 import { breathe, popIn, squash } from '../lib/liveliness.js';
 import { musicOn, setMusicOn, startMusic } from '../lib/music.js';
 import { prepareFlourishes } from '../lib/flourish.js';
 import { ringBurst } from '../lib/particles.js';
 import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
-import { queueBackdrop } from '../lib/backdrops.js';
 import { running as chaloRunning, startRun, stopRun } from '../lib/chalo.js';
 import { GAMES } from '../lib/games.js';
-import { PER_PAGE, menuGames, pagesOf } from '../lib/menu.js';
+import { menuGames, pagesOf } from '../lib/menu.js';
 import { watchSwipe } from '../lib/swipe.js';
 import { watchMenu } from '../lib/time-up.js';
-import { queueTileArt } from '../lib/tiles.js';
+import { queueStudioArt, studioTileMaker } from '../lib/studio-art.js';
+import { STUDIO, studioLayout, studioPlaces } from '../lib/studio-layout.js';
+import { addStudioBackdrop, addStudioIcon, paintStudioIcon, studioButton, studioIconTexture } from '../lib/studio-ui.js';
+import { addStudioTitle, paintStudioBrand } from '../lib/studio-brand.js';
 
 /* The menu. Games are listed right-to-left to match the reading direction of the script being taught. */
 
-/* The grid and the title sit right of centre, because the spider sits at the left of every screen including this one. */
-const STAGE = { left: 250, right: DESIGN.width - 60 };
-const STAGE_X = (STAGE.left + STAGE.right) / 2;
-
-/* The چلو button, and where the grid starts beneath it. */
-const CHALO = { y: 252, width: 340, height: 84 };
-/* The band the grid gets. */
-const GRID = { top: 318, bottom: DESIGN.height - 56 };
-
 /* How far a finger must travel across the grid to turn the page. */
 const SWIPE_PAGE = 70;
-
-/* The row of page dots: how tall a strip it needs, and how big each one is. */
-const DOTS = { room: 44, size: 30 };
 
 export default class Home extends Phaser.Scene {
   constructor() {
@@ -46,56 +34,23 @@ export default class Home extends Phaser.Scene {
   }
 
   preload() {
-    queueBackdrop(this);
-    // Menu artwork. Each generated picture is a complete tile face.
-    queueTileArt(this, GAMES);
+    queueStudioArt(this);
   }
 
   create() {
-    this.cameras.main.setBackgroundColor(COLORS.bg);
-    addScenery(this);
+    this.layout = studioLayout(DESIGN.width, DESIGN.height);
+    this.cameras.main.setBackgroundColor(STUDIO.creamNumber);
+    addStudioBackdrop(this, this.layout);
     // Nothing has been tapped yet.
     this.leaving = false;
 
-    const title = uiGlyph('app-title');
-    if (title) {
-      addGlyph(this, STAGE_X, 118, 'ui:app-title:96', title, {
-        height: 96,
-        color: COLORS.accentCss,
-      });
-    }
-    label(this, STAGE_X, 190, 'Urdu Learning Games', { size: 20 });
-
-    // Five across and two down.
-    const COLUMNS = 5;
-    const gap = 26;
-    const rowGap = 24;
+    addStudioTitle(this, this.layout.title);
     this.pages = pagesOf(menuGames());
     this.page = Math.min(this.page ?? 0, this.pages.length - 1);
-    // Measured across a full page rather than across this one.
-    const rows = Math.ceil(PER_PAGE / COLUMNS);
-    // The strip the dots stand in, taken off the grid before the tiles are sized rather than found afterwards.
-    const dotsRoom = this.pages.length > 1 ? DOTS.room : 0;
-    // Two limits, and the tighter one wins.
-    const tileW = Math.min(
-      252,
-      (STAGE.right - STAGE.left - gap * (COLUMNS - 1)) / COLUMNS,
-      (GRID.bottom - dotsRoom - GRID.top - rowGap * (rows - 1)) / rows / 1.04
-    );
-    const tileH = Math.round(tileW * 1.04);
-    // Measured from the top of the grid rather than its centre.
-    const places = gridPlaces(PER_PAGE, {
-      columns: COLUMNS,
-      gap,
-      rowGap,
-      width: tileW,
-      height: tileH,
-      centerX: STAGE_X,
-      top: GRID.top,
+    const places = studioPlaces(this.layout);
+    const makeTile = studioTileMaker(this, GAMES, {
+      width: this.layout.grid.tileWidth, height: this.layout.grid.tileHeight,
     });
-
-    // One maker for every game in the app.
-    const makeTile = tileMaker(this, menuGames(), { width: tileW, height: tileH });
     this.board = this.add.container(0, 0);
     const tiles = this.pages[this.page].map((game, index) =>
       makeTile(game, places[index].x, places[index].y, () => {
@@ -107,21 +62,17 @@ export default class Home extends Phaser.Scene {
     );
     for (const tile of tiles) this.board.add(tile);
 
-    this.buildPager(places, tileH);
+    this.buildPager();
     this.buildChalo();
     // If the day has run out.
     watchMenu(this);
 
-    label(
-      this,
-      DESIGN.width / 2,
-      DESIGN.height - 34,
-      'No ads · No tracking · Works offline',
-      { size: 16, color: COLORS.inkDim }
-    );
-
-    // The spider, sitting to the left of the grid and pointing at it.
-    addMascot(this, 116, 618, { height: 214 }).point();
+    // Independent transparent art: swapping the character never changes the scenery.
+    const character = this.layout.character;
+    this.mascot = addMascot(this, character.x, character.y, {
+      height: character.height, maxWidth: character.width,
+    });
+    this.mascot.setName('home-character');
 
     // No progress indicator here.
 
@@ -140,44 +91,20 @@ export default class Home extends Phaser.Scene {
 
   /* چلو — the button that plays the app for you. */
   buildChalo() {
-    const button = makeButton(this, {
-      x: STAGE_X,
-      y: CHALO.y,
-      width: CHALO.width,
-      height: CHALO.height,
-      color: COLORS.accent,
+    const button = studioButton(this, {
+      ...this.layout.chalo,
+      color: STUDIO.orange, radius: 56, paintKey: 'chalo',
+      paint: (ctx) => {
+        ctx.save(); ctx.translate(-94, 0); paintStudioIcon(ctx, 'play'); ctx.restore();
+        ctx.save(); ctx.translate(31, -2); paintStudioBrand(ctx, 'chalo', 166, 78, { color: '#fffdf6' }); ctx.restore();
+      },
       onTap: () => this.startChalo(),
     });
     button.setName('chalo-button');
 
-    const word = uiGlyph('chalo');
-    if (word) {
-      button.add(
-        addGlyph(this, -34, -6, 'ui:chalo:52', word, {
-          height: 52,
-          color: COLORS.onColor,
-        })
-      );
-    }
-    button.add(
-      label(this, 66, 4, "Let's go", { size: 26, color: COLORS.onColor })
-    );
-
-    // The highlight: a pale bar travelling across the face.
-    const sheen = this.add.rectangle(0, 0, 38, 62, 0xffffff, 1).setAlpha(0);
-    sheen.setAngle(14);
-    button.addAt(sheen, 1);
-    this.tweens.add({
-      targets: sheen,
-      x: { from: -114, to: 114, duration: 1500, ease: 'Quad.easeInOut' },
-      alpha: { from: 0, to: 0.3, duration: 750, yoyo: true },
-      repeat: -1,
-      repeatDelay: 2200,
-    });
-
     // Arrives first, then breathes — and in that order for a reason.
     popIn(this, button, { delay: 40, duration: 420 }).once('complete', () =>
-      breathe(this, button, { amount: 0.035, duration: 1900 })
+      breathe(this, button, { amount: 0.012, duration: 2100 })
     );
     this.chaloButton = button;
   }
@@ -217,17 +144,15 @@ export default class Home extends Phaser.Scene {
     this.scene.start(key);
   }
 
-  /** Swipe for the next ten, and dots that say how many there are.
- * @param {{x: number, y: number}[]} places the grid, so the dots can sit
- */
-  buildPager(places, tileH) {
+  /* Swipe for the next six. The left column and utility controls never swipe. */
+  buildPager() {
     const pages = this.pages.length;
-    // In the strip the grid gave up for them.
-    const dotsY = places[places.length - 1].y + tileH / 2 + DOTS.room / 2;
+    const grid = this.layout.grid;
 
     this.swipe = watchSwipe(this, {
       // Ignore touches that start on another control.
-      from: (pointer) => pointer.y > GRID.top - 40,
+      from: (pointer) => pointer.x >= grid.left - 16 && pointer.x <= grid.right + 16 &&
+        pointer.y >= grid.top - 16 && pointer.y <= grid.bottom + 20,
       onMove: (delta) => {
         if (pages < 2) return;
         // The board follows the finger, damped.
@@ -246,13 +171,15 @@ export default class Home extends Phaser.Scene {
     for (let index = 0; index < pages; index++) {
       // Right to left, like the tiles: the first page is the rightmost dot.
       const dot = makeButton(this, {
-        x: STAGE_X + ((pages - 1) / 2 - index) * (DOTS.size + 8),
-        y: dotsY,
-        width: DOTS.size,
-        height: DOTS.size,
-        shape: 'circle',
-        color: index === this.page ? COLORS.accent : COLORS.panel,
-        rim: false,
+        x: grid.centerX + ((pages - 1) / 2 - index) * 35,
+        y: this.layout.dotsY,
+        width: 35, height: 40, backing: false, rim: false, padding: 8,
+        paintKey: `studio:dot:${index === this.page}`,
+        paint: (ctx) => {
+          ctx.shadowColor = 'rgba(135,104,49,0.18)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 3;
+          ctx.fillStyle = index === this.page ? STUDIO.blue : '#fffcf3';
+          ctx.beginPath(); ctx.arc(0, 0, index === this.page ? 11 : 9, 0, Math.PI * 2); ctx.fill();
+        },
         // Tappable, and that is the point of them.
         onTap: () => this.turnPage(index - this.page),
       });
@@ -270,30 +197,18 @@ export default class Home extends Phaser.Scene {
 
   /* The music switch, where a child can reach it. */
   buildMusicToggle() {
-    const button = makeButton(this, {
-      x: DESIGN.width - 74,
-      y: 60,
-      width: 84,
-      height: 68,
-      color: COLORS.panel,
-      rim: false,
+    const button = studioButton(this, {
+      ...this.layout.music, width: 60, height: 60, radius: 30,
       onTap: () => {
         const on = !musicOn();
         setMusicOn(on);
-        icon.setText(on ? '\u266a' : '\u266a\u0338');
-        icon.setColor(on ? COLORS.accentCss : COLORS.inkDim);
+        icon.setTexture(studioIconTexture(this, 'music', on));
         squash(this, button);
         if (on) ringBurst(this, button.x, button.y, COLORS.accent);
         else sfx.nudge();
       },
     });
-    const icon = this.add
-      .text(0, -2, musicOn() ? '\u266a' : '\u266a\u0338', {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '34px',
-        color: musicOn() ? COLORS.accentCss : COLORS.inkDim,
-      })
-      .setOrigin(0.5);
+    const icon = addStudioIcon(this, 'music', musicOn());
     button.add(icon);
     // Held so the verification run can press it without hunting by pixel.
     this.musicButton = button;
@@ -303,13 +218,8 @@ export default class Home extends Phaser.Scene {
   buildFullscreenToggle() {
     if (!canFullscreen()) return;
 
-    const button = makeButton(this, {
-      x: DESIGN.width - 74,
-      y: 142,
-      width: 84,
-      height: 68,
-      color: COLORS.panel,
-      rim: false,
+    const button = studioButton(this, {
+      ...this.layout.fullscreen, width: 60, height: 60, radius: 30,
       onTap: async () => {
         await toggleFullscreen();
         paint();
@@ -318,18 +228,11 @@ export default class Home extends Phaser.Scene {
       },
     });
 
-    const icon = this.add
-      .text(0, -2, '', {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '34px',
-        color: COLORS.accentCss,
-      })
-      .setOrigin(0.5);
+    const icon = addStudioIcon(this, 'fullscreen');
     button.add(icon);
 
     const paint = () => {
-      icon.setText(isFullscreen() ? '\u2922' : '\u26f6');
-      icon.setColor(isFullscreen() ? COLORS.inkDim : COLORS.accentCss);
+      icon.setTexture(studioIconTexture(this, isFullscreen() ? 'restore' : 'fullscreen'));
     };
     paint();
 
@@ -341,19 +244,14 @@ export default class Home extends Phaser.Scene {
 
   /* Entry to the recording screen, behind a hold and a sum. */
   buildSettingsButton() {
-    const button = makeButton(this, {
-      x: 96,
-      y: DESIGN.height - 74,
-      width: 148,
-      height: 56,
-      color: COLORS.panel,
-      rim: false,
+    const button = studioButton(this, {
+      ...this.layout.settings, width: 60, height: 60, radius: 30,
       // Opening is driven by the hold below, not by a tap.
       onTap: () => {},
     });
 
-    const text = label(this, 0, 0, 'Settings', { size: 15, color: COLORS.inkDim });
-    button.add(text);
+    button.add(addStudioIcon(this, 'settings'));
+    button.setName('settings-button');
     // Held so the verification run can press it without depending on where it happens to sit on screen.
     this.settingsButton = button;
 
@@ -424,13 +322,9 @@ export default class Home extends Phaser.Scene {
     this.installHint = null;
     if (!canInstall()) return;
 
-    const button = makeButton(this, {
-      x: DESIGN.width - 130,
-      y: DESIGN.height - 74,
-      width: 200,
-      height: 64,
-      color: COLORS.panel,
-      rim: false,
+    const button = studioButton(this, {
+      x: this.layout.leftX + 26, y: DESIGN.height - 45,
+      width: 200, height: 55, radius: 24,
       onTap: () => promptInstall().then(() => this.buildInstallHint()),
     });
 
