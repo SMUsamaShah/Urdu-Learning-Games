@@ -10,15 +10,16 @@ export function studioLayout(width, height = 720) {
   const boardLeft = leftWidth + 12;
   const boardRight = width - 28;
   const gap = 18;
-  const tileWidth = Math.min(330, (boardRight - boardLeft - gap * 2) / 3);
-  const tileHeight = 246;
+  // Complete square illustrations keep every object and letter visible at wide phone ratios.
+  const tileWidth = Math.min(246, (boardRight - boardLeft - gap * 2) / 3);
+  const tileHeight = tileWidth;
   const gridWidth = tileWidth * 3 + gap * 2;
   const gridLeft = (boardLeft + boardRight - gridWidth) / 2;
   return {
     width, height, leftX: leftWidth / 2,
     title: { x: leftWidth / 2, y: 144, width: leftWidth - 32, height: 145 },
     character: { x: leftWidth / 2, y: 482, height: 282, width: leftWidth - 28 },
-    chalo: { x: leftWidth / 2, y: 554, width: Math.min(370, leftWidth - 54), height: 112 },
+    chalo: { x: leftWidth / 2, y: 559, width: Math.min(370, leftWidth - 54), height: 134 },
     grid: { left: gridLeft, right: gridLeft + gridWidth, top: 112, bottom: 622,
       centerX: (boardLeft + boardRight) / 2, gap, rowGap: 18, tileWidth, tileHeight },
     dotsY: 668,

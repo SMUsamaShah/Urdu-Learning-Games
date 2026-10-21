@@ -1,0 +1,165 @@
+{
+  "reference": "05-big-play-studio.png",
+  "approach": "One generated image is the entire tile: pastel background, clay objects and sculpted Urdu glyphs. No font or illustration overlays. Chalo is a separate complete image with transparency.",
+  "sharedPrompt": "Use case: stylized-concept. Asset type: ONE complete production game tile image, SQUARE 1024x1024. Image1 is the approved reference for 3D soft-clay toy styling, bright saturated illustrations, softly sculpted Urdu lettering and pastel palette. Generate ONLY the requested single game tile, NOT a homepage or contact sheet. Background: fill the ENTIRE square edge-to-edge with a soft continuous pastel background in COLOR, with a subtle studio glow and soft object shadows. The background and every object and glyph must be ONE unified generated image. No external white/cream margin, no outer frame, NO border, NO inner border, NO rounded plate perimeter, no UI outside this image. The application will round the outer corners. CRITICAL COMPOSITION: ALL objects, letters, digits and their shadows stay inside the CENTRAL 70% of the square (15% clear background padding on ALL FOUR sides), so none are clipped when the image is shown in a slightly wider button. Large clean readable composition within that safe area, simple quiet background, no small scenic worlds. Use thick soft matte clay, rounded raised forms, playful child-friendly proportions, warm upper-left studio illumination and consistent gentle highlights. Every letter must look physically sculpted in the SAME MATERIAL as its illustration, not flat font pasted on. Only specified Urdu text, exact dot counts; no English, no title, no watermark. TILE REQUEST: ",
+  "tiles": [
+    {
+      "game": "Flashcards",
+      "background": "#fff0ac",
+      "prompt": "Two slightly overlapping thick cream flashcards. The LEFT card carries one large red Urdu letter ب (be, exactly one dot BELOW its bowl); the RIGHT card shows a very cute cream baby goat clay figurine with curled brown horns and pink ears, standing on the card. Match the yellow flashcard-and-goat activity in reference05 closely. Letter ب is a thick rounded RED CLAY object with depth, lighting and little cast shadow, not printed flat type. Keep both cards and goat inside the central 70% of the square."
+    },
+    {
+      "game": "Trace",
+      "background": "#c8eafa",
+      "prompt": "Create one COMPLETE square game-menu tile for an Urdu handwriting activity, art-directed from the supplied concept05 screenshot. Full-bleed opaque pale sky-blue pastel background, no frame, no border, no outside margin or rounded plate. ONE large raised bright RED Urdu alif ا on the LEFT: a single straight vertical chunky sculpted clay stroke with rounded ends and NO foot, no bowl, no hook, no dots. On the RIGHT, a chunky golden yellow soft-clay pencil leans diagonally, its graphite tip pointing toward the lower end of the red alif. NO dotted tracing guide; no black dots anywhere. Both letter and pencil use the SAME sculpted clay material, soft upper-left studio lighting, realistic small cast shadows, delightful rounded toy shape, just like the supplied concept art. Keep the full red alif and pencil inside the central 75% of the square, with at least 12% clear blue breathing room on EVERY side. No additional glyphs, no writing, no English, no watermark. This entire background, letter and pencil must be one coherent finished illustration."
+    },
+    {
+      "game": "FindLetter",
+      "background": "#fbd5df",
+      "prompt": "One big dimensional royal-blue toy magnifying glass, warm brown handle pointing lower left. In its pale cream circular lens is a single LARGE bright red raised-clay Urdu letter س (seen): a wide flowing bowl with THREE small teeth at the top, NO dots. Letter and magnifier have the same thick soft-clay material, highlights and cast shadows. Match reference05 pink search activity. Entire glass and handle comfortably inside the central 70%."
+    },
+    {
+      "game": "WordPictures",
+      "background": "#d0f2d6",
+      "prompt": "A plump bunch of saturated purple clay grapes with two fresh green leaves and short brown stalk on the LEFT, and one LARGE upright purple raised-clay Urdu alif ا on the RIGHT. Alif is one smooth vertical stroke, no dots. The glyph has the same chunky sculpted material, studio lighting and small cast shadow as the grapes; NOT a thin flat font. Match reference05 mint vocabulary tile."
+    },
+    {
+      "game": "StartsWith",
+      "background": "#e4d9fb",
+      "prompt": "A cute cream baby goat figurine with brown curled horns and pink ears, large at center-right. To its left are two large chunky rounded cream letter tokens stacked vertically: top token has raised blue Urdu ب (one dot below), lower token raised coral Urdu پ (THREE dots below). A little golden star next to ب identifies the first letter of bakri (goat). All lettering sculpted clay with same lighting as goat, not printed font. Clear simple big readable objects."
+    },
+    {
+      "game": "Numbers",
+      "background": "#fbd5df",
+      "prompt": "Exactly THREE bright red plump clay apples, each with a short brown stem and green leaf: one upper left, two below it in a triangle. On the RIGHT, one very large RED raised-clay Urdu digit ۳ (three). The numeral is physically sculpted, rounded and softly lit just like the apples. No other numerals. Match reference05 counting tile, make apples and number large but completely inside central 70%."
+    },
+    {
+      "game": "Balloons",
+      "background": "#fff0ac",
+      "prompt": "Three large dimensional soft-clay toy balloons, coral red on the left, golden yellow at top, turquoise blue on the right, with short elegant matching strings. The RED balloon has a single raised cream Urdu letter م (meem) softly molded on its face. Exactly one glyph, no other writing. Bouncy happy composition, all balloon silhouettes and string ends inside central 70%. Same studio toy look as reference05."
+    },
+    {
+      "game": "Memory",
+      "background": "#c8eafa",
+      "prompt": "Two chunky cream memory cards, jaunty slight opposite rotations, each displaying the SAME sculpted bright red apple with one green leaf. One card a little in front of the other, both apple images fully visible so it clearly means matching pairs. Cream card edges softly bevelled, apple pictures rendered in the same rounded clay material. No letters, no numbers, no titles. A single tiny golden sparkle between cards. All art centered inside central 70%."
+    },
+    {
+      "game": "JoinForms",
+      "background": "#fbd5df",
+      "prompt": "Two large soft-clay alphabet tiles leaning toward one another: BLUE tile on the RIGHT with a cream raised Urdu isolated ب (a broad bowl and exactly one dot below); GOLDEN YELLOW tile on the LEFT with the initial connected form بـ (one tooth and dot BELOW plus an extending baseline). A gentle curved coral connector links the two tiles. Correct glyphs, thick sculpted cream clay lettering with the same highlights and shadows as the blocks. Centered compact composition."
+    },
+    {
+      "game": "Sequence",
+      "background": "#d0f2d6",
+      "prompt": "An alphabet sequence of THREE chunky soft-clay stepping blocks in a gentle arch, reading RIGHT TO LEFT: rightmost blue block contains raised cream ا, middle golden-yellow block contains raised cream ب (one dot below), leftmost cream block is an EMPTY outlined inset slot. A loose coral tile containing raised cream پ (three dots BELOW) hovers just above that empty left slot, about to fit. A small blue arrow points LEFT under the blocks. All forms are sculpted clay, no printed typography."
+    },
+    {
+      "game": "Doors",
+      "background": "#e4d9fb",
+      "prompt": "Two friendly arched toy doors standing side by side: golden yellow door on the left slightly open to reveal a big red sculpted Urdu د (dal) inside; turquoise door on the right is closed with a large raised cream Urdu ر (re) on its face and a round tiny wooden knob. Thick soft matte clay and rounded edges, soft studio shadows. No scenery, walls or room around them. The simple toy doors fill the central 70%."
+    },
+    {
+      "game": "TapAll",
+      "background": "#fbd5df",
+      "prompt": "Six chunky rounded little letter tokens in a neat TWO by THREE cluster. Exactly THREE tokens have a big raised red Urdu س (seen, three teeth, no dots), and those three tokens have small golden selection sparkles. Other tokens have one raised blue ب, one blue م and one blue ا. A big friendly yellow toy fingertip cursor approaches one س token. All tokens and glyphs are sculpted soft clay with consistent studio light and gentle shadows. No flat text. Centered cluster."
+    },
+    {
+      "game": "Caterpillar",
+      "background": "#fff0ac",
+      "prompt": "A large cheerful lime-green toy caterpillar, five or six plump rounded soft-clay body segments, facing right, oversized friendly black eyes, tiny smile, two short antennae and little rounded feet. Body curves playfully. Three body segments carry cream raised clay Urdu glyphs ا then ب then پ, all small but bold and accurate. One empty pale segment suggests a missing letter. No ground, garden or other scenery. Delightful friendly clay figurine centered within 70%."
+    },
+    {
+      "game": "LetterPuzzle",
+      "background": "#c8eafa",
+      "prompt": "Two LARGE interlocking jigsaw puzzle pieces, saturated royal blue on LEFT and golden yellow on RIGHT, slightly jaunty angles. Each has a large raised cream Urdu ب (be, exactly one dot BELOW), dimensional puffy clay glyph molded to the piece. Piece knobs and sockets are clear. Same composition and sculpted toy material as reference05 lavender puzzle tile, with real depth and gentle shadows. No other letters or elements except one tiny sparkle. Centered."
+    },
+    {
+      "game": "Fishing",
+      "background": "#fbd5df",
+      "prompt": "A little shallow oval turquoise toy pond with TWO adorable rounded clay fish: golden yellow fish carrying raised cream Urdu ب, coral pink fish carrying raised cream Urdu م. A short curved wooden toy fishing rod enters from upper right, its blue string ending in a rounded safe magnetic hook over the golden fish. Simple toy composition, no landscape, no water horizon, no extra text. Raised glyphs share fish material and studio lighting. All art within central 70%."
+    },
+    {
+      "game": "Baskets",
+      "background": "#d0f2d6",
+      "prompt": "Two rounded chunky toy sorting baskets side by side, one honey-brown wicker-look clay basket holding TWO bright red apples with green leaves; one pale-blue clay basket holding a bunch of purple grapes and green leaves. One apple and a few grapes hover just above as if being sorted. Baskets have soft rounded handles, dimensional woven detail kept broad and simple, studio-light clay finish. No letters or text. Large inviting objects, centered inside 70%."
+    },
+    {
+      "game": "Whack",
+      "background": "#e4d9fb",
+      "prompt": "A cute happy caramel-brown clay mole popping from a rounded mint-green toy mound, smiling, holding a small cream card with ONE large raised purple Urdu ک (kaf). A soft chunky blue-and-yellow toy mallet floats diagonally above and to the right, playful and harmless, not hitting the character. Clay textures and sculpted glyph look like reference05, no landscape or extra characters, no words. Centered cheerful simple game icon."
+    },
+    {
+      "game": "OddOne",
+      "background": "#fbd5df",
+      "prompt": "A clean TWO-by-TWO arrangement of toy fruit: THREE identical bright red clay apples with a green leaf, plus ONE bunch of saturated purple grapes in the fourth position. Apples and grapes have comparable visual size. A subtle curved golden selection ring lies under the grapes to indicate the odd one. No letters, words or numbers. Big sculpted fruit with soft studio shading, the same palette and material as reference05, inside central 70%."
+    },
+    {
+      "game": "InOrder",
+      "background": "#fff0ac",
+      "prompt": "A little three-car toy alphabet train moving LEFT, chunky softly rounded clay carriages with a simple connected blue cord. Reading RIGHT TO LEFT, the rightmost BLUE carriage bears raised cream Urdu ا, middle YELLOW carriage bears raised cream ب (one dot below), and leftmost CORAL carriage bears raised cream پ (three dots below). Small round wooden wheels. Clear correct order, chunky dimensional Urdu letters with the same light as train. No rails or landscape, compact centered icon."
+    },
+    {
+      "game": "Paint",
+      "background": "#c8eafa",
+      "prompt": "A thick cream sheet or little easel board tilted slightly, with ONE large PURPLE Urdu alif ا (simple straight vertical stroke) freshly painted in thick glossy raised clay-like paint. A chunky wooden paintbrush with a soft purple bristle tip leans diagonally against its right side, three small colorful rounded paint pots (blue, yellow, coral) sit below. The brush must look like a PAINTBRUSH, not pencil. Soft sculpted toy style, studio light. No other text."
+    },
+    {
+      "game": "ConnectPairs",
+      "background": "#fbd5df",
+      "prompt": "FOUR chunky cream letter tiles arranged at four corners of a compact square: top LEFT and bottom RIGHT each contain raised coral Urdu م; top RIGHT and bottom LEFT each contain raised BLUE Urdu ب (one dot below). A smooth curved blue clay cord connects the two ب tiles, and a coral cord connects the two م tiles. Matching glyphs physically molded with soft bevels and tiny shadows, same clay material as the tokens. No extra glyphs or writing."
+    },
+    {
+      "game": "NumberLine",
+      "background": "#d0f2d6",
+      "prompt": "Three large round chunky clay stepping counters along a short pale-blue horizontal toy number line, visually LEFT TO RIGHT the raised Urdu digits ۱ then ۲ then ۳. The center ۲ counter is golden yellow and lifted slightly as if being placed; outside counters are cream and royal blue. Thick rounded sculpted numerals, not thin printed type. One short orange curved arrow points to the center counter. No other numbers, no English text. Centered inside 70%."
+    },
+    {
+      "game": "Hidden",
+      "background": "#e4d9fb",
+      "prompt": "A large RED sculpted Urdu ب (be, exactly one dot below) partly hiding behind two big soft-clay GREEN leaves, with a chunky royal-blue magnifying glass in front revealing the letter's dot and some bowl. Search-and-discovery icon. The letter, leaves and magnifier have matching thick clay material, highlights and cast shadows. A couple of tiny golden curiosity sparkles, no words, no landscape. Keep all elements comfortably inside central 70%."
+    },
+    {
+      "game": "Bounce",
+      "background": "#fbd5df",
+      "prompt": "A chunky small royal-blue toy trampoline with a round indigo jumping mat and short warm-wood legs. Above it, one bright coral-red soft-clay ball bounces, carrying ONE large raised cream Urdu ل (lam). Two tiny golden curved bounce-motion marks between ball and trampoline. Make the physical clay glyph and ball use the same lighting and dimensional material. Friendly rounded toy style, no landscape or additional writing. Centered inside central 70%."
+    },
+    {
+      "game": "BuildWord",
+      "background": "#fff0ac",
+      "prompt": "A cute small cream baby goat clay figurine peeking over FOUR chunky alphabet cubes in one row. The cubes read RIGHT TO LEFT the exact individual Urdu letters ب ک ر ی (spelling bakri / goat). Each letter is a raised cream sculpted-clay symbol, cubes alternate blue, coral, mint and golden yellow. A simple appealing word-building toy, no complete word printed elsewhere, no English. Goat and four letter cubes fully inside central 70%."
+    },
+    {
+      "game": "FillLetter",
+      "background": "#c8eafa",
+      "prompt": "FOUR chunky letter blocks in one row, reading RIGHT TO LEFT: blue block ب, golden block ک, a cream EMPTY square slot, coral block ی. Just below the empty slot floats a loose purple clay tile carrying raised cream Urdu ر, about to fill the missing letter in بکری. A tiny downward golden arrow suggests the fit. No question mark, no English, no other writing. All letter glyphs thick molded clay, same lighting as blocks. Centered inside 70%."
+    },
+    {
+      "game": "JoinWord",
+      "background": "#fbd5df",
+      "prompt": "TWO large rounded long jigsaw word blocks moving together horizontally, BLUE block on the RIGHT carrying raised cream Urdu با, GOLDEN YELLOW block on the LEFT carrying raised cream Urdu ل. Together, reading RIGHT TO LEFT, they form the real Urdu word بال. Keep the glyphs bold, accurate, puffy sculpted clay with consistent studio shadows. An inviting little violet curved connector under the seam. No extra label or English. Both pieces and all lettering fully inside central 70%."
+    }
+  ],
+  "chalo": "Create a complete standalone Chalo button closely matching concept05: wide plump orange softly beveled capsule, roughly 2.8:1, with raised ivory play triangle on the left and raised cream sculpted Urdu چلو on the right, exactly three dots below چ, soft studio highlights and subtle cast shadow. Transparent background, no scenery, rays or other interface elements. Preserve readable Urdu and keep the typography and body in matching clay material.",
+  "corrections": [
+    {
+      "game": "StartsWith",
+      "prompt": "Edit the supplied complete Urdu game menu tile. On the LOWER LEFT cream letter token, the coral Urdu پ has FOUR dots, which is incorrect. Correct it to EXACTLY THREE coral clay dots, arranged as TWO above and ONE below in a small inverted triangle beneath the bowl. Count them: 2+1=3. Keep the upper blue ب with exactly one blue dot, the goat, star, lettering material, background, lighting and composition unchanged. Do not add any other dots. This remains a COMPLETE SINGLE IMAGE: do not use flat font lettering. All glyphs must be thick sculpted clay objects with matching studio lighting and shadows. Preserve the finished high quality soft toy look, opaque edge-to-edge pastel background and square aspect ratio. No border, no labels, no watermark."
+    },
+    {
+      "game": "BuildWord",
+      "prompt": "Edit the supplied complete Urdu game menu tile. Correct ONLY the cream Urdu ی on the LEFTMOST yellow block. Urdu choti ye in isolated form has NO DOTS. Remove BOTH cream dots beneath that leftmost letter, leaving its bowl/tail shape intact as ی. Keep the other three blocks and their glyphs unchanged: rightmost ب exactly one dot, next ک, next ر. Keep the goat, clay material, pastel background and composition. This remains a COMPLETE SINGLE IMAGE: do not use flat font lettering. All glyphs must be thick sculpted clay objects with matching studio lighting and shadows. Preserve the finished high quality soft toy look, opaque edge-to-edge pastel background and square aspect ratio. No border, no labels, no watermark."
+    },
+    {
+      "game": "FillLetter",
+      "prompt": "Edit the supplied complete Urdu game menu tile. Correct ONLY the cream Urdu ی on the LEFTMOST coral block. Urdu choti ye in isolated form has NO DOTS. Remove BOTH cream dots beneath that leftmost letter, leaving its bowl/tail shape intact as ی. Preserve the empty slot, floating purple ر, other blocks ب and ک, clay material, blue background and layout. This remains a COMPLETE SINGLE IMAGE: do not use flat font lettering. All glyphs must be thick sculpted clay objects with matching studio lighting and shadows. Preserve the finished high quality soft toy look, opaque edge-to-edge pastel background and square aspect ratio. No border, no labels, no watermark."
+    },
+    {
+      "game": "JoinForms",
+      "prompt": "Edit the supplied complete Urdu game menu tile. Correct the glyph on the LEFT yellow token to the INITIAL connected form of Urdu be: بـ . It should have ONE short upright tooth at its RIGHT end and a thick nearly horizontal baseline extending LEFT from that tooth, with ONE cream dot BELOW the baseline. No upright on the LEFT end, and no bowl. Keep the RIGHT blue token's isolated ب bowl with exactly one dot beneath. Keep clay material, coral connector, pink background and composition. This remains a COMPLETE SINGLE IMAGE: do not use flat font lettering. All glyphs must be thick sculpted clay objects with matching studio lighting and shadows. Preserve the finished high quality soft toy look, opaque edge-to-edge pastel background and square aspect ratio. No border, no labels, no watermark."
+    },
+    {
+      "game": "JoinWord",
+      "prompt": "Edit the supplied complete Urdu game menu tile. Redesign this same tile as THREE large rounded interlocking jigsaw pieces in one horizontal row, blue on RIGHT, coral in MIDDLE and yellow on LEFT. Each contains ONE accurate isolated cream clay glyph. RIGHT blue piece: ب, broad bowl with exactly ONE dot BELOW. MIDDLE coral piece: ا, simple straight upright stroke, no dots. LEFT yellow piece: ل, tall upright with broad curved foot to its LEFT, no dots. Together reading right to left the letter blocks spell بال. No other lettering or dots. Keep the same soft clay material, pastel pink edge-to-edge background, warm light, soft shadow and small violet connector. All main art within central 70% with generous empty margins, no outer frame. This remains a COMPLETE SINGLE IMAGE: do not use flat font lettering. All glyphs must be thick sculpted clay objects with matching studio lighting and shadows. Preserve the finished high quality soft toy look, opaque edge-to-edge pastel background and square aspect ratio. No border, no labels, no watermark."
+    }
+  ]
+}

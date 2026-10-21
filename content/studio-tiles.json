@@ -1,0 +1,33 @@
+{
+  "$comment": "Each tile is one finished generated image: illustration, lettering and background. Replace its file to give an individual game a different design. fit defaults to cover and radius to 30; fit=contain and radius=0 also support artwork with its own transparent silhouette.",
+  "tiles": {
+    "Flashcards": { "file": "images/studio-tiles/Flashcards.webp" },
+    "Trace": { "file": "images/studio-tiles/Trace.webp" },
+    "FindLetter": { "file": "images/studio-tiles/FindLetter.webp" },
+    "WordPictures": { "file": "images/studio-tiles/WordPictures.webp" },
+    "StartsWith": { "file": "images/studio-tiles/StartsWith.webp" },
+    "Numbers": { "file": "images/studio-tiles/Numbers.webp" },
+    "Balloons": { "file": "images/studio-tiles/Balloons.webp" },
+    "Memory": { "file": "images/studio-tiles/Memory.webp" },
+    "JoinForms": { "file": "images/studio-tiles/JoinForms.webp" },
+    "Sequence": { "file": "images/studio-tiles/Sequence.webp" },
+    "Doors": { "file": "images/studio-tiles/Doors.webp" },
+    "TapAll": { "file": "images/studio-tiles/TapAll.webp" },
+    "Caterpillar": { "file": "images/studio-tiles/Caterpillar.webp" },
+    "LetterPuzzle": { "file": "images/studio-tiles/LetterPuzzle.webp" },
+    "Fishing": { "file": "images/studio-tiles/Fishing.webp" },
+    "Baskets": { "file": "images/studio-tiles/Baskets.webp" },
+    "Whack": { "file": "images/studio-tiles/Whack.webp" },
+    "OddOne": { "file": "images/studio-tiles/OddOne.webp" },
+    "InOrder": { "file": "images/studio-tiles/InOrder.webp" },
+    "Paint": { "file": "images/studio-tiles/Paint.webp" },
+    "ConnectPairs": { "file": "images/studio-tiles/ConnectPairs.webp" },
+    "NumberLine": { "file": "images/studio-tiles/NumberLine.webp" },
+    "Hidden": { "file": "images/studio-tiles/Hidden.webp" },
+    "Bounce": { "file": "images/studio-tiles/Bounce.webp" },
+    "FillLetter": { "file": "images/studio-tiles/FillLetter.webp" },
+    "BuildWord": { "file": "images/studio-tiles/BuildWord.webp" },
+    "JoinWord": { "file": "images/studio-tiles/JoinWord.webp" }
+  },
+  "chalo": { "file": "images/ui/chalo-clay.webp", "fit": "contain", "radius": 0 }
+}

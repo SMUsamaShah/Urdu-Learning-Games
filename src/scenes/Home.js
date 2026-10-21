@@ -14,14 +14,13 @@ import { ringBurst } from '../lib/particles.js';
 import * as sfx from '../lib/sfx.js';
 import { COLORS, DESIGN, label, makeButton } from '../lib/theme.js';
 import { running as chaloRunning, startRun, stopRun } from '../lib/chalo.js';
-import { GAMES } from '../lib/games.js';
 import { menuGames, pagesOf } from '../lib/menu.js';
 import { watchSwipe } from '../lib/swipe.js';
 import { watchMenu } from '../lib/time-up.js';
-import { queueStudioArt, studioTileMaker } from '../lib/studio-art.js';
+import { queueStudioArt, studioTileMaker, studioChaloButton } from '../lib/studio-art.js';
 import { STUDIO, studioLayout, studioPlaces } from '../lib/studio-layout.js';
-import { addStudioBackdrop, addStudioIcon, paintStudioIcon, studioButton, studioIconTexture } from '../lib/studio-ui.js';
-import { addStudioTitle, paintStudioBrand } from '../lib/studio-brand.js';
+import { addStudioBackdrop, addStudioIcon, studioButton, studioIconTexture } from '../lib/studio-ui.js';
+import { addStudioTitle } from '../lib/studio-brand.js';
 
 /* The menu. Games are listed right-to-left to match the reading direction of the script being taught. */
 
@@ -48,7 +47,7 @@ export default class Home extends Phaser.Scene {
     this.pages = pagesOf(menuGames());
     this.page = Math.min(this.page ?? 0, this.pages.length - 1);
     const places = studioPlaces(this.layout);
-    const makeTile = studioTileMaker(this, GAMES, {
+    const makeTile = studioTileMaker(this, {
       width: this.layout.grid.tileWidth, height: this.layout.grid.tileHeight,
     });
     this.board = this.add.container(0, 0);
@@ -91,16 +90,10 @@ export default class Home extends Phaser.Scene {
 
   /* چلو — the button that plays the app for you. */
   buildChalo() {
-    const button = studioButton(this, {
+    const button = studioChaloButton(this, {
       ...this.layout.chalo,
-      color: STUDIO.orange, radius: 56, paintKey: 'chalo',
-      paint: (ctx) => {
-        ctx.save(); ctx.translate(-94, 0); paintStudioIcon(ctx, 'play'); ctx.restore();
-        ctx.save(); ctx.translate(31, -2); paintStudioBrand(ctx, 'chalo', 166, 78, { color: '#fffdf6' }); ctx.restore();
-      },
       onTap: () => this.startChalo(),
     });
-    button.setName('chalo-button');
 
     // The primary action is visible on the first frame, even while the browser pauses animations.
     breathe(this, button, { amount: 0.012, duration: 2100 });

@@ -15,21 +15,25 @@ These are visual references, not screenshots of the implemented app.
 - Use six large tiles per page, with a single clean rounded surface and generous space around the artwork.
 - Keep the warm cream background quiet. Small mint shapes can sit at the bottom edge.
 - Render the character as a separate transparent image. A dinosaur or another character must be replaceable without regenerating the background.
-- Keep the background, character, buttons, tile surfaces, artwork and Urdu glyphs independent. Reuse components across screens.
+- Each game tile is one complete generated image, including its pastel background, objects and sculpted Urdu lettering. The lettering must share the illustration's material and lighting.
+- Keep the page background and character independent. Reuse layout and interaction components across screens.
 - Preserve game enable/disable preferences, ordering, swipe navigation, Chalo, music, fullscreen, offline use and parental settings.
 - Book and cabinet concepts were rejected as too restrictive for varied gameplay. Concept 10 repeated the visual noise of the old homepage.
 
-Generated lettering is illustrative only. The app uses its baked, correctly shaped Urdu glyphs for real interface text and teaching content.
+Generated tile lettering is illustrative; check letter forms and dot counts before shipping. The games continue to use correctly shaped baked Urdu glyphs for teaching content.
 
 ## Reusable implementation
 
 - `src/lib/studio-layout.js` measures the left column and six-tile grid at the current canvas width.
-- `src/lib/studio-ui.js` owns the cream scenery, rounded surfaces and utility icons. These are drawn components, not full-screen bitmaps.
-- `src/lib/studio-art.js` composes transparent toy objects with the app's real Urdu glyphs. Every game has a distinct illustration and shares the tile surface.
+- `src/lib/studio-ui.js` owns the cream scenery and utility controls.
+- `content/studio-tiles.json` maps all 27 games to separate finished images in `public/images/studio-tiles/`. Replacing one image changes only that tile. A future image with its own transparent silhouette can opt into `fit: "contain"` and `radius: 0`.
+- `src/lib/image-button.js` supplies uniform image sizing, one clean clipped edge, a silhouette shadow and the shared tap behaviour. It does not compose lettering or objects. Square tile bounds preserve the entire illustration across landscape widths.
+- `src/lib/studio-art.js` loads the images and makes tile and Chalo buttons. No additional frame, backing plate or font is drawn over the finished tile.
 - `content/characters.json` selects the transparent character used on the home and game screens. Add another character image and change `default` to replace the spider. Optional individual pose images override the default image.
-- `public/images/characters/spider.webp` is the independent character image; `public/images/studio/` contains the seven reusable toy illustrations. The image-generation tool created the transparent source art from concept 05. The app versions retain alpha and are resized to WebP for loading speed.
-- `src/lib/studio-brand.js` renders separately baked bold Urdu wordmarks; teaching glyphs retain their existing typeface.
+- `public/images/characters/spider.webp` is the independent transparent character image. The character registry and its optional poses remain reusable across screens.
+- `public/images/ui/chalo-clay.webp` is the complete orange Chalo button, including raised cream lettering and play symbol, with a transparent exterior. Its rounded body follows the original concept.
+- `src/lib/studio-brand.js` renders the separately baked title; teaching glyphs retain their existing typeface.
 
-The chosen approach is a shared tile surface plus freely composed content. A future bespoke complete tile can have its own painter without changing the menu, layout or navigation. Do not add another frame around finished artwork.
+The owner chose complete generated tiles after reviewing the first composed version: flat glyphs and separate objects did not share a convincing material. Consistency now comes from art direction and the shared image-button component, while each tile can have a bespoke design. The source square images have edge-to-edge pastel backgrounds; the app applies the outer rounded silhouette once.
 
-The exact generation prompts for these assets are kept in [asset-prompts.json](asset-prompts.json).
+The full-tile generation prompts and lettering corrections are kept in [full-tile-prompts.json](full-tile-prompts.json). Earlier transparent-object prompts remain in [asset-prompts.json](asset-prompts.json) as design history.
