@@ -7,7 +7,7 @@ import { askParentalQuestion, attachHoldToOpen } from '../lib/parental-gate.js';
 import { canFullscreen, isFullscreen, onFullscreenChange, toggleFullscreen } from '../lib/fullscreen.js';
 
 import { dropScreen, pushScreen, replaceScreen } from '../lib/history.js';
-import { breathe, popIn, squash } from '../lib/liveliness.js';
+import { breathe, squash } from '../lib/liveliness.js';
 import { musicOn, setMusicOn, startMusic } from '../lib/music.js';
 import { prepareFlourishes } from '../lib/flourish.js';
 import { ringBurst } from '../lib/particles.js';
@@ -102,10 +102,8 @@ export default class Home extends Phaser.Scene {
     });
     button.setName('chalo-button');
 
-    // Arrives first, then breathes — and in that order for a reason.
-    popIn(this, button, { delay: 40, duration: 420 }).once('complete', () =>
-      breathe(this, button, { amount: 0.012, duration: 2100 })
-    );
+    // The primary action is visible on the first frame, even while the browser pauses animations.
+    breathe(this, button, { amount: 0.012, duration: 2100 });
     this.chaloButton = button;
   }
 
