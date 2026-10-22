@@ -17,7 +17,7 @@ import { running as chaloRunning, startRun, stopRun } from '../lib/chalo.js';
 import { menuGames, pagesOf } from '../lib/menu.js';
 import { watchSwipe } from '../lib/swipe.js';
 import { watchMenu } from '../lib/time-up.js';
-import { queueStudioArt, studioTileMaker, studioChaloButton } from '../lib/studio-art.js';
+import { queueStudioArt, studioImage, studioTileMaker, studioChaloButton } from '../lib/studio-art.js';
 import { STUDIO, studioLayout, studioPlaces } from '../lib/studio-layout.js';
 import { addStudioBackdrop, addStudioIcon, studioButton, studioIconTexture } from '../lib/studio-ui.js';
 import { addStudioTitle } from '../lib/studio-brand.js';
@@ -39,7 +39,7 @@ export default class Home extends Phaser.Scene {
   create() {
     this.layout = studioLayout(DESIGN.width, DESIGN.height);
     this.cameras.main.setBackgroundColor(STUDIO.creamNumber);
-    addStudioBackdrop(this, this.layout);
+    addStudioBackdrop(this, this.layout, studioImage(this, 'backdrop'));
     // Nothing has been tapped yet.
     this.leaving = false;
 

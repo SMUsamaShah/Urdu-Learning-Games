@@ -29,5 +29,6 @@
     "BuildWord": { "file": "images/studio-tiles/BuildWord.webp" },
     "JoinWord": { "file": "images/studio-tiles/JoinWord.webp" }
   },
-  "chalo": { "file": "images/ui/chalo-clay.webp", "fit": "contain", "radius": 0 }
+  "chalo": { "file": "images/ui/chalo-clay.webp", "fit": "contain", "radius": 0 },
+  "backdrop": { "file": "images/backgrounds/home-studio-garden.webp" }
 }

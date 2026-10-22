@@ -47,16 +47,27 @@ export function studioButton(scene, config) {
   });
 }
 
-export function paintStudioBackdrop(ctx, layout) {
+export function paintStudioBackdrop(ctx, layout, image) {
   const { width: w, height: h, leftX } = layout;
   ctx.fillStyle = STUDIO.cream;
   ctx.fillRect(0, 0, w, h);
+  if (image) {
+    // Keep the clay trees round at wide phone ratios. Only the quiet middle stretches.
+    const cap = image.width / 3;
+    const capWidth = Math.min(cap * h / image.height, w / 3);
+    ctx.drawImage(image, cap, 0, image.width - cap * 2, image.height,
+      capWidth, 0, w - capWidth * 2, h);
+    ctx.drawImage(image, 0, 0, cap, image.height, 0, 0, capWidth, h);
+    ctx.drawImage(image, image.width - cap, 0, cap, image.height, w - capWidth, 0, capWidth, h);
+  }
   // The character's warm spotlight belongs to the scenery, not to its sprite.
   const glow = ctx.createRadialGradient(leftX, 383, 35, leftX, 383, 230);
   glow.addColorStop(0, '#ffebd8');
   glow.addColorStop(1, 'rgba(255,235,216,0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 220, leftX * 2, 292);
+  // The small painted shapes remain a fallback if the scenery download is unavailable.
+  if (image) return;
   ctx.fillStyle = '#e7f1d9';
   ctx.beginPath();
   ctx.moveTo(0, h - 25);
@@ -84,11 +95,11 @@ export function paintStudioBackdrop(ctx, layout) {
   }
 }
 
-export function addStudioBackdrop(scene, layout) {
-  const key = `studio:backdrop:${layout.width}x${layout.height}`;
+export function addStudioBackdrop(scene, layout, image) {
+  const key = `studio:backdrop:${image ? 'garden' : 'fallback'}:${layout.width}x${layout.height}`;
   if (!scene.textures.exists(key)) {
     const texture = scene.textures.createCanvas(key, layout.width, layout.height);
-    paintStudioBackdrop(texture.context, layout);
+    paintStudioBackdrop(texture.context, layout, image);
     texture.refresh();
   }
   return scene.add.image(0, 0, key).setOrigin(0).setDepth(-10);

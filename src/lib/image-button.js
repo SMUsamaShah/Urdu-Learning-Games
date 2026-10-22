@@ -35,7 +35,8 @@ export function paintImageButton(ctx, image, { width, height, fit = 'cover', rad
   if (!image) return;
   ctx.save();
   if (shadow) {
-    ctx.shadowColor = 'rgba(125,82,37,0.17)'; ctx.shadowBlur = 15; ctx.shadowOffsetY = 7;
+    // Canvas shadows use texture pixels, while the face is baked at twice its display size.
+    ctx.shadowColor = 'rgba(92,67,38,0.30)'; ctx.shadowBlur = 34; ctx.shadowOffsetY = 18;
   }
   ctx.drawImage(faceSurface(image, { width, height, fit, radius }), -width / 2, -height / 2, width, height);
   ctx.restore();
@@ -43,7 +44,8 @@ export function paintImageButton(ctx, image, { width, height, fit = 'cover', rad
 
 export function imageButton(scene, { image, fit = 'cover', radius = 30, shadow = true, fallback = '', ...config }) {
   const button = makeButton(scene, {
-    ...config, backing: !image, rim: false, padding: 18,
+    // Leave room outside the image for the full shadow, including below the rounded corners.
+    ...config, backing: !image, rim: false, padding: shadow ? 32 : 18,
     paint: ctx => paintImageButton(ctx, image, { ...config, fit, radius, shadow }),
   });
   // A failed first download still leaves a readable, tappable game entry.

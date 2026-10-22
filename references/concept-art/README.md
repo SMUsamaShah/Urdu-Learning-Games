@@ -13,7 +13,7 @@ These are visual references, not screenshots of the implemented app.
 
 - Group the Urdu title, character and **چلو** button on the left; put the games on the right.
 - Use six large tiles per page, with a single clean rounded surface and generous space around the artwork.
-- Keep the warm cream background quiet. Small mint shapes can sit at the bottom edge.
+- Keep the warm cream background quiet, with rounded clay trees, bushes and mint hills along the bottom as in Concept 05. Give the pastel tiles enough shadow to stand out from the cream.
 - Render the character as a separate transparent image. A dinosaur or another character must be replaceable without regenerating the background.
 - Each game tile is one complete generated image, including its pastel background, objects and sculpted Urdu lettering. The lettering must share the illustration's material and lighting.
 - Keep the page background and character independent. Reuse layout and interaction components across screens.
@@ -25,13 +25,14 @@ Generated tile lettering is illustrative; check letter forms and dot counts befo
 ## Reusable implementation
 
 - `src/lib/studio-layout.js` measures the left column and six-tile grid at the current canvas width.
-- `src/lib/studio-ui.js` owns the cream scenery and utility controls.
+- `src/lib/studio-ui.js` owns the cream scenery and utility controls. The independent background image is split into left, middle and right regions when drawn, so the corner trees keep their proportions at wide phone ratios while the quiet middle expands.
 - `content/studio-tiles.json` maps all 27 games to separate finished images in `public/images/studio-tiles/`. Replacing one image changes only that tile. A future image with its own transparent silhouette can opt into `fit: "contain"` and `radius: 0`.
 - `src/lib/image-button.js` supplies uniform image sizing, one clean clipped edge, a silhouette shadow and the shared tap behaviour. It does not compose lettering or objects. Square tile bounds preserve the entire illustration across landscape widths.
 - `src/lib/studio-art.js` loads the images and makes tile and Chalo buttons. No additional frame, backing plate or font is drawn over the finished tile.
 - `content/characters.json` selects the transparent character used on the home and game screens. Add another character image and change `default` to replace the spider. Optional individual pose images override the default image.
 - `public/images/characters/spider.webp` is the independent transparent character image. The character registry and its optional poses remain reusable across screens.
 - `public/images/ui/chalo-clay.webp` is the complete orange Chalo button, including raised cream lettering and play symbol, with a transparent exterior. Its rounded body follows the original concept.
+- `public/images/backgrounds/home-studio-garden.webp` restores the fuller dimensional greenery from Concept 05. It contains no character or interface elements. The built-in image-generation prompt is recorded in [home-scenery-prompt.json](home-scenery-prompt.json).
 - `src/lib/studio-brand.js` renders the separately baked title; teaching glyphs retain their existing typeface.
 
 The owner chose complete generated tiles after reviewing the first composed version: flat glyphs and separate objects did not share a convincing material. Consistency now comes from art direction and the shared image-button component, while each tile can have a bespoke design. The source square images have edge-to-edge pastel backgrounds; the app applies the outer rounded silhouette once.

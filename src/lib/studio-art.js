@@ -6,7 +6,7 @@ const BASE = import.meta.env.BASE_URL ?? '/';
 const key = name => `studio:complete:${name}`;
 
 export function queueStudioArt(scene) {
-  const pictures = { ...manifest.tiles, chalo: manifest.chalo };
+  const pictures = { ...manifest.tiles, chalo: manifest.chalo, backdrop: manifest.backdrop };
   for (const [name, art] of Object.entries(pictures)) {
     if (!scene.textures.exists(key(name))) scene.load.image(key(name), BASE + art.file);
   }
