@@ -36,4 +36,15 @@ Generated tile lettering is illustrative; check letter forms and dot counts befo
 
 The owner chose complete generated tiles after reviewing the first composed version: flat glyphs and separate objects did not share a convincing material. Consistency now comes from art direction and the shared image-button component, while each tile can have a bespoke design. The source square images have edge-to-edge pastel backgrounds; the app applies the outer rounded silhouette once.
 
+## Gameplay accuracy
+
+Read the corresponding game scene before generating tile art. Show the actual learning action and check the answer relationships, as well as the letter shapes and dots.
+
+- **LetterPuzzle:** fragments of one letter fit back together. Do not put a complete letter on every puzzle piece. The shape guide in `letter-puzzle-shape-guide.png` was made from the app's real isolated ب glyph, cut into three vertical strips like the game.
+- **Memory:** a revealed letter matches a word picture beginning with that letter, such as ب and a goat (بکری). Two identical pictures describe a different game.
+- **ConnectPairs:** connect right-column letters to their matching left-column pictures, such as ب → goat and ا → grapes (انگور). Do not connect duplicate letters.
+- **Baskets:** sort similar-looking letters from one shape family, such as ب and ت, into baskets labelled with the matching letters. The game does not sort fruit.
+
+The four corrected tiles remain complete generated images with the original pastel backgrounds and sculpted clay material. Gameplay, ordering, navigation and the separate character are unchanged.
+
 The full-tile generation prompts and lettering corrections are kept in [full-tile-prompts.json](full-tile-prompts.json). Earlier transparent-object prompts remain in [asset-prompts.json](asset-prompts.json) as design history.
